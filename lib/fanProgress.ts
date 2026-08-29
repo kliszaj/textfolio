@@ -1,8 +1,12 @@
 export const FAN_THRESHOLD_PX = 250;
 
-export function computeCursorFanProgress(mouseY: number, viewportHeight: number): number {
+export function computeCursorFanProgress(
+  mouseY: number,
+  viewportHeight: number,
+  thresholdPx: number = FAN_THRESHOLD_PX
+): number {
   const distanceFromBottom = viewportHeight - mouseY;
-  const raw = 1 - distanceFromBottom / FAN_THRESHOLD_PX;
+  const raw = 1 - distanceFromBottom / thresholdPx;
   return Math.min(1, Math.max(0, raw));
 }
 

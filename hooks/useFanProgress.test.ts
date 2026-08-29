@@ -37,6 +37,16 @@ describe("useFanProgress", () => {
     expect(result.current).toBe(0);
   });
 
+  test("fine pointer: a custom threshold changes how quickly progress ramps up", () => {
+    mockUsePointerType.mockReturnValue("fine");
+    setViewportHeight(800);
+    const { result } = renderHook(() => useFanProgress(100));
+    act(() => {
+      window.dispatchEvent(new MouseEvent("mousemove", { clientY: 750 }));
+    });
+    expect(result.current).toBeCloseTo(0.5);
+  });
+
   test("coarse pointer: scroll position drives fan progress", () => {
     mockUsePointerType.mockReturnValue("coarse");
     setViewportHeight(800);

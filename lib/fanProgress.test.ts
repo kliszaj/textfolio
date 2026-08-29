@@ -13,6 +13,11 @@ describe("computeCursorFanProgress", () => {
     const mouseY = 800 - FAN_THRESHOLD_PX / 2;
     expect(computeCursorFanProgress(mouseY, 800)).toBeCloseTo(0.5);
   });
+
+  test("honors a custom threshold override", () => {
+    expect(computeCursorFanProgress(800, 800, 100)).toBe(1);
+    expect(computeCursorFanProgress(750, 800, 100)).toBeCloseTo(0.5);
+  });
 });
 
 describe("computeScrollFanProgress", () => {
