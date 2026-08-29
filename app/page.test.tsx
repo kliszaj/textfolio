@@ -13,9 +13,12 @@ jest.mock("next/navigation", () => ({
 const mockUseFanProgress = useFanProgress as jest.Mock;
 const mockUsePointerType = usePointerType as jest.Mock;
 
-test("renders the hero name and all case study cards", () => {
+beforeEach(() => {
   mockUseFanProgress.mockReturnValue(0);
   mockUsePointerType.mockReturnValue("fine");
+});
+
+test("renders the hero and all case study sheets", () => {
   render(<HomePage />);
   expect(screen.getByTestId("letter-0")).toBeInTheDocument();
   caseStudies.forEach((cs) => {
@@ -23,16 +26,18 @@ test("renders the hero name and all case study cards", () => {
   });
 });
 
+test("renders the fan debug panel for tuning", () => {
+  render(<HomePage />);
+  expect(screen.getByTestId("fan-debug-panel")).toBeInTheDocument();
+});
+
 test("renders a scroll spacer on touch devices", () => {
-  mockUseFanProgress.mockReturnValue(0);
   mockUsePointerType.mockReturnValue("coarse");
   const { container } = render(<HomePage />);
   expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
 });
 
 test("renders no scroll spacer on fine-pointer devices", () => {
-  mockUseFanProgress.mockReturnValue(0);
-  mockUsePointerType.mockReturnValue("fine");
   const { container } = render(<HomePage />);
   expect(container.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument();
 });
