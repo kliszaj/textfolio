@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 import { NAME, letterTreatments } from "@/data/letterTreatments";
 import { useActiveLetterIndex } from "@/hooks/useActiveLetterIndex";
 import { LetterTreatmentOverlay } from "./LetterTreatmentOverlay";
@@ -9,9 +10,10 @@ const DEFAULT_BG_COLOR = "#F2EBE1";
 
 type HeroProps = {
   fanProgress: number;
+  subheaderRef?: RefObject<HTMLParagraphElement | null>;
 };
 
-export function Hero({ fanProgress }: HeroProps) {
+export function Hero({ fanProgress, subheaderRef }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -53,7 +55,9 @@ export function Hero({ fanProgress }: HeroProps) {
         </div>
         <LetterTreatmentOverlay treatments={letterTreatments} activeIndex={activeIndex} />
       </div>
-      <p className="font-script text-2xl mt-4">Designer, tinkerer, idea-booster</p>
+      <p ref={subheaderRef} className="font-script text-2xl mt-4">
+        Designer, tinkerer, idea-booster
+      </p>
       <div
         data-testid="scroll-hint"
         className="absolute bottom-8 text-3xl transition-opacity duration-300"

@@ -1,11 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { PaperSheet } from "./PaperSheet";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 
 const config: FanSheetConfig = {
   mechanic: "bottom",
   recedePercents: [12, 8, 4, 0],
+  rotateDegrees: [0, -4, -8, -12],
   brightnessFalloff: 0.05,
+  focusRevealPercent: 45,
 };
 
 test("renders its children", () => {
@@ -34,4 +36,54 @@ test("applies the given z-index", () => {
     </PaperSheet>
   );
   expect(screen.getByTestId("paper-sheet-2")).toHaveStyle({ zIndex: 20 });
+});
+
+test("rotates deeper sheets further left as fanProgress increases", () => {
+  render(
+    <PaperSheet depth={2} fanProgress={1} config={config} transitionMs={280} zIndex={20}>
+      <span>Sheet content</span>
+    </PaperSheet>
+  );
+  expect(screen.getByTestId("paper-sheet-2")).toHaveStyle({ transform: "rotate(-8deg)" });
+});
+
+test("when focused, overrides the inset to the configured reveal, upright and above the given z-index", () => {
+  render(
+    <PaperSheet
+      depth={1}
+      fanProgress={0.3}
+      config={config}
+      transitionMs={280}
+      zIndex={30}
+      focused
+      focusedZIndex={200}
+    >
+      <span>Sheet content</span>
+    </PaperSheet>
+  );
+  const sheet = screen.getByTestId("paper-sheet-1");
+  expect(sheet).toHaveStyle({ bottom: "45%", right: "0%", transform: "rotate(0deg)", zIndex: 200 });
+});
+
+test("calls onMouseEnter and onMouseLeave", () => {
+  const onMouseEnter = jest.fn();
+  const onMouseLeave = jest.fn();
+  render(
+    <PaperSheet
+      depth={1}
+      fanProgress={0}
+      config={config}
+      transitionMs={280}
+      zIndex={30}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <span>Sheet content</span>
+    </PaperSheet>
+  );
+  const sheet = screen.getByTestId("paper-sheet-1");
+  fireEvent.mouseEnter(sheet);
+  expect(onMouseEnter).toHaveBeenCalled();
+  fireEvent.mouseLeave(sheet);
+  expect(onMouseLeave).toHaveBeenCalled();
 });

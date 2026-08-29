@@ -1,3 +1,4 @@
+import { createRef } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Hero } from "./Hero";
 import { usePointerType } from "@/hooks/usePointerType";
@@ -36,4 +37,10 @@ test("the down-arrow hint fades as fanProgress increases", () => {
   expect(screen.getByTestId("scroll-hint")).toHaveStyle({ opacity: 1 });
   rerender(<Hero fanProgress={1} />);
   expect(screen.getByTestId("scroll-hint")).toHaveStyle({ opacity: 0 });
+});
+
+test("attaches the given subheaderRef to the tagline paragraph", () => {
+  const subheaderRef = createRef<HTMLParagraphElement>();
+  render(<Hero fanProgress={0} subheaderRef={subheaderRef} />);
+  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, idea-booster"));
 });

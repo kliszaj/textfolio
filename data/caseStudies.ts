@@ -5,23 +5,26 @@ export type CaseStudy = {
   blurb: string;
 };
 
+// Reuses the same hex values as three of the letterTreatments' bgColor
+// entries (see data/letterTreatments.ts) so a case study's peeking color
+// matches a treatment color seen while hovering the name.
 export const caseStudies: CaseStudy[] = [
   {
     slug: "case-study-one",
     title: "Case Study One",
-    thumbnailColor: "#D9C7B8",
+    thumbnailColor: "#C1D4E4",
     blurb: "Placeholder blurb for case study one.",
   },
   {
     slug: "case-study-two",
     title: "Case Study Two",
-    thumbnailColor: "#C7D3D9",
+    thumbnailColor: "#D4E4C1",
     blurb: "Placeholder blurb for case study two.",
   },
   {
     slug: "case-study-three",
     title: "Case Study Three",
-    thumbnailColor: "#D3D9C7",
+    thumbnailColor: "#E4D4C1",
     blurb: "Placeholder blurb for case study three.",
   },
 ];
