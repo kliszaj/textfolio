@@ -31,8 +31,8 @@ const DEFAULT_INK_COLOR = "#1C1C1C";
 const ASCII_BG_COLOR = "#05AEAE";
 const ASCII_STAGE_COLORS = ["#201D24", "#1A3030", "#252018", "#1D2635"];
 
-// Figma: 230px headline / 64px tagline on a 1440 frame. Expressed as vw so the
-// proportion holds at any viewport width rather than only at 1440.
+// The script line needs enough scale to hold its own against the wide display
+// word, while its clamp preserves a readable floor on narrow screens.
 // 230px on a 1440 frame, per Figma. Capped, because the container stops at
 // 72rem x 20rem: an uncapped size outgrows the box on wide screens, and only
 // WarpText survives that (it shrink-to-fits). The others render at nominal and
@@ -46,7 +46,7 @@ const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = "#3E18FF";
 const WARP_ACCENT_COLOR = "#FF04FF";
-const TAGLINE_SIZE = "clamp(1.1rem, 4.44vw, 4rem)";
+const TAGLINE_SIZE = "clamp(1.6rem, 6.5vw, 6rem)";
 const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;

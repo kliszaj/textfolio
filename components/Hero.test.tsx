@@ -109,6 +109,13 @@ test("pulls the tagline up close under the headline", () => {
   expect(tagline.style.marginTop).toMatch(/^clamp\(-/);
 });
 
+test("scales the tagline up toward the headline while keeping a readable floor", () => {
+  render(<Hero playIntro={false} fanProgress={0} />);
+  expect(screen.getByTestId("hero-tagline")).toHaveStyle({
+    fontSize: "clamp(1.6rem, 6.5vw, 6rem)",
+  });
+});
+
 test("the tagline sits in the same place whatever treatment is active", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
   const tagline = screen.getByTestId("hero-tagline");
