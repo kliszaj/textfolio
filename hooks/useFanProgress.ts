@@ -13,6 +13,8 @@ import {
 import { smoothTowards } from "@/lib/smoothing";
 import type { FanPhases } from "@/lib/fanProgress";
 
+const FAN_AT_REST: FanPhases = { fanProgress: 0, sweepProgress: 0 };
+
 export function useFanProgress(
   thresholdPx: number = FAN_THRESHOLD_PX,
   fanSplit: number = FAN_SPLIT,
@@ -59,11 +61,13 @@ export function useFanProgress(
 
   useEffect(() => {
     if (!enabled) {
+      // Only tear the loop down here. Writing state synchronously in an effect
+      // body triggers a cascading render, and it is unnecessary: the rest
+      // position is derived below instead of stored.
       targetRef.current = 0;
       wheelAnchorRef.current = null;
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
-      setTravel(0);
       return;
     }
 
@@ -129,5 +133,6 @@ export function useFanProgress(
     };
   }, []);
 
-  return splitTravel(travel, fanSplit);
+  // Disabled means at rest, whatever the last travel happened to be.
+  return enabled ? splitTravel(travel, fanSplit) : FAN_AT_REST;
 }

@@ -22,7 +22,7 @@
   height: 100%;
   color: inherit;
   font-family: var(--headline-font-family, var(--font-pp-frama, sans-serif));
-  font-size: var(--headline-font-size, clamp(3rem, min(13vw, 18vh), 14.5rem));
+  font-size: var(--headline-font-size, clamp(3rem, min(18vw, 18vh), 14.5rem));
   font-weight: var(--headline-font-weight, 900);
   line-height: 1;
 }

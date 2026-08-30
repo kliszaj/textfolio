@@ -25,7 +25,7 @@ test("uses one shared headline frame and typography baseline across treatments",
   expect(frame).not.toHaveClass("overflow-hidden");
   expect(frame).toHaveClass("relative", "isolate");
   expect(frame).toHaveStyle({
-    "--headline-font-size": "clamp(3rem, min(13vw, 18vh), 14.5rem)",
+    "--headline-font-size": "clamp(3rem, min(18vw, 18vh), 14.5rem)",
     "--headline-font-family": "var(--font-pp-frama)",
     "--headline-font-weight": "900",
   });
@@ -121,9 +121,11 @@ test("pulls the tagline up close under the headline", () => {
 });
 
 test("scales the tagline up toward the headline while keeping a readable floor", () => {
+  // Height-aware like the headline: the width term grows narrow screens while
+  // the height term keeps wide ones where they were.
   render(<Hero playIntro={false} fanProgress={0} />);
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({
-    fontSize: "clamp(1.6rem, 6vw, 5.5rem)",
+    fontSize: "clamp(1.6rem, min(8.5vw, 7.5vh), 5.5rem)",
   });
 });
 

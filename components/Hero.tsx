@@ -5,7 +5,11 @@ import type { CSSProperties, RefObject } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { NAME } from "@/data/letterTreatments";
-import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
+import {
+  ASCII_INK_LIME,
+  ASCII_TYPE_SHARE,
+  DEFAULT_ASCII_TEXT_CONFIG,
+} from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
@@ -44,7 +48,10 @@ const ASCII_DESKTOP_ICONS = [
 // 72rem x 20rem: an uncapped size outgrows the box on wide screens, and only
 // WarpText survives that (it shrink-to-fits). The others render at nominal and
 // overflow, which is what made them look oversized next to it.
-const HEADLINE_SIZE = "clamp(3rem, min(13vw, 18vh), 14.5rem)";
+// min() takes the *smaller* term: on a phone that is the width one, on a
+// desktop the height one. Raising the width term therefore grows narrow
+// screens and leaves wide ones exactly where they were.
+const HEADLINE_SIZE = "clamp(3rem, min(18vw, 18vh), 14.5rem)";
 // The headline sits in a fixed-height box that is taller than the word itself,
 // which left the tagline stranded well below it. Pull it back up so it sits
 // just under the letters, in the same place for every treatment.
@@ -53,7 +60,7 @@ const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
-const TAGLINE_SIZE = "clamp(1.6rem, 6vw, 5.5rem)";
+const TAGLINE_SIZE = "clamp(1.6rem, min(8.5vw, 7.5vh), 5.5rem)";
 const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
 const SKETCH_ARROW_SIZE = "clamp(3rem, 5vw, 6.5rem)";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
@@ -210,7 +217,7 @@ export function Hero({
             unchanged, so nothing moves or resizes. */}
         <div
           data-testid="headline-frame"
-          className="relative isolate w-[min(86vw,72rem)]"
+          className="relative isolate w-[min(94vw,72rem)]"
           style={{
             height: "clamp(11rem, min(25vw, 30vh), 20rem)",
             "--headline-font-size": HEADLINE_SIZE,
@@ -230,6 +237,11 @@ export function Hero({
               text={NAME}
               {...asciiConfig}
               demoTiltMs={intro.phase === "ascii" ? HEADLINE_INTRO_DEMO_MS : 0}
+              typeProgress={
+                intro.phase === "ascii"
+                  ? Math.min(1, intro.phaseProgress / ASCII_TYPE_SHARE)
+                  : 1
+              }
             />
           ) : activeEffect === "stroke" ? (
             <StrokeText
