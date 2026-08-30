@@ -90,6 +90,7 @@ export function StrokeText({
   const sketch = getSketchSpec(sketchStyle);
   const inked = sketchColors(sketchStyle, strokeColor, fillColor);
   const hatchId = `stroke-text-hatch-${safeId}`;
+  const hatchMirrorId = `stroke-text-hatch-mirror-${safeId}`;
   // Re-seeded turbulence on the shared boil beat, so the drawn line is redrawn
   // a few times a second instead of holding perfectly still.
   const boilFrame = useLineBoilFrame(SKETCH_BOIL_SEEDS.length);
@@ -98,6 +99,11 @@ export function StrokeText({
   const hatchGap = Math.max(3, (box?.height ?? 200) * sketch.hatchSpacing);
   const fillPaint =
     sketch.fillTexture === "hatch" ? `url(#${hatchId})` : inked.fillColor;
+  // Mirroring a glyph mirrors its hatching with it, which left the reversed
+  // letter shaded the opposite way to every other. This one is angled against
+  // the flip so it comes out running the same way as the rest.
+  const mirroredFillPaint =
+    sketch.fillTexture === "hatch" ? `url(#${hatchMirrorId})` : inked.fillColor;
   const characters = useMemo(() => Array.from(text), [text]);
   const dash = box ? Math.max(box.width, box.height) * 4 : 4000;
   const fontStyle = useMemo<CSSProperties>(
@@ -222,11 +228,11 @@ export function StrokeText({
       });
       timeline.to(strokes, { strokeDashoffset: 0, duration: drawDuration, ease, stagger: staggerConfig }, 0);
       if (useWipe && wipe) {
-        timeline.to(wipe, { attr: { width: box.width }, duration: fillDuration, ease: "power2.inOut" }, fillDelay);
+        timeline.to(wipe, { attr: { width: box.width }, duration: fillDuration, ease: "power2.inOut" }, drawDuration + fillDelay);
       } else if (fillEnabled) {
-        // Shades in alongside the outline rather than after it: fillDelay is
-      // now the absolute start, not a wait tacked onto the whole draw.
-      timeline.to(fills, { opacity: 1, duration: fillDuration, ease: "power2.out", stagger: staggerConfig }, fillDelay);
+        // Outline first, shading promptly behind it. The wait is short because
+      // drawDuration is short, not because the gap was removed.
+      timeline.to(fills, { opacity: 1, duration: fillDuration, ease: "power2.out", stagger: staggerConfig }, drawDuration + fillDelay);
       }
       return timeline;
     };
@@ -344,27 +350,32 @@ export function StrokeText({
                 ) : null}
               </filter>
             ))}
-          {sketch.fillTexture === "hatch" && (
-            // Shaded in by hand rather than flooded: the fill is drawn strokes,
-            // which the grain above then breaks up like graphite.
-            <pattern
-              id={hatchId}
-              patternUnits="userSpaceOnUse"
-              width={hatchGap}
-              height={hatchGap}
-              patternTransform="rotate(48)"
-            >
-              <line
-                x1="0"
-                y1="0"
-                x2="0"
-                y2={hatchGap}
-                stroke={inked.fillColor}
-                strokeWidth={Math.max(0.8, hatchGap * 0.28)}
-                strokeLinecap="round"
-              />
-            </pattern>
-          )}
+          {sketch.fillTexture === "hatch" &&
+            [
+              { id: hatchId, angle: 48 },
+              { id: hatchMirrorId, angle: -48 },
+            ].map(({ id, angle }) => (
+              // Shaded in by hand rather than flooded: the fill is drawn
+              // strokes, which the grain above then breaks up like graphite.
+              <pattern
+                key={id}
+                id={id}
+                patternUnits="userSpaceOnUse"
+                width={hatchGap}
+                height={hatchGap}
+                patternTransform={`rotate(${angle})`}
+              >
+                <line
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2={hatchGap}
+                  stroke={inked.fillColor}
+                  strokeWidth={Math.max(0.8, hatchGap * 0.28)}
+                  strokeLinecap="round"
+                />
+              </pattern>
+            ))}
         </defs>
         <g
           filter={sketchFilter}
@@ -408,7 +419,7 @@ export function StrokeText({
                   x={markBox.x}
                   y={centreY}
                   dominantBaseline="central"
-                  fill={fillPaint}
+                  fill={mirroredFillPaint}
                   stroke="none"
                   style={fontStyle}
                   clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}

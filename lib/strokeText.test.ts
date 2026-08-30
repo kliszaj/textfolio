@@ -141,9 +141,11 @@ describe("correction marks", () => {
     expect(circle.cy).toBeCloseTo(box.y + box.height / 2);
   });
 
-  test("the circle encloses the glyph", () => {
+  test("the circle is drawn snug to the glyph, not looped loosely round it", () => {
     const { circle } = correctionMarks(box);
-    expect(circle.r).toBeGreaterThan(Math.max(box.width, box.height) / 2);
+    const longest = Math.max(box.width, box.height);
+    expect(circle.r * 2).toBeGreaterThan(longest * 0.5);
+    expect(circle.r * 2).toBeLessThan(longest);
   });
 
   test("it is pulled inside the frame rather than running off the edge", () => {
@@ -174,16 +176,19 @@ describe("correction marks", () => {
     expect(Math.hypot(end[0] - start[0], end[1] - start[1])).toBeGreaterThan(0);
   });
 
-  test("the X is struck through the glyph, not floating beside it", () => {
+  test("the X is centred on the glyph and struck across most of it", () => {
     const { crossA, crossB } = correctionMarks(box);
     for (const stroke of [crossA, crossB]) {
       const nums = stroke.match(/-?\d+\.?\d*/g)!.map(Number);
       const xs = nums.filter((_: number, i: number) => i % 2 === 0);
       const ys = nums.filter((_: number, i: number) => i % 2 === 1);
-      expect(Math.min(...xs)).toBeLessThanOrEqual(box.x);
-      expect(Math.max(...xs)).toBeGreaterThanOrEqual(box.x + box.width);
-      expect(Math.min(...ys)).toBeLessThanOrEqual(box.y);
-      expect(Math.max(...ys)).toBeGreaterThanOrEqual(box.y + box.height);
+      const spanX = Math.max(...xs) - Math.min(...xs);
+      const spanY = Math.max(...ys) - Math.min(...ys);
+      expect(spanX).toBeGreaterThan(box.width * 0.8);
+      expect(spanY).toBeGreaterThan(box.height * 0.8);
+      // Centred, so it marks the letter rather than sitting off to one side.
+      expect((Math.min(...xs) + Math.max(...xs)) / 2).toBeCloseTo(box.x + box.width / 2, 1);
+      expect((Math.min(...ys) + Math.max(...ys)) / 2).toBeCloseTo(box.y + box.height / 2, 1);
     }
   });
 

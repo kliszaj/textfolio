@@ -23,8 +23,8 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
   strokeColor: "#FFFFFF",
   fillColor: "#FFFFFF",
   strokeWidth: 2.6,
-  drawDuration: 1.8,
-  fillDelay: 0,
+  drawDuration: 1.15,
+  fillDelay: 0.12,
   stagger: 0.05,
   ease: "expo.out",
   trigger: "mount",
@@ -127,12 +127,12 @@ export const STROKE_INK_LIFT_PX = 12;
 
 export const CORRECTION_INK = "#FF0000";
 // Slow enough to actually watch the pen move.
-export const CORRECTION_DRAW_MS = 1100;
-export const CORRECTION_CROSS_MS = 560;
+export const CORRECTION_DRAW_MS = 820;
+export const CORRECTION_CROSS_MS = 430;
 // The X starts before the loop has quite closed, the way a hand would.
-export const CORRECTION_CROSS_LEAD_MS = 770;
+export const CORRECTION_CROSS_LEAD_MS = 580;
 // And its second stroke follows its first.
-export const CORRECTION_CROSS_DELAY_MS = 420;
+export const CORRECTION_CROSS_DELAY_MS = 320;
 
 // How long the whole correction takes from the moment the letters start
 // drawing. The stage that holds it has to be longer than this, or the pen is
@@ -146,7 +146,7 @@ export function correctionSequenceMs(drawDurationSeconds: number): number {
   );
 }
 // Circle radius as a share of the glyph's longest side.
-const LOOP_REACH = 0.72;
+const LOOP_REACH = 0.36;
 // Kept off the frame edge, so a mark never reads as clipped.
 const LOOP_MARGIN = 4;
 // The loop's radius wanders; the widest it ever draws is this much over
@@ -225,17 +225,23 @@ export function correctionMarks(
 
   // The X is struck through the glyph, overshooting it a little the way a
   // crossing-out does, and held inside the frame like the loop.
-  const overX = box.width * 0.18;
-  const overY = box.height * 0.1;
+  // Struck at 80% of its full reach, so it marks the letter without
+  // swallowing it. Scaled about the glyph's centre rather than by trimming
+  // the overshoot, so both axes shrink by the same amount.
+  const CROSS_SCALE = 0.8;
+  const midX = box.x + box.width / 2;
+  const midY = box.y + box.height / 2;
+  const halfX = ((box.width * 1.36) / 2) * CROSS_SCALE;
+  const halfY = ((box.height * 1.2) / 2) * CROSS_SCALE;
   const limit = (value: number, high: number) =>
     bounds
       ? clamp(value, padding + LOOP_MARGIN - bleed, high - padding - LOOP_MARGIN + bleed)
       : value;
 
-  const left = limit(box.x - overX, bounds?.width ?? 0);
-  const right = limit(box.x + box.width + overX, bounds?.width ?? 0);
-  const top = limit(box.y - overY, bounds?.height ?? 0);
-  const bottom = limit(box.y + box.height + overY, bounds?.height ?? 0);
+  const left = limit(midX - halfX, bounds?.width ?? 0);
+  const right = limit(midX + halfX, bounds?.width ?? 0);
+  const top = limit(midY - halfY, bounds?.height ?? 0);
+  const bottom = limit(midY + halfY, bounds?.height ?? 0);
   const bow = Math.max(box.width, box.height) * 0.05;
 
   const crossA = `M ${left} ${top} Q ${(left + right) / 2 + bow} ${
