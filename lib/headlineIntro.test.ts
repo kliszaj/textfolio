@@ -1,3 +1,5 @@
+import { ASCII_DEMO_TILT_MS } from "./asciiText";
+import { WARP_DEMO_SWEEP_MS } from "./warpText";
 import {
   HEADLINE_INTRO_DURATION_MS,
   HEADLINE_INTRO_STEPS,
@@ -48,4 +50,24 @@ test("the phases run forwards only, never back a step", () => {
 test("survives nonsense elapsed values", () => {
   expect(introStateAt(-500).phase).toBe("sketch");
   expect(introStateAt(NaN).phase).toBe("sketch");
+});
+
+describe("the sweeps fit the stages that hold them", () => {
+  // A sweep cut off by its handover leaves the headline mid-lean, so each one
+  // has to finish with room to settle before the next stage takes over.
+  const stage = (phase: string) =>
+    HEADLINE_INTRO_STEPS.find((step) => step.phase === phase)!.durationMs;
+
+  test("the ascii tilt sweep finishes inside the ascii stage", () => {
+    expect(ASCII_DEMO_TILT_MS).toBeLessThan(stage("ascii"));
+  });
+
+  test("the warp pointer sweep finishes inside the warp stage", () => {
+    expect(WARP_DEMO_SWEEP_MS).toBeLessThan(stage("warp"));
+  });
+
+  test("each sweep leaves a beat to settle, not just a millisecond", () => {
+    expect(stage("ascii") - ASCII_DEMO_TILT_MS).toBeGreaterThanOrEqual(300);
+    expect(stage("warp") - WARP_DEMO_SWEEP_MS).toBeGreaterThanOrEqual(300);
+  });
 });

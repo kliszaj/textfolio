@@ -116,7 +116,7 @@ export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
 };
 
 // How long the scripted tilt sweep runs when the treatment first appears.
-export const ASCII_DEMO_TILT_MS = 1500;
+export const ASCII_DEMO_TILT_MS = 2200;
 // The lerp toward the target eats some amplitude, so the sweep aims wider than
 // a real cursor would to land at a comparable lean.
 const DEMO_TILT_REACH = 0.85;

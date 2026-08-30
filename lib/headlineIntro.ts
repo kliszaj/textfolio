@@ -6,11 +6,12 @@ export type HeadlineIntroPhase = "sketch" | "ascii" | "warp" | "final";
 export const HEADLINE_INTRO_STEPS: { phase: HeadlineIntroPhase; durationMs: number }[] = [
   // Long enough for the stroke to draw itself and take its fill.
   { phase: "sketch", durationMs: 2600 },
-  // Long enough for the ascii treatment to arrive and show off its tilt.
-  { phase: "ascii", durationMs: 2000 },
+  // Long enough for the ascii treatment to arrive, run its full sweep, and
+  // settle before handing over.
+  { phase: "ascii", durationMs: 2700 },
   // The warp treatment in its active state, before it settles into the calm
   // resting version of itself that the page lives on.
-  { phase: "warp", durationMs: 1800 },
+  { phase: "warp", durationMs: 2700 },
 ];
 
 export const HEADLINE_INTRO_DURATION_MS = HEADLINE_INTRO_STEPS.reduce(

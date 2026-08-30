@@ -21,7 +21,7 @@ export const DEFAULT_WARP_TEXT_CONFIG: WarpTextConfig = {
 };
 
 // How long the scripted sweep runs when the warp treatment first appears.
-export const WARP_DEMO_SWEEP_MS = 1500;
+export const WARP_DEMO_SWEEP_MS = 2200;
 // How far either side of centre the simulated cursor travels, in uv.
 const WARP_DEMO_REACH = 0.32;
 
