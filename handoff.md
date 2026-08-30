@@ -35,7 +35,7 @@ tagline, and arrow share cobalt `#0057FF` ink;
 the correction circle and X remain red and share the same GSAP timeline as
 the hatching, starting only after both the final outline and final hatch line
 have landed, with a small settling beat;
-the full sketch sequence fits inside a 3s treatment window, so the pen never
+the full sketch sequence fits inside a 4s treatment window, so the pen never
 gets cut off at handover. Settings exposes the draw range, `Pencil
 pressure` easing, and `Pencil hatching` fill. For genuinely human letterforms,
 use a straight, high-resolution scan/photo of the actual word as an
@@ -269,7 +269,7 @@ factor. The frame is `overflow-hidden` and clips transient overflow.
 off one rAF loop:
 
 ```
-sketch 3000ms  ->  ascii 3000ms  ->  warp 3000ms  ->  final
+sketch 4000ms  ->  ascii 4000ms  ->  warp 4000ms  ->  final
                                       total 24000ms + a 300ms fade-in tail
 ```
 

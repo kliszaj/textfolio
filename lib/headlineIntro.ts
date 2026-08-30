@@ -10,7 +10,7 @@ export const HEADLINE_HANDOVER_MS = 600;
 
 // Keep each treatment brisk enough for a refresh: the sketch's outlines,
 // pencil fill, and correction mark all finish inside this shared window.
-export const SKETCH_INTRO_DURATION_MS = 3000;
+export const SKETCH_INTRO_DURATION_MS = 4000;
 
 // The sketch establishes the cadence. ASCII and Warp deliberately inherit
 // this value, so if the sketch sequence needs more time later their refresh
