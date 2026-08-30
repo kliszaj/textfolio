@@ -43,7 +43,8 @@ SVG/transparent asset; texture alone can only roughen the typed PP Frama
 shape.
 
 The sketch stage mounts the supplied `public/assets/cool-s.svg` blue
-"cool S" mark in the top-left corner. It is pointer-inert and only appears
+"cool S" mark in the top-left corner uses the shared cobalt `#0057FF` ink. It
+is pointer-inert and only appears
 while StrokeText is active; it is shown immediately without a draw-in
 animation, rotated 15 degrees clockwise and offset into the visible viewport
 despite the sheet overscan.
