@@ -129,6 +129,7 @@ test("uses the requested ASCII defaults", () => {
     asciiFontSize: 12,
     textFontSize: 340,
     planeScale: 1,
+    extrudeDepth: 0.16,
     tiltStrength: 0.3,
     randomizeGlyphColors: true,
     // The stage holds one colour so it matches the reference; only the glyph

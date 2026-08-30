@@ -7,6 +7,11 @@
 }
 
 .fallback {
+  /* Hidden by default and revealed only after a beat, so the plain headline
+     never flashes in the moment before WebGL is ready. It still appears, and
+     stays, if the renderer never arrives at all. */
+  opacity: 0;
+  transition: opacity 160ms ease-out 500ms;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,8 +24,13 @@
   line-height: 1;
 }
 
+.root[data-ready="false"] .fallback {
+  opacity: 1;
+}
+
 .root[data-ready="true"] .fallback {
   opacity: 0;
+  transition-delay: 0ms;
 }
 
 .root pre,

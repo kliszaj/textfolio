@@ -134,6 +134,7 @@ export function Hero({
         style={{ transform: `translateY(-${liftPercent}vh)` }}
       >
         <div
+          data-testid="headline-frame"
           className="relative isolate w-[min(86vw,72rem)] overflow-hidden"
           style={{
             height: "clamp(13rem, 25vw, 20rem)",
@@ -144,6 +145,11 @@ export function Hero({
           onPointerEnter={activateHeadline}
           onPointerLeave={deactivateHeadline}
         >
+          <div
+            data-testid="headline-stage"
+            className="absolute inset-0"
+            style={{ opacity: intro.opacity }}
+          >
           {activeEffect === "ascii" ? (
             <ASCIIText
               text={NAME}
@@ -171,6 +177,7 @@ export function Hero({
               lineHeight={1}
             />
           )}
+          </div>
         </div>
         <p
           ref={subheaderRef}
@@ -181,6 +188,7 @@ export function Hero({
             lineHeight: 1.1,
             marginTop: TAGLINE_OFFSET,
             color: accentColor,
+            transition: "color 420ms ease",
           }}
         >
           Designer, tinkerer, prototyper, idea-refiner
@@ -188,8 +196,12 @@ export function Hero({
       </div>
       <div
         data-testid="scroll-hint"
-        className="absolute bottom-8 text-3xl transition-opacity duration-300"
-        style={{ opacity: arrowOpacity, color: accentColor }}
+        className="boil-line absolute bottom-8 text-3xl transition-opacity duration-300"
+        style={{
+          opacity: arrowOpacity,
+          color: accentColor,
+          transition: "color 420ms ease",
+        }}
       >
         ↓
       </div>

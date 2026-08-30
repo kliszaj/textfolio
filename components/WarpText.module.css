@@ -9,6 +9,10 @@
 }
 
 .fallback {
+  /* Same as the ascii treatment: no flash of the plain headline while the
+     shader spins up, but still a real fallback if it never does. */
+  opacity: 0;
+  transition: opacity 160ms ease-out 500ms;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -24,8 +28,13 @@
   transition: opacity 120ms ease-out;
 }
 
+.root[data-webgl-ready="false"] .fallback {
+  opacity: 1;
+}
+
 .root[data-webgl-ready="true"] .fallback {
   opacity: 0;
+  transition-delay: 0ms;
 }
 
 .root canvas {

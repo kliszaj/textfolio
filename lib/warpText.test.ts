@@ -29,17 +29,19 @@ test("the warp animates rather than sitting frozen", () => {
 describe("the scripted pointer sweep", () => {
   const DURATION = 1500;
 
-  test("starts and ends at the centre of the headline", () => {
-    expect(demoPointerAt(0, DURATION)!.x).toBeCloseTo(0.5, 6);
+  test("crosses the headline from left to right, passing centre halfway", () => {
+    expect(demoPointerAt(0, DURATION)!.x).toBeLessThan(0.5);
     expect(demoPointerAt(DURATION / 2, DURATION)!.x).toBeCloseTo(0.5, 6);
+    expect(demoPointerAt(DURATION * 0.99, DURATION)!.x).toBeGreaterThan(0.5);
   });
 
-  test("sweeps one way and then the other", () => {
-    const first = demoPointerAt(DURATION * 0.25, DURATION)!.x;
-    const second = demoPointerAt(DURATION * 0.75, DURATION)!.x;
-    expect(first).toBeGreaterThan(0.5);
-    expect(second).toBeLessThan(0.5);
-    expect(first - 0.5).toBeCloseTo(0.5 - second, 6);
+  test("only ever travels one way, never doubling back", () => {
+    let previous = -Infinity;
+    for (let t = 0; t < DURATION; t += 25) {
+      const { x } = demoPointerAt(t, DURATION)!;
+      expect(x).toBeGreaterThanOrEqual(previous);
+      previous = x;
+    }
   });
 
   test("stays inside the headline it is sweeping across", () => {

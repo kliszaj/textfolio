@@ -1,6 +1,10 @@
 import { renderHook, act } from "@testing-library/react";
 import { useHeadlineIntro } from "./useHeadlineIntro";
-import { HEADLINE_INTRO_DURATION_MS, HEADLINE_INTRO_STEPS } from "@/lib/headlineIntro";
+import {
+  HEADLINE_HANDOVER_MS,
+  HEADLINE_INTRO_DURATION_MS,
+  HEADLINE_INTRO_STEPS,
+} from "@/lib/headlineIntro";
 
 function mockReducedMotion(reduce: boolean) {
   Object.defineProperty(window, "matchMedia", {
@@ -37,9 +41,9 @@ describe("useHeadlineIntro", () => {
     expect(result.current.phase).toBe("ascii");
 
     act(() => {
-      jest.advanceTimersByTime(HEADLINE_INTRO_DURATION_MS);
+      jest.advanceTimersByTime(HEADLINE_INTRO_DURATION_MS + HEADLINE_HANDOVER_MS);
     });
-    expect(result.current).toEqual({ phase: "final", done: true });
+    expect(result.current).toEqual({ phase: "final", opacity: 1, done: true });
   });
 
   test("goes straight to the finished treatment when disabled", () => {

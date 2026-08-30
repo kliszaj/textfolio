@@ -4,7 +4,10 @@ import { useEffect, useRef } from "react";
 import {
   ASCII_CAMERA_DISTANCE,
   ASCII_CAMERA_FOV_DEG,
+  ASCII_EXTRUDE_LAYERS,
+  ASCII_EXTRUDE_RISE,
   ASCII_TILT_Y_RATIO,
+  extrudeLayerShade,
   demoTiltAt,
   DEFAULT_ASCII_TEXT_CONFIG,
   chipForBrightness,
@@ -56,6 +59,7 @@ export function ASCIIText({
   asciiFontSize = DEFAULT_ASCII_TEXT_CONFIG.asciiFontSize,
   textFontSize = DEFAULT_ASCII_TEXT_CONFIG.textFontSize,
   planeScale = DEFAULT_ASCII_TEXT_CONFIG.planeScale,
+  extrudeDepth = DEFAULT_ASCII_TEXT_CONFIG.extrudeDepth,
   tiltStrength = DEFAULT_ASCII_TEXT_CONFIG.tiltStrength,
   randomizeGlyphColors = DEFAULT_ASCII_TEXT_CONFIG.randomizeGlyphColors,
   demoTiltMs = 0,
@@ -150,11 +154,31 @@ export function ASCIIText({
       const createTextTexture = () => {
         textContext.font = `900 ${textFontSize}px "PP Frama", sans-serif`;
         const metrics = textContext.measureText(text);
-        textCanvas.width = Math.ceil(metrics.width) + 40;
-        textCanvas.height = Math.ceil(metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) + 40;
+        // The body is drawn behind the face, so the canvas has to make room
+        // for it or the deepest layers would be clipped away.
+        const extrudeX = Math.max(0, textFontSize * extrudeDepth);
+        const extrudeY = extrudeX * ASCII_EXTRUDE_RISE;
+        textCanvas.width = Math.ceil(metrics.width + extrudeX) + 40;
+        textCanvas.height =
+          Math.ceil(
+            metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent + extrudeY
+          ) + 40;
         textContext.font = `900 ${textFontSize}px "PP Frama", sans-serif`;
+
+        const baseX = 20;
+        const baseY = 20 + metrics.actualBoundingBoxAscent;
+        const stepX = extrudeX / ASCII_EXTRUDE_LAYERS;
+        const stepY = extrudeY / ASCII_EXTRUDE_LAYERS;
+
+        // Back to front, so each layer covers the one behind it.
+        for (let layer = ASCII_EXTRUDE_LAYERS; layer >= 1; layer -= 1) {
+          const shade = extrudeLayerShade(layer, ASCII_EXTRUDE_LAYERS);
+          textContext.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+          textContext.fillText(text, baseX + stepX * layer, baseY + stepY * layer);
+        }
+
         textContext.fillStyle = "#ffffff";
-        textContext.fillText(text, 20, 20 + metrics.actualBoundingBoxAscent);
+        textContext.fillText(text, baseX, baseY);
         texture = new THREE.CanvasTexture(textCanvas);
         texture.minFilter = THREE.NearestFilter;
       };
@@ -251,6 +275,10 @@ export function ASCIIText({
           if (swept !== null) {
             pointer.targetX = swept;
             pointer.targetY = 0;
+          } else if (demoTiltRef.current > 0) {
+            // The pass ends at the right, so level off rather than staying leant.
+            pointer.targetX = 0;
+            pointer.targetY = 0;
           }
         }
         pointer.x += (pointer.targetX - pointer.x) * 0.05;
@@ -291,7 +319,7 @@ export function ASCIIText({
       host.dataset.ready = "false";
       cleanup?.();
     };
-  }, [asciiFontSize, enableWaves, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
+  }, [asciiFontSize, enableWaves, extrudeDepth, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
 
   return (
     <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" role="img" aria-label={text}>

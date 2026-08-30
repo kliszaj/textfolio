@@ -4,6 +4,10 @@ export type ASCIITextConfig = {
   textFontSize: number;
   // Multiplier on the plane size that matches the original font. 1 is a match.
   planeScale: number;
+  // Depth of the extruded body behind the letters, as a fraction of the font
+  // size. The body shades from near-white just behind the face down to black
+  // at the back, which is what gives the depth ramp its full range to colour.
+  extrudeDepth: number;
   // How far the plane leans toward the cursor, in radians across the full
   // width of the host. 0 holds it flat.
   tiltStrength: number;
@@ -110,6 +114,7 @@ export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
   asciiFontSize: 12,
   textFontSize: 340,
   planeScale: 1,
+  extrudeDepth: 0.16,
   tiltStrength: 0.3,
   randomizeGlyphColors: true,
   randomizeStageColor: false,
@@ -121,9 +126,9 @@ export const ASCII_DEMO_TILT_MS = 2200;
 // a real cursor would to land at a comparable lean.
 const DEMO_TILT_REACH = 0.85;
 
-// One full left-right pass: centre, over, back through centre, over the other
-// way, centre. Returns null once the sweep is done or was never asked for, so
-// the caller leaves the real pointer target alone.
+// A single pass from left to right, eased at both ends so it starts and stops
+// like a hand rather than a slide. Returns null once the sweep is done or was
+// never asked for, so the caller leaves the real pointer target alone.
 export function demoTiltAt(
   elapsedMs: number,
   durationMs: number,
@@ -133,5 +138,20 @@ export function demoTiltAt(
   if (elapsedMs < 0 || elapsedMs >= durationMs) return null;
 
   const phase = elapsedMs / durationMs;
-  return Math.sin(phase * Math.PI * 2) * tiltStrength * DEMO_TILT_REACH;
+  const eased = phase * phase * (3 - 2 * phase);
+  return (eased * 2 - 1) * tiltStrength * DEMO_TILT_REACH;
+}
+
+// Layers used to build the extruded body. Enough that the shading reads as a
+// solid side rather than a stack of copies.
+export const ASCII_EXTRUDE_LAYERS = 22;
+// The body runs down and to the right of the face.
+export const ASCII_EXTRUDE_RISE = 0.62;
+
+// Grey for one layer of the extruded body: black at the back, close to the
+// white face at the front.
+export function extrudeLayerShade(layer: number, layers: number): number {
+  if (layers <= 0) return 0;
+  const depth = Math.min(1, Math.max(0, layer / layers));
+  return Math.round(255 * (1 - depth) * 0.9);
 }

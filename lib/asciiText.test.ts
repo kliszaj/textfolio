@@ -1,6 +1,8 @@
 import {
   ASCII_FALLBACK_PLANE_HEIGHT,
   ASCII_DEPTH_RAMP,
+  ASCII_EXTRUDE_LAYERS,
+  extrudeLayerShade,
   ASCII_INK_BLUE,
   ASCII_INK_LIME,
   DEFAULT_ASCII_TEXT_CONFIG,
@@ -15,6 +17,7 @@ test("every field has a default, so the config can be spread as props", () => {
   expect(keys).toEqual([
     "asciiFontSize",
     "enableWaves",
+    "extrudeDepth",
     "planeScale",
     "randomizeGlyphColors",
     "randomizeStageColor",
@@ -174,17 +177,19 @@ describe("the scripted tilt sweep", () => {
   const DURATION = 1500;
   const STRENGTH = 0.3;
 
-  test("starts and ends level, so it eases out of and back into rest", () => {
-    expect(demoTiltAt(0, DURATION, STRENGTH)).toBeCloseTo(0, 6);
+  test("travels from one side to the other, passing level halfway", () => {
+    expect(demoTiltAt(0, DURATION, STRENGTH)!).toBeLessThan(0);
     expect(demoTiltAt(DURATION / 2, DURATION, STRENGTH)).toBeCloseTo(0, 6);
+    expect(demoTiltAt(DURATION * 0.99, DURATION, STRENGTH)!).toBeGreaterThan(0);
   });
 
-  test("leans one way and then the other", () => {
-    const first = demoTiltAt(DURATION * 0.25, DURATION, STRENGTH)!;
-    const second = demoTiltAt(DURATION * 0.75, DURATION, STRENGTH)!;
-    expect(first).toBeGreaterThan(0);
-    expect(second).toBeLessThan(0);
-    expect(first).toBeCloseTo(-second, 6);
+  test("only ever travels one way, never doubling back", () => {
+    let previous = -Infinity;
+    for (let t = 0; t < DURATION; t += 25) {
+      const lean = demoTiltAt(t, DURATION, STRENGTH)!;
+      expect(lean).toBeGreaterThanOrEqual(previous);
+      previous = lean;
+    }
   });
 
   test("never leans further than a real cursor could", () => {
@@ -202,5 +207,41 @@ describe("the scripted tilt sweep", () => {
     expect(demoTiltAt(10, 0, STRENGTH)).toBeNull();
     expect(demoTiltAt(NaN, DURATION, STRENGTH)).toBeNull();
     expect(demoTiltAt(-10, DURATION, STRENGTH)).toBeNull();
+  });
+});
+
+describe("extruding the letters", () => {
+  test("the back of the body is black and the front nearly white", () => {
+    // Spanning that range is what gives the depth ramp every colour to use,
+    // including the darkest containers.
+    expect(extrudeLayerShade(ASCII_EXTRUDE_LAYERS, ASCII_EXTRUDE_LAYERS)).toBe(0);
+    expect(extrudeLayerShade(1, ASCII_EXTRUDE_LAYERS)).toBeGreaterThan(200);
+  });
+
+  test("shades darken steadily toward the back", () => {
+    let previous = 256;
+    for (let layer = 1; layer <= ASCII_EXTRUDE_LAYERS; layer += 1) {
+      const shade = extrudeLayerShade(layer, ASCII_EXTRUDE_LAYERS);
+      expect(shade).toBeLessThan(previous);
+      previous = shade;
+    }
+  });
+
+  test("every layer stays a drawable grey", () => {
+    for (let layer = 0; layer <= ASCII_EXTRUDE_LAYERS; layer += 1) {
+      const shade = extrudeLayerShade(layer, ASCII_EXTRUDE_LAYERS);
+      expect(shade).toBeGreaterThanOrEqual(0);
+      expect(shade).toBeLessThanOrEqual(255);
+    }
+  });
+
+  test("the body reaches the darkest chips the palette has", () => {
+    // The maroon and dark green were previously almost never reached.
+    const deepest = chipForBrightness(extrudeLayerShade(ASCII_EXTRUDE_LAYERS, ASCII_EXTRUDE_LAYERS) / 255);
+    expect(deepest).toBe(ASCII_DEPTH_RAMP[ASCII_DEPTH_RAMP.length - 1]);
+  });
+
+  test("survives a degenerate layer count", () => {
+    expect(extrudeLayerShade(1, 0)).toBe(0);
   });
 });

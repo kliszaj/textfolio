@@ -389,6 +389,20 @@ export function FanDebugPanel({
           />
         </label>
 
+        <label className="block leading-tight" htmlFor="ascii-extrude">
+          Extrude depth: {asciiConfig.extrudeDepth.toFixed(2)}
+          <input
+            id="ascii-extrude"
+            type="range"
+            min={0}
+            max={0.5}
+            step={0.01}
+            value={asciiConfig.extrudeDepth}
+            onChange={(event) => updateAscii("extrudeDepth", Number(event.target.value))}
+            className="mt-1 w-full"
+          />
+        </label>
+
         <label className="block leading-tight" htmlFor="ascii-plane-scale">
           Plane scale: {asciiConfig.planeScale.toFixed(2)}x
           <input

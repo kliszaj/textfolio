@@ -16,7 +16,7 @@ test("keeps a readable headline fallback when WebGL is unavailable", () => {
 
 test("uses one shared headline frame and typography baseline across treatments", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
-  const frame = screen.getByTestId("warp-text").parentElement!;
+  const frame = screen.getByTestId("headline-frame");
 
   expect(frame).toHaveClass("overflow-hidden");
   expect(frame).toHaveStyle({

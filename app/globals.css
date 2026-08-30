@@ -10,23 +10,28 @@
 /* Line boil: the Adrian handwriting is redrawn with a slightly different
    turbulence displacement on each frame, the way hand-inked line art shivers
    between cels. LineBoil cycles data-line-boil-frame on <html>. */
-[data-line-boil="on"] .font-script {
+[data-line-boil="on"] .font-script,
+[data-line-boil="on"] .boil-line {
   will-change: filter;
 }
 
-[data-line-boil="on"][data-line-boil-frame="1"] .font-script {
+[data-line-boil="on"][data-line-boil-frame="1"] .font-script,
+[data-line-boil="on"][data-line-boil-frame="1"] .boil-line {
   filter: url("#line-boil-1");
 }
 
-[data-line-boil="on"][data-line-boil-frame="2"] .font-script {
+[data-line-boil="on"][data-line-boil-frame="2"] .font-script,
+[data-line-boil="on"][data-line-boil-frame="2"] .boil-line {
   filter: url("#line-boil-2");
 }
 
-[data-line-boil="on"][data-line-boil-frame="3"] .font-script {
+[data-line-boil="on"][data-line-boil-frame="3"] .font-script,
+[data-line-boil="on"][data-line-boil-frame="3"] .boil-line {
   filter: url("#line-boil-3");
 }
 
-[data-line-boil="on"][data-line-boil-frame="4"] .font-script {
+[data-line-boil="on"][data-line-boil-frame="4"] .font-script,
+[data-line-boil="on"][data-line-boil-frame="4"] .boil-line {
   filter: url("#line-boil-4");
 }
 

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # browser automation artifacts
 .playwright-mcp/
+
+# static export output
+/out

@@ -25,9 +25,9 @@ export const WARP_DEMO_SWEEP_MS = 2200;
 // How far either side of centre the simulated cursor travels, in uv.
 const WARP_DEMO_REACH = 0.32;
 
-// One left-right pass across the headline, in the 0-1 uv space the shader's
-// pointer uniform expects. Returns null once the sweep is done or was never
-// asked for, so the caller lets the real pointer take over.
+// A single pass from left to right across the headline, in the 0-1 uv space
+// the shader's pointer uniform expects. Eased at both ends. Returns null once
+// the sweep is done or was never asked for, so the real pointer takes over.
 export function demoPointerAt(
   elapsedMs: number,
   durationMs: number
@@ -36,5 +36,6 @@ export function demoPointerAt(
   if (elapsedMs < 0 || elapsedMs >= durationMs) return null;
 
   const phase = elapsedMs / durationMs;
-  return { x: 0.5 + Math.sin(phase * Math.PI * 2) * WARP_DEMO_REACH, y: 0.5 };
+  const eased = phase * phase * (3 - 2 * phase);
+  return { x: 0.5 + (eased * 2 - 1) * WARP_DEMO_REACH, y: 0.5 };
 }

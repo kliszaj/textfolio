@@ -1,8 +1,11 @@
 import { ASCII_DEMO_TILT_MS } from "./asciiText";
 import { WARP_DEMO_SWEEP_MS } from "./warpText";
 import {
+  HEADLINE_HANDOVER_MS,
+  HEADLINE_INTRO_BOUNDARIES_MS,
   HEADLINE_INTRO_DURATION_MS,
   HEADLINE_INTRO_STEPS,
+  handoverOpacityAt,
   introStateAt,
 } from "./headlineIntro";
 
@@ -30,7 +33,11 @@ test("runs all four stages of the story", () => {
 });
 
 test("settles on the finished treatment and stays there", () => {
-  expect(introStateAt(HEADLINE_INTRO_DURATION_MS)).toEqual({ phase: "final", done: true });
+  expect(introStateAt(HEADLINE_INTRO_DURATION_MS + HEADLINE_HANDOVER_MS)).toEqual({
+    phase: "final",
+    opacity: 1,
+    done: true,
+  });
   expect(introStateAt(HEADLINE_INTRO_DURATION_MS * 10).done).toBe(true);
 });
 
@@ -69,5 +76,38 @@ describe("the sweeps fit the stages that hold them", () => {
   test("each sweep leaves a beat to settle, not just a millisecond", () => {
     expect(stage("ascii") - ASCII_DEMO_TILT_MS).toBeGreaterThanOrEqual(300);
     expect(stage("warp") - WARP_DEMO_SWEEP_MS).toBeGreaterThanOrEqual(300);
+  });
+});
+
+describe("handing over between stages", () => {
+  test("the headline is invisible exactly on each boundary", () => {
+    // The treatment is swapped there, so the mount must not be seen.
+    for (const boundary of HEADLINE_INTRO_BOUNDARIES_MS) {
+      expect(handoverOpacityAt(boundary)).toBe(0);
+    }
+  });
+
+  test("it is fully visible in the middle of a stage", () => {
+    const [, sketchEnd, asciiEnd] = HEADLINE_INTRO_BOUNDARIES_MS;
+    expect(handoverOpacityAt(sketchEnd / 2)).toBe(1);
+    expect(handoverOpacityAt((sketchEnd + asciiEnd) / 2)).toBe(1);
+  });
+
+  test("it eases rather than cutting", () => {
+    const [, boundary] = HEADLINE_INTRO_BOUNDARIES_MS;
+    const before = handoverOpacityAt(boundary - HEADLINE_HANDOVER_MS / 4);
+    expect(before).toBeGreaterThan(0);
+    expect(before).toBeLessThan(1);
+  });
+
+  test("the page fades in rather than appearing", () => {
+    expect(handoverOpacityAt(0)).toBe(0);
+    expect(handoverOpacityAt(HEADLINE_HANDOVER_MS / 2)).toBe(1);
+  });
+
+  test("the story is not over until the last fade-in finishes", () => {
+    // Otherwise the finished treatment would arrive in a hard cut of its own.
+    expect(introStateAt(HEADLINE_INTRO_DURATION_MS).done).toBe(false);
+    expect(introStateAt(HEADLINE_INTRO_DURATION_MS).phase).toBe("final");
   });
 });

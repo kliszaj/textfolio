@@ -193,6 +193,8 @@ export function WarpText({
             pointer.targetY = swept.y;
             pointer.targetStrength = 1;
           } else if (demoSweepRef.current > 0) {
+            // The pass ends at the right, so recentre as the warp lets go.
+            pointer.targetX = 0.5;
             pointer.targetStrength = 0;
           }
         }
