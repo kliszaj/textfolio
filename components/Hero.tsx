@@ -8,7 +8,7 @@ import { ASCII_DEMO_TILT_MS, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG, WARP_DEMO_SWEEP_MS } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
-import { CORRECTION_INK, DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
+import { DEFAULT_STROKE_TEXT_CONFIG, SKETCH_INK } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
@@ -102,7 +102,7 @@ export function Hero({
       : activeEffect === "warp"
         ? WARP_ACCENT_COLOR
         : activeEffect === "stroke"
-          ? CORRECTION_INK
+          ? SKETCH_INK
         : undefined;
   const stageBackground =
     activeEffect === "ascii"
@@ -139,8 +139,8 @@ export function Hero({
       className="relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center transition-[background-color] duration-500 ease-out"
       style={{
         backgroundColor: stageBackground,
-        // The stroke treatment draws on the page's own ground, with the
-        // tagline and arrow borrowing the correction pen's red ink.
+        // The sketch lettering, tagline, and arrow share blue-pencil ink;
+        // the correction mark stays red to remain visibly distinct.
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
       }}
     >

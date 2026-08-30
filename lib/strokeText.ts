@@ -36,6 +36,10 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
   reverse: false,
 };
 
+// Shared across the blue-pencil lettering and its supporting copy. The
+// correction marks deliberately remain red so they read as markup.
+export const SKETCH_INK = "#0057FF";
+
 // Hand-drawn look without a drawing library: turbulence displaces the outline
 // so it wanders like a drawn line, and a second, much finer noise eats into
 // its alpha so the ink breaks up the way graphite does on paper.
@@ -77,8 +81,8 @@ export const SKETCH_SPECS: Record<StrokeTextSketchStyle, SketchSpec> = {
     grainStrength: 0.55,
     fillTexture: "hatch",
     hatchSpacing: 0.045,
-    strokeColor: "#3B3A38",
-    fillColor: "#6F6D69",
+    strokeColor: SKETCH_INK,
+    fillColor: SKETCH_INK,
   },
 };
 

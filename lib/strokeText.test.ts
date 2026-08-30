@@ -3,6 +3,7 @@ import {
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
   DEFAULT_STROKE_TEXT_CONFIG,
+  SKETCH_INK,
   SKETCH_BOIL_SEEDS,
   correctionMarks,
   getSketchSpec,
@@ -55,8 +56,8 @@ describe("sketch styles", () => {
   
   test("pencil brings its own palette", () => {
     const { strokeColor, fillColor } = sketchColors("pencil", "#123456", "#654321");
-    expect(strokeColor).not.toBe("#123456");
-    expect(fillColor).not.toBe("#654321");
+    expect(strokeColor).toBe(SKETCH_INK);
+    expect(fillColor).toBe(SKETCH_INK);
     expect(strokeColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
   });
 

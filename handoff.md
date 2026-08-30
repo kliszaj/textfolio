@@ -24,11 +24,12 @@ machine font name `"PP Frama"`, in headline CSS, SVG, and canvas code. Warp and
 ASCII redraw their rasterised textures after `document.fonts.ready`, preventing
 a fallback font from being captured during a deployed visitor's first paint.
 
-**Graphite sketch treatment (2026-08-30):** The opening StrokeText treatment
+**Blue-pencil sketch treatment (2026-08-30):** The opening StrokeText treatment
 draws all six outlines in sequence (2.8s each, 120ms stagger) before any
 shading starts. Its default fill is clipped SVG hatching whose lines draw
 one-by-one with deterministic variation in spacing, angle, length, opacity,
-and weight. The red correction circle and X share the same GSAP timeline as
+and weight. Its lettering, tagline, and arrow share cobalt `#0057FF` ink;
+the correction circle and X remain red and share the same GSAP timeline as
 the hatching, starting only after its final line and a small settling beat;
 the sketch intro holds for at least 8s so the pen never gets cut off. Settings exposes the longer draw range, `Pencil
 pressure` easing, and `Pencil hatching` fill. For genuinely human letterforms,
