@@ -118,3 +118,15 @@ export const BLUEPRINT_GROUND = "#0B3D91";
 // Seeds for the four boil frames. Re-seeding the same turbulence is what makes
 // the drawn line redraw itself rather than slide around.
 export const SKETCH_BOIL_SEEDS = [7, 13, 23, 31];
+
+// ADRIAN is all caps, so the font's descender space is empty -- centring on the
+// ascent/descent midpoint drops the letters lower than a treatment that centres
+// the glyphs themselves. This returns the nudge that puts the measured ink back
+// on the centre line, so tops align across treatments whatever the metrics are.
+export function inkCentringOffset(
+  box: { y: number; height: number } | null,
+  centreY: number
+): number {
+  if (!box || !Number.isFinite(box.y) || !Number.isFinite(box.height)) return 0;
+  return centreY - (box.y + box.height / 2);
+}

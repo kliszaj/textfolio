@@ -17,7 +17,7 @@ const scriptFont = localFont({
 
 export const metadata: Metadata = {
   title: "Adrian",
-  description: "Designer, tinkerer, idea-booster",
+  description: "Designer, tinkerer, prototyper, idea-refiner",
 };
 
 export default function RootLayout({

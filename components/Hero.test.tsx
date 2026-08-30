@@ -88,7 +88,7 @@ test("the down-arrow hint fades as fanProgress increases", () => {
 test("attaches the given subheaderRef to the tagline paragraph", () => {
   const subheaderRef = createRef<HTMLParagraphElement>();
   render(<Hero playIntro={false} fanProgress={0} subheaderRef={subheaderRef} />);
-  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, idea-booster"));
+  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, prototyper, idea-refiner"));
 });
 
 test("pulls the tagline up close under the headline", () => {

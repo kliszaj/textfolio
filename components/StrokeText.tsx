@@ -4,7 +4,12 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import type { CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { SKETCH_BOIL_SEEDS, getSketchSpec, sketchColors } from "@/lib/strokeText";
+import {
+  SKETCH_BOIL_SEEDS,
+  getSketchSpec,
+  inkCentringOffset,
+  sketchColors,
+} from "@/lib/strokeText";
 import { useLineBoilFrame } from "@/hooks/useLineBoilFrame";
 import type {
   StrokeTextFillMode,
@@ -217,6 +222,9 @@ export function StrokeText({
   const viewBox = hostSize ? `0 0 ${hostSize.width} ${hostSize.height}` : "0 0 600 200";
   const centreX = hostSize ? hostSize.width / 2 : 300;
   const centreY = hostSize ? hostSize.height / 2 : 100;
+  // Measured off the untransformed <text>, and applied to the group around it,
+  // so correcting the position can never feed back into the measurement.
+  const inkOffset = inkCentringOffset(box, centreY);
   return (
     <span
       ref={rootRef}
@@ -308,7 +316,7 @@ export function StrokeText({
             </pattern>
           )}
         </defs>
-        <g filter={sketchFilter}>
+        <g filter={sketchFilter} transform={`translate(0, ${inkOffset})`}>
         <text ref={textRef} className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
           {characters.map((character, index) => <tspan data-stroke-char key={`stroke-${index}`}>{character}</tspan>)}
         </text>

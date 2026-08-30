@@ -2,6 +2,7 @@ import {
   DEFAULT_STROKE_TEXT_CONFIG,
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
+  inkCentringOffset,
   sketchColors,
 } from "./strokeText";
 import type { StrokeTextFillMode, StrokeTextTrigger } from "./strokeText";
@@ -101,5 +102,29 @@ describe("pencil fill and boil", () => {
     // Re-seeding is what redraws the line; a repeated seed would stall it.
     expect(SKETCH_BOIL_SEEDS.length).toBeGreaterThan(1);
     expect(new Set(SKETCH_BOIL_SEEDS).size).toBe(SKETCH_BOIL_SEEDS.length);
+  });
+});
+
+describe("centring the ink", () => {
+  test("lifts text whose measured ink sits below the centre line", () => {
+    // Ink centred at 120 in a box whose centre is 100: pull it up by 20.
+    expect(inkCentringOffset({ y: 100, height: 40 }, 100)).toBe(-20);
+  });
+
+  test("drops text whose ink sits above the centre line", () => {
+    expect(inkCentringOffset({ y: 40, height: 40 }, 100)).toBe(40);
+  });
+
+  test("leaves already-centred ink alone", () => {
+    expect(inkCentringOffset({ y: 80, height: 40 }, 100)).toBe(0);
+  });
+
+  test("does nothing before the ink has been measured", () => {
+    expect(inkCentringOffset(null, 100)).toBe(0);
+  });
+
+  test("ignores unmeasurable boxes rather than shifting by NaN", () => {
+    expect(inkCentringOffset({ y: NaN, height: 40 }, 100)).toBe(0);
+    expect(inkCentringOffset({ y: 10, height: NaN }, 100)).toBe(0);
   });
 });

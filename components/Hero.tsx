@@ -166,7 +166,7 @@ export function Hero({
             color: accentColor,
           }}
         >
-          Designer, tinkerer, idea-booster
+          Designer, tinkerer, prototyper, idea-refiner
         </p>
       </div>
       <div
