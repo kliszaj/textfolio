@@ -2,7 +2,10 @@
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  /* Matches the headline frame: the treatment is sized here but not cut off
+     here. Its canvas is bounded by its own element, so this only frees
+     anything drawn outside it. */
+  overflow: visible;
   isolation: isolate;
 }
 
