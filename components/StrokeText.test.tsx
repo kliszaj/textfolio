@@ -27,3 +27,16 @@ test("renders configurable outline and fill colors", () => {
   expect(texts[1]).toHaveAttribute("fill", "#FDE047");
   expect(texts[0]).toHaveAttribute("stroke-width", "3");
 });
+
+test("renders the finished sketch outright when animation is off", () => {
+  // A hover after the load story should show the drawn, filled, corrected
+  // word -- not replay the draw from nothing.
+  render(<StrokeText text="ADRIAN" animate={false} correctionIndex={5} />);
+  const root = screen.getByTestId("stroke-text");
+  expect(root).toBeInTheDocument();
+  // Nothing is left holding a full dash offset, which is the un-drawn state.
+  const drawn = root.querySelectorAll<SVGPathElement>("path[pathLength]");
+  drawn.forEach((path) => {
+    expect(path.style.strokeDashoffset === "1").toBe(false);
+  });
+});

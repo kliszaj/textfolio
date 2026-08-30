@@ -55,7 +55,7 @@ const HEADLINE_SIZE = "clamp(3rem, min(18vw, 18vh), 14.5rem)";
 // The headline sits in a fixed-height box that is taller than the word itself,
 // which left the tagline stranded well below it. Pull it back up so it sits
 // just under the letters, in the same place for every treatment.
-const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
+const TAGLINE_OFFSET = "clamp(-5.5rem, -4.5vw, -0.9rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
@@ -253,6 +253,9 @@ export function Hero({
               fontSize={HEADLINE_SIZE}
               fontWeight={HEADLINE_FONT_WEIGHT}
               correctionIndex={NAME.length - 1}
+              // Drawn once during the story. A hover afterwards shows the
+              // finished sketch, correction and all, rather than starting over.
+              animate={!intro.done}
               style={{ fontFamily: HEADLINE_FONT_FAMILY }}
             />
           ) : (

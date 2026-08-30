@@ -44,6 +44,10 @@ type StrokeTextProps = {
   // Index of the character to show back to front and mark up in red pen, as a
   // correction caught mid-sketch. Omit for a clean headline.
   correctionIndex?: number;
+  // False renders the finished sketch outright -- drawn, filled, corrected --
+  // instead of replaying the draw. The story animates it once on load; a hover
+  // afterwards should not start over.
+  animate?: boolean;
   fontSize?: number | string;
   fontWeight?: number;
   letterSpacing?: number;
@@ -127,6 +131,7 @@ export function StrokeText({
   fillMode = "wipe",
   sketchStyle = "pencil",
   correctionIndex,
+  animate = true,
   fontSize = "var(--headline-font-size, 128px)",
   fontWeight = 800,
   letterSpacing = -4,
@@ -309,7 +314,7 @@ export function StrokeText({
       gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 0 });
       if (wipe) gsap.set(wipe, { attr: { width: fillEnabled ? box.width : 0 } });
     };
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    if (!animate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setEnd();
       return () => gsap.killTweensOf(targets);
     }
@@ -409,6 +414,7 @@ export function StrokeText({
       gsap.killTweensOf(targets);
     };
   }, [
+    animate,
     box,
     correctionIndex,
     dash,
