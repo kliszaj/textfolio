@@ -9,8 +9,8 @@ the stack and navigates to its own route.
 
 **Status:** everything below is implemented and green — 28 suites / 297 tests
 (5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. The current
-checkout is `main` at `e4254a7`; this Cloudflare repair adds an uncommitted
-lockfile and handoff update, so preserve them when you take over.
+checkout is `main` at `3d09411`; the working tree is clean and the latest
+Cloudflare deployment configuration is committed.
 
 **Latest continuation (2026-08-30):** added DOM-contract tests for
 `ASCIIText`, `WarpText`, and `StrokeText` covering accessible labels, fallback
@@ -28,6 +28,13 @@ which rejected the prior lockfile because optional `@emnapi/core` and
 `@emnapi/runtime` entries were missing. `package-lock.json` is now regenerated
 with npm 10.9.2. The exact Cloudflare sequence (`npm ci`, then `npm run build`)
 passes locally; keep the lockfile committed.
+
+The follow-up deploy failure came from a custom `npx wrangler deploy` command:
+that invokes the Workers/OpenNext adapter and expects `.next/standalone`, which
+does not exist for this static export. `wrangler.jsonc` now declares
+`pages_build_output_dir: "./out"`, and `package.json` exposes `deploy:pages` for
+direct uploads. In the Pages Git integration, leave any separate deploy command
+blank; use `npm run build` with output directory `out`.
 
 **Latest handoff (2026-08-30):** the headline is now a short story rather than
 a static word. On load it plays four stages — **sketch → ascii → warp →
