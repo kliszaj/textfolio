@@ -32,6 +32,11 @@ const SELECTED_BG_COLOR = "#050505";
 const DEFAULT_INK_COLOR = "#1C1C1C";
 const ASCII_BG_COLOR = "#05AEAE";
 const ASCII_STAGE_COLORS = ["#201D24", "#1A3030", "#252018", "#1D2635"];
+const ASCII_DESKTOP_ICONS = [
+  { name: "desktop", src: "/assets/desktop.svg" },
+  { name: "documents", src: "/assets/documents.svg" },
+  { name: "trash", src: "/assets/trash.svg" },
+] as const;
 
 // The script line needs enough scale to hold its own against the wide display
 // word, while its clamp preserves a readable floor on narrow screens.
@@ -163,6 +168,24 @@ export function Hero({
         data-active={activeEffect === "ascii"}
         className={`${styles.surface} ${styles.asciiSurface} ${activeEffect === "ascii" ? styles.visible : ""}`}
       />
+      {activeEffect === "ascii" && (
+        <div
+          aria-hidden="true"
+          data-testid="ascii-desktop-icons"
+          className={styles.asciiDesktopIcons}
+        >
+          {ASCII_DESKTOP_ICONS.map((icon) => (
+            <Image
+              key={icon.name}
+              className={styles.asciiDesktopIcon}
+              src={icon.src}
+              width={150}
+              height={139}
+              alt=""
+            />
+          ))}
+        </div>
+      )}
       {showCoolS && (
         <Image
           data-testid="cool-s"

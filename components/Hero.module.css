@@ -26,6 +26,26 @@
   mix-blend-mode: multiply;
 }
 
+.asciiDesktopIcons {
+  position: absolute;
+  top: 50%;
+  right: calc(60vw + clamp(1.5rem, 3vw, 3rem));
+  z-index: 0;
+  display: flex;
+  width: clamp(5rem, 10vw, 9rem);
+  flex-direction: column;
+  gap: clamp(0.35rem, 1vw, 0.9rem);
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.asciiDesktopIcon {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .visible {
   opacity: 1;
 }

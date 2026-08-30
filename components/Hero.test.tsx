@@ -44,6 +44,7 @@ test("starts the hover cycle with ASCII text", () => {
 
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.getByTestId("ascii-desktop-icons").querySelectorAll("img")).toHaveLength(3);
   expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "true");
   expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "false");
   expect(hero).toHaveStyle({ backgroundColor: "#05AEAE" });
@@ -67,16 +68,19 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
 
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
+  expect(screen.getByTestId("ascii-desktop-icons")).toBeInTheDocument();
   expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("warp-text")).toBeInTheDocument();
+  expect(screen.queryByTestId("ascii-desktop-icons")).not.toBeInTheDocument();
   expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
   expect(hero).toHaveStyle({ backgroundColor: "#050505" });
   expect(hero).toHaveStyle({ color: "#FFFFFF" });
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.queryByTestId("ascii-desktop-icons")).not.toBeInTheDocument();
   expect(screen.getByTestId("cool-s")).toBeInTheDocument();
   expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "true");
   expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "false");
