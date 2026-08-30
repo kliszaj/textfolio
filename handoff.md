@@ -43,10 +43,10 @@ SVG/transparent asset; texture alone can only roughen the typed PP Frama
 shape.
 
 The sketch stage mounts the supplied `public/assets/cool-s.svg` blue
-"cool S" mark in the top-left corner. It remains as a pointer-inert
-sketchbook doodle after the opening story settles (and during any active
-StrokeText hover), rotated 15 degrees clockwise with a short
-reduced-motion-safe entrance fade.
+"cool S" mark in the top-left corner. It is pointer-inert and only appears
+while StrokeText is active; it is shown immediately without a draw-in
+animation, rotated 15 degrees clockwise and offset into the visible viewport
+despite the sheet overscan.
 The sketch treatment's bottom arrow uses a slightly larger responsive size than
 the ASCII/Warp arrow while retaining the same viewport anchor.
 

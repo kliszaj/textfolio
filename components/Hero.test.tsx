@@ -7,7 +7,7 @@ import { Hero } from "./Hero";
 test("renders ADRIAN through the WarpText treatment", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
   expect(screen.getByTestId("warp-text")).toHaveAttribute("aria-label", "ADRIAN");
-  expect(screen.getByTestId("cool-s")).toHaveAttribute("src", "/assets/cool-s.svg");
+  expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
 });
 
 test("keeps a readable headline fallback when WebGL is unavailable", () => {
@@ -67,9 +67,11 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
 
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
+  expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("warp-text")).toBeInTheDocument();
+  expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
   expect(hero).toHaveStyle({ backgroundColor: "#050505" });
   expect(hero).toHaveStyle({ color: "#FFFFFF" });
   fireEvent.pointerLeave(headline);

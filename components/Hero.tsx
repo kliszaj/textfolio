@@ -115,9 +115,9 @@ export function Hero({
         : isHeadlineActive
           ? SELECTED_BG_COLOR
           : DEFAULT_BG_COLOR;
-  // Keep the supplied doodle as a permanent sketchbook mark once the opening
-  // story settles, while also showing it during any active sketch phase.
-  const showCoolS = activeEffect === "stroke" || intro.phase === "final";
+  // The doodle belongs to the sketch treatment only; other treatments keep
+  // their own clean visual language.
+  const showCoolS = activeEffect === "stroke";
   const arrowOpacity = 1 - Math.min(1, fanProgress * 2);
 
   const activateHeadline = () => {
