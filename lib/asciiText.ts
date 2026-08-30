@@ -155,14 +155,15 @@ export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
 
 // How long the scripted tilt sweep runs when the treatment first appears.
 export const ASCII_DEMO_TILT_MS = 2200;
-// A real cursor crossing the whole host spans half the tilt strength. The
-// sweep aims a little past that to offset what the lerp eats, but not so far
-// that it leans harder than hovering ever could -- which read as hurried.
-const DEMO_TILT_REACH = 0.6;
+// The sweep leans one way only and stops short of what hovering could reach,
+// so it reads as a settle rather than a demonstration.
+const DEMO_TILT_REACH = 0.42;
 
-// A single pass from left to right, eased at both ends so it starts and stops
-// like a hand rather than a slide. Returns null once the sweep is done or was
-// never asked for, so the caller leaves the real pointer target alone.
+// One gentle lean in a single direction: level at the start, eased into its
+// final angle, and held there. Travelling from one extreme to the other made
+// the plane cross level in the middle and read as two moves rather than one.
+// Returns null once the sweep is done or was never asked for, so the caller
+// leaves the real pointer target alone.
 export function demoTiltAt(
   elapsedMs: number,
   durationMs: number,
@@ -173,7 +174,7 @@ export function demoTiltAt(
 
   const phase = elapsedMs / durationMs;
   const eased = phase * phase * (3 - 2 * phase);
-  return (eased * 2 - 1) * tiltStrength * DEMO_TILT_REACH;
+  return eased * tiltStrength * DEMO_TILT_REACH;
 }
 
 // Layers used to build the extruded body. Enough that the shading reads as a
@@ -191,7 +192,9 @@ export function extrudeLayerShade(layer: number, layers: number): number {
 }
 
 // Share of the ascii stage spent typing the word in.
-export const ASCII_TYPE_SHARE = 0.34;
+// The rain fills essentially the whole ascii stage. The remainder is the
+// handover fade, so the finished word is seen for a beat before it goes.
+export const ASCII_TYPE_SHARE = 0.9;
 // How long a cell shows junk before settling on its real character.
 const TYPE_CHURN = 0.16;
 export const ASCII_TYPE_JUNK = "01<>[]{}/\|=+*#%@$&";

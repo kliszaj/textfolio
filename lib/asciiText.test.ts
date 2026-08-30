@@ -204,10 +204,16 @@ describe("the scripted tilt sweep", () => {
   const DURATION = 1500;
   const STRENGTH = 0.3;
 
-  test("travels from one side to the other, passing level halfway", () => {
-    expect(demoTiltAt(0, DURATION, STRENGTH)!).toBeLessThan(0);
-    expect(demoTiltAt(DURATION / 2, DURATION, STRENGTH)).toBeCloseTo(0, 6);
+  test("starts level and leans a single way", () => {
+    // Crossing level midway read as two separate moves.
+    expect(demoTiltAt(0, DURATION, STRENGTH)).toBeCloseTo(0, 6);
     expect(demoTiltAt(DURATION * 0.99, DURATION, STRENGTH)!).toBeGreaterThan(0);
+  });
+
+  test("never leans back the other way", () => {
+    for (let t = 0; t < DURATION; t += 25) {
+      expect(demoTiltAt(t, DURATION, STRENGTH)!).toBeGreaterThanOrEqual(0);
+    }
   });
 
   test("only ever travels one way, never doubling back", () => {

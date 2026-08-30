@@ -60,6 +60,8 @@ const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
+// The page at rest, before any treatment has been hovered.
+const RESTING_ACCENT_COLOR = "#878787";
 const TAGLINE_SIZE = "clamp(1.6rem, min(8.5vw, 7.5vh), 5.5rem)";
 const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
 const SKETCH_ARROW_SIZE = "clamp(3rem, 5vw, 6.5rem)";
@@ -110,7 +112,8 @@ export function Hero({
   const nextEffectIndexRef = useRef(0);
   const isHeadlinePointerInsideRef = useRef(false);
   const isHeadlineActive = activeEffect !== null;
-  // Undefined leaves both inheriting the hero's own colour, as before.
+  // Each treatment inks the tagline and arrow; the resting page has its own
+  // grey rather than falling through to the hero's full-strength ink.
   const accentColor =
     activeEffect === "ascii"
       ? ASCII_ACCENT_COLOR
@@ -118,7 +121,7 @@ export function Hero({
         ? WARP_ACCENT_COLOR
         : activeEffect === "stroke"
           ? SKETCH_INK
-        : undefined;
+          : RESTING_ACCENT_COLOR;
   const stageBackground =
     activeEffect === "ascii"
       ? asciiStageColor

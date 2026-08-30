@@ -151,3 +151,9 @@ test("tagline and arrow take the yellow accent under the ASCII treatment", () =>
     expect(tagline.style.color).toBe(restingTagline);
   }
 });
+
+test("the resting page inks its tagline and arrow in grey", () => {
+  render(<Hero playIntro={false} fanProgress={0} />);
+  expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: "#878787" });
+  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: "#878787" });
+});
