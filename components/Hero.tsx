@@ -5,7 +5,7 @@ import type { CSSProperties, RefObject } from "react";
 import { NAME } from "@/data/letterTreatments";
 import { ASCII_DEMO_TILT_MS, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
-import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
+import { DEFAULT_WARP_TEXT_CONFIG, WARP_DEMO_SWEEP_MS } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
@@ -34,6 +34,7 @@ const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = "#3E18FF";
+const WARP_ACCENT_COLOR = "#FF04FF";
 const TAGLINE_SIZE = "clamp(1.1rem, 4.44vw, 4rem)";
 const HEADLINE_FONT_FAMILY = '"PP Frama", sans-serif';
 const HEADLINE_FONT_WEIGHT = 900;
@@ -81,7 +82,12 @@ export function Hero({
   const isHeadlinePointerInsideRef = useRef(false);
   const isHeadlineActive = activeEffect !== null;
   // Undefined leaves both inheriting the hero's own colour, as before.
-  const accentColor = activeEffect === "ascii" ? ASCII_ACCENT_COLOR : undefined;
+  const accentColor =
+    activeEffect === "ascii"
+      ? ASCII_ACCENT_COLOR
+      : activeEffect === "warp"
+        ? WARP_ACCENT_COLOR
+        : undefined;
   const stageBackground =
     activeEffect === "ascii"
       ? asciiStageColor
@@ -160,6 +166,7 @@ export function Hero({
               fontSize={HEADLINE_SIZE}
               fontWeight={HEADLINE_FONT_WEIGHT}
               fontFamily={HEADLINE_FONT_FAMILY}
+              demoSweepMs={intro.phase === "warp" ? WARP_DEMO_SWEEP_MS : 0}
               letterSpacing="0"
               lineHeight={1}
             />

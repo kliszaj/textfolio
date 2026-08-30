@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
+import { demoPointerAt } from "@/lib/warpText";
 import styles from "./WarpText.module.css";
 
 const vertex = `#version 300 es
@@ -33,6 +34,9 @@ type WarpTextProps = {
   warpScale?: number;
   speed?: number;
   pointerInfluence?: number;
+  // Runs a scripted sweep for this long on mount, so the warp shows itself
+  // off without the visitor having to find it. 0 disables it.
+  demoSweepMs?: number;
   pointerStrength?: number;
   refraction?: number;
   ripple?: boolean;
@@ -46,7 +50,7 @@ type WarpTextProps = {
   style?: CSSProperties;
 };
 
-type DrawProps = Required<Omit<WarpTextProps, "className" | "style" | "onActiveChange">>;
+type DrawProps = Required<Omit<WarpTextProps, "className" | "style" | "onActiveChange" | "demoSweepMs">>;
 
 const fontValue = (value: string | number) => (typeof value === "number" ? `${value}px` : value);
 
@@ -107,6 +111,7 @@ export function WarpText({
   warpScale = 1.7,
   speed = 0.55,
   pointerInfluence = 0.42,
+  demoSweepMs = 0,
   pointerStrength = 0.38,
   refraction = 0.018,
   ripple = true,
@@ -120,6 +125,12 @@ export function WarpText({
   style,
 }: WarpTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const demoSweepRef = useRef(demoSweepMs);
+
+  useEffect(() => {
+    demoSweepRef.current = demoSweepMs;
+  }, [demoSweepMs]);
+
   const contextRef = useRef<{ setTextColor: (nextColor: string) => void } | null>(null);
   const colorRef = useRef(color);
 
@@ -152,6 +163,7 @@ export function WarpText({
       const mesh = new Mesh(gl, { geometry: new Triangle(gl), program });
       let frame = 0;
       const pointer = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5, strength: 0, targetStrength: 0 };
+      let pointerTaken = false;
       const startedAt = performance.now();
       const render = () => renderer.render({ scene: mesh });
       const resize = () => {
@@ -165,6 +177,7 @@ export function WarpText({
       };
       const onPointerMove = (event: PointerEvent) => {
         if (event.pointerType === "touch") return;
+        pointerTaken = true;
         const rect = container.getBoundingClientRect();
         pointer.targetX = (event.clientX - rect.left) / rect.width;
         pointer.targetY = 1 - (event.clientY - rect.top) / rect.height;
@@ -173,6 +186,16 @@ export function WarpText({
       const onPointerLeave = () => { pointer.targetStrength = 0; };
       const loop = (now: number) => {
         if (disposed) return;
+        if (!pointerTaken) {
+          const swept = demoPointerAt(now - startedAt, demoSweepRef.current);
+          if (swept) {
+            pointer.targetX = swept.x;
+            pointer.targetY = swept.y;
+            pointer.targetStrength = 1;
+          } else if (demoSweepRef.current > 0) {
+            pointer.targetStrength = 0;
+          }
+        }
         pointer.x += (pointer.targetX - pointer.x) * 0.12;
         pointer.y += (pointer.targetY - pointer.y) * 0.12;
         pointer.strength += (pointer.targetStrength - pointer.strength) * 0.08;
