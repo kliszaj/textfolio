@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "deploy:pages": "npx wrangler pages deploy ./out --project-name textfolio",
     "start": "next start",
     "lint": "eslint",
     "test": "jest"

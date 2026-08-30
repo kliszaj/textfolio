@@ -27,17 +27,26 @@ adapter or server runtime is needed. `next.config.ts` sets `output: "export"`,
 and `generateStaticParams` in `app/work/[slug]/page.tsx` builds a page per case
 study.
 
-In the Cloudflare Pages dashboard, connect the repo and set:
+For a Git-integrated Cloudflare Pages project, connect the repo and set:
 
 | Setting | Value |
 |---|---|
-| Framework preset | None (or "Next.js (Static HTML Export)") |
+| Framework preset | Next.js (Static HTML Export) |
 | Build command | `npm run build` |
 | Build output directory | `out` |
-| Node version | 20 or newer (`NODE_VERSION` environment variable) |
+| Node version | `24.18.0` (read from `.nvmrc`) |
 
-Nothing else is required: there are no API routes, no middleware, no server
-actions, no image optimisation, and no environment variables.
+Leave any separate deploy command blank. Pages' Git integration automatically
+uploads the contents of `out` after the build. Do **not** use `npx wrangler
+deploy` here: that is the Workers/OpenNext deployment path and expects a
+`.next/standalone` server bundle, which this static export intentionally does
+not produce.
+
+For a manual Pages deployment, run `npm run build` followed by
+`npm run deploy:pages` (or `npx wrangler pages deploy ./out
+--project-name textfolio`). The checked-in `wrangler.jsonc` records `out` as the
+Pages build directory. Cloudflare Pages has no API routes, middleware, server
+actions, image optimisation server, or environment variables in this project.
 
 The tuning panel is hidden in production builds. A `.nvmrc` pins the Node
 version so the build environment does not drift between deploys.
