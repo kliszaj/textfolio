@@ -443,6 +443,20 @@ export function FanDebugPanel({
             className="mt-1 w-full"
           />
         </label>
+
+        <label className="block leading-tight" htmlFor="ascii-crt-curvature">
+          CRT curvature: {asciiConfig.crtCurvature.toFixed(2)}
+          <input
+            id="ascii-crt-curvature"
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={asciiConfig.crtCurvature}
+            onChange={(event) => updateAscii("crtCurvature", Number(event.target.value))}
+            className="mt-1 w-full"
+          />
+        </label>
         </div>
         ) : selectedTreatment === "warp" ? (
         <div data-testid="warp-text-settings" className="grid grid-cols-1 gap-y-3">

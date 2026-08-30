@@ -64,13 +64,14 @@ seed. The current default paper is pure white with a neutral `#E3E3E3` fibre
 at full opacity. `colorBack` also becomes the sketch hero's fallback/background
 colour, so no seam shows around the shader canvas.
 
-**ASCII CRT pass (2026-08-30):** `ASCIIText` now applies a restrained barrel
-curve and scanline modulation in its existing Three.js fragment shader before
-the frame is sampled into ASCII cells (`CRT_INTENSITY = 0.68`). This is
+**ASCII CRT pass (2026-08-30):** `ASCIIText` applies a barrel curve and
+scanline modulation in its existing Three.js fragment shader before the frame
+is sampled into ASCII cells. The scanline intensity stays at `0.68`; barrel
+curvature is now an independent `crtCurvature` setting with a restrained
+`0.32` default (range `0`–`1`) so the A and N retain their shape. This is
 browser-native code, not ShaderGlass or a port of its GPL implementation. The
 page-wide CRT surface is complementary: the shader changes the characters;
-the CSS layer supplies the glass/screen context. Keep the intensity low enough
-that the name's silhouette remains recognisable.
+the CSS layer supplies the glass/screen context.
 
 **Mobile interaction (2026-08-30):** coarse-pointer devices mount
 `MobilePortfolio`, not the fixed desktop paper stack. It is a native vertical

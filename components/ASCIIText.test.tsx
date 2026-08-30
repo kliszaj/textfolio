@@ -20,6 +20,7 @@ test("accepts the configurable ASCII treatment without changing its DOM contract
       planeScale={1.1}
       extrudeDepth={0.8}
       tiltStrength={0.7}
+      crtCurvature={0.15}
       randomizeGlyphColors={false}
     />
   );

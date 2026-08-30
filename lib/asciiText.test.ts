@@ -16,6 +16,7 @@ test("every field has a default, so the config can be spread as props", () => {
   const keys = Object.keys(DEFAULT_ASCII_TEXT_CONFIG).sort();
   expect(keys).toEqual([
     "asciiFontSize",
+    "crtCurvature",
     "enableWaves",
     "extrudeDepth",
     "planeScale",
@@ -36,6 +37,11 @@ test("the ascii grid is far finer than the text it samples", () => {
   expect(DEFAULT_ASCII_TEXT_CONFIG.asciiFontSize).toBeLessThan(
     DEFAULT_ASCII_TEXT_CONFIG.textFontSize
   );
+});
+
+test("CRT curvature stays restrained by default but can be disabled", () => {
+  expect(DEFAULT_ASCII_TEXT_CONFIG.crtCurvature).toBeGreaterThan(0);
+  expect(DEFAULT_ASCII_TEXT_CONFIG.crtCurvature).toBeLessThan(0.68);
 });
 
 describe("ascii colour scheme", () => {

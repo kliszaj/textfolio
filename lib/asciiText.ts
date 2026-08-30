@@ -11,6 +11,9 @@ export type ASCIITextConfig = {
   // How far the plane leans toward the cursor, in radians across the full
   // width of the host. 0 holds it flat.
   tiltStrength: number;
+  // Barrel distortion in the CRT source pass. 0 is flat; 1 is the full CRT
+  // curve, before the text is sampled into ASCII cells.
+  crtCurvature: number;
   randomizeGlyphColors: boolean;
   randomizeStageColor: boolean;
 };
@@ -116,6 +119,7 @@ export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
   planeScale: 1,
   extrudeDepth: 0.16,
   tiltStrength: 0.3,
+  crtCurvature: 0.32,
   randomizeGlyphColors: true,
   randomizeStageColor: false,
 };

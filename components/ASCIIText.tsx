@@ -33,11 +33,12 @@ void main() {
 const fragmentShader = `
 varying vec2 vUv;
 uniform sampler2D uTexture;
-uniform float uCrtIntensity;
+uniform float uCrtCurvature;
+uniform float uCrtScanlineIntensity;
 
 vec2 crtCurve(vec2 uv) {
   vec2 centred = uv * 2.0 - 1.0;
-  float curve = dot(centred, centred) * 0.075 * uCrtIntensity;
+  float curve = dot(centred, centred) * 0.075 * uCrtCurvature;
   return centred * (1.0 + curve) * 0.5 + 0.5;
 }
 
@@ -55,13 +56,13 @@ void main() {
   float g = texture2D(uTexture, uv).g;
   float b = texture2D(uTexture, uv - split).b;
   float a = texture2D(uTexture, uv).a;
-  float scanline = 1.0 - (0.13 * uCrtIntensity) * (0.5 + 0.5 * sin(uv.y * 940.0));
+  float scanline = 1.0 - (0.13 * uCrtScanlineIntensity) * (0.5 + 0.5 * sin(uv.y * 940.0));
   gl_FragColor = vec4(vec3(r, g, b) * scanline, a);
 }`;
 
 // Kept below a retro-game simulation: its job is to give the ASCII source a
 // glass-screen character while leaving the type's silhouette readable.
-const CRT_INTENSITY = 0.68;
+const CRT_SCANLINE_INTENSITY = 0.68;
 
 const CHARACTERS = " .`^\\\",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 type ASCIITextProps = Partial<ASCIITextConfig> & {
@@ -79,6 +80,7 @@ export function ASCIIText({
   planeScale = DEFAULT_ASCII_TEXT_CONFIG.planeScale,
   extrudeDepth = DEFAULT_ASCII_TEXT_CONFIG.extrudeDepth,
   tiltStrength = DEFAULT_ASCII_TEXT_CONFIG.tiltStrength,
+  crtCurvature = DEFAULT_ASCII_TEXT_CONFIG.crtCurvature,
   randomizeGlyphColors = DEFAULT_ASCII_TEXT_CONFIG.randomizeGlyphColors,
   demoTiltMs = 0,
 }: ASCIITextProps) {
@@ -226,7 +228,8 @@ export function ASCIIText({
             uTime: { value: 0 },
             uTexture: { value: texture },
             uEnableWaves: { value: enableWaves ? 1 : 0 },
-            uCrtIntensity: { value: CRT_INTENSITY },
+            uCrtCurvature: { value: crtCurvature },
+            uCrtScanlineIntensity: { value: CRT_SCANLINE_INTENSITY },
           },
         });
         // Built at unit height and scaled, so matching the font on resize
@@ -370,7 +373,7 @@ export function ASCIIText({
       host.dataset.ready = "false";
       cleanup?.();
     };
-  }, [asciiFontSize, enableWaves, extrudeDepth, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
+  }, [asciiFontSize, crtCurvature, enableWaves, extrudeDepth, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
 
   return (
     <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" data-crt="curved-scanline" role="img" aria-label={text}>

@@ -128,6 +128,7 @@ test("starts on the ASCII text settings button and exposes its controls", () => 
   expect(screen.getByLabelText(/ASCII glyph size/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Plane scale/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Cursor tilt/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/CRT curvature/i)).toBeInTheDocument();
 });
 
 test("uses the requested ASCII defaults", () => {
@@ -138,6 +139,7 @@ test("uses the requested ASCII defaults", () => {
     planeScale: 1,
     extrudeDepth: 0.16,
     tiltStrength: 0.3,
+    crtCurvature: 0.32,
     randomizeGlyphColors: true,
     // The stage holds one colour so it matches the reference; only the glyph
     // cells vary.
