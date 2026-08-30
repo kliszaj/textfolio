@@ -7,6 +7,7 @@ import { Hero } from "./Hero";
 test("renders ADRIAN through the WarpText treatment", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
   expect(screen.getByTestId("warp-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.getByTestId("cool-s")).toHaveAttribute("src", "/assets/cool-s.svg");
 });
 
 test("keeps a readable headline fallback when WebGL is unavailable", () => {

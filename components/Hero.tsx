@@ -114,6 +114,9 @@ export function Hero({
         : isHeadlineActive
           ? SELECTED_BG_COLOR
           : DEFAULT_BG_COLOR;
+  // Keep the supplied doodle as a permanent sketchbook mark once the opening
+  // story settles, while also showing it during any active sketch phase.
+  const showCoolS = activeEffect === "stroke" || intro.phase === "final";
   const arrowOpacity = 1 - Math.min(1, fanProgress * 2);
 
   const activateHeadline = () => {
@@ -159,7 +162,7 @@ export function Hero({
         data-active={activeEffect === "ascii"}
         className={`${styles.surface} ${styles.asciiSurface} ${activeEffect === "ascii" ? styles.visible : ""}`}
       />
-      {activeEffect === "stroke" && (
+      {showCoolS && (
         <Image
           data-testid="cool-s"
           className={`${styles.coolS} boil-line`}

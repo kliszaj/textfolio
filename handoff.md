@@ -42,9 +42,10 @@ use a straight, high-resolution scan/photo of the actual word as an
 SVG/transparent asset; texture alone can only roughen the typed PP Frama
 shape.
 
-The sketch stage also mounts the supplied `public/assets/cool-s.svg` blue
-"cool S" mark in the top-left corner. It is pointer-inert, only rendered while
-StrokeText is active, and is rotated 15 degrees clockwise with a short
+The sketch stage mounts the supplied `public/assets/cool-s.svg` blue
+"cool S" mark in the top-left corner. It remains as a pointer-inert
+sketchbook doodle after the opening story settles (and during any active
+StrokeText hover), rotated 15 degrees clockwise with a short
 reduced-motion-safe entrance fade.
 
 **Treatment surfaces (2026-08-30):** `Hero.module.css` owns full-hero,
