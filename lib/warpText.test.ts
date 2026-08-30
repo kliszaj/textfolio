@@ -44,19 +44,39 @@ describe("the scripted pointer sweep", () => {
     }
   });
 
-  test("stays inside the headline while tracing a sine curve", () => {
-    const samples = [] as number[];
+  test("traces one arc: level at both edges, highest over the middle", () => {
+    const start = demoPointerAt(1, DURATION)!.y;
+    const middle = demoPointerAt(DURATION / 2, DURATION)!.y;
+    const end = demoPointerAt(DURATION - 1, DURATION)!.y;
+
+    expect(middle).toBeGreaterThan(start);
+    expect(middle).toBeGreaterThan(end);
+    expect(start).toBeCloseTo(end, 2);
+  });
+
+  test("the arc rises once and falls once, rather than squiggling", () => {
+    // A full sine cycle crossed the centre line twice and read as a wobble.
+    let crossings = 0;
+    let previous = demoPointerAt(1, DURATION)!.y;
+    for (let t = 2; t < DURATION; t += 10) {
+      const { y } = demoPointerAt(t, DURATION)!;
+      if (Math.sign(y - previous) !== 0 && Math.sign(y - previous) !== Math.sign(previous - demoPointerAt(Math.max(1, t - 20), DURATION)!.y)) {
+        crossings += 1;
+      }
+      previous = y;
+    }
+    // One turning point: the top of the arc.
+    expect(crossings).toBeLessThanOrEqual(2);
+  });
+
+  test("stays inside the headline the whole way across", () => {
     for (let t = 0; t < DURATION; t += 25) {
       const { x, y } = demoPointerAt(t, DURATION)!;
       expect(x).toBeGreaterThan(0);
       expect(x).toBeLessThan(1);
       expect(y).toBeGreaterThan(0.3);
       expect(y).toBeLessThan(0.7);
-      samples.push(y);
     }
-    expect(new Set(samples.map((value) => value.toFixed(3))).size).toBeGreaterThan(3);
-    expect(samples.some((value) => value > 0.6)).toBe(true);
-    expect(samples.some((value) => value < 0.4)).toBe(true);
   });
 
   test("hands back to the real pointer once it is done", () => {

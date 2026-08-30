@@ -29,10 +29,11 @@ const WARP_DEMO_REACH = 0.32;
 const WARP_DEMO_VERTICAL_REACH = 0.18;
 
 // A single pass from left to right across the headline, in the 0-1 uv space
-// the shader's pointer uniform expects. The x travel is eased at both ends;
-// y follows one smooth sine cycle so the scripted cursor traces an arc rather
-// than a straight horizontal line. Returns null once the sweep is done or was
-// never asked for, so the real pointer takes over.
+// the shader's pointer uniform expects. The x travel is eased at both ends; y
+// traces one arc across that width -- level at both edges, highest over the
+// middle of the word. A full sine cycle rose and fell twice, which read as a
+// squiggle rather than a single sweep. Returns null once the sweep is done or
+// was never asked for, so the real pointer takes over.
 export function demoPointerAt(
   elapsedMs: number,
   durationMs: number
@@ -44,6 +45,6 @@ export function demoPointerAt(
   const eased = phase * phase * (3 - 2 * phase);
   return {
     x: 0.5 + (eased * 2 - 1) * WARP_DEMO_REACH,
-    y: 0.5 + Math.sin(eased * Math.PI * 2) * WARP_DEMO_VERTICAL_REACH,
+    y: 0.5 + Math.sin(eased * Math.PI) * WARP_DEMO_VERTICAL_REACH,
   };
 }
