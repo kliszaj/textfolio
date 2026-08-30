@@ -83,7 +83,10 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   expect(hero).toHaveStyle({ backgroundColor: "#FFFFFF" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: SKETCH_INK });
-  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: SKETCH_INK });
+  expect(screen.getByTestId("scroll-hint")).toHaveStyle({
+    color: SKETCH_INK,
+    fontSize: "clamp(3rem, 5vw, 6.5rem)",
+  });
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();

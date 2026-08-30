@@ -47,6 +47,8 @@ The sketch stage mounts the supplied `public/assets/cool-s.svg` blue
 sketchbook doodle after the opening story settles (and during any active
 StrokeText hover), rotated 15 degrees clockwise with a short
 reduced-motion-safe entrance fade.
+The sketch treatment's bottom arrow uses a slightly larger responsive size than
+the ASCII/Warp arrow while retaining the same viewport anchor.
 
 **Treatment surfaces (2026-08-30):** `Hero.module.css` owns full-hero,
 pointer-inert treatment surfaces rather than putting a backdrop behind the

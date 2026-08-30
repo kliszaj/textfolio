@@ -50,6 +50,7 @@ const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
 const TAGLINE_SIZE = "clamp(1.6rem, 6vw, 5.5rem)";
 const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
+const SKETCH_ARROW_SIZE = "clamp(3rem, 5vw, 6.5rem)";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;
 
@@ -251,7 +252,7 @@ export function Hero({
         style={{
           opacity: arrowOpacity,
           color: accentColor,
-          fontSize: ARROW_SIZE,
+          fontSize: activeEffect === "stroke" ? SKETCH_ARROW_SIZE : ARROW_SIZE,
           transition: "color 420ms ease",
         }}
       >
