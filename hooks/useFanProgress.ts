@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePointerType } from "./usePointerType";
 import {
+  FAN_POINTER_TAKEOVER_PX,
   FAN_SMOOTHING_MS,
   FAN_SPLIT,
   FAN_THRESHOLD_PX,
   computeCursorTravel,
   computeScrollTravel,
   splitTravel,
+  travelAfterWheel,
 } from "@/lib/fanProgress";
 import { smoothTowards } from "@/lib/smoothing";
 import type { FanPhases } from "@/lib/fanProgress";
@@ -24,6 +26,10 @@ export function useFanProgress(
   const frameRef = useRef(0);
   const lastFrameRef = useRef(0);
   const smoothingRef = useRef(smoothingMs);
+  // Where the pointer was when the wheel last took the gesture, so the cursor
+  // has to genuinely move before it takes it back.
+  const wheelAnchorRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
   const [travel, setTravel] = useState(0);
 
   useEffect(() => {
@@ -58,13 +64,36 @@ export function useFanProgress(
 
     if (pointerType === "fine") {
       const handleMouseMove = (e: MouseEvent) => {
+        pointerRef.current = { x: e.clientX, y: e.clientY };
+
+        const anchor = wheelAnchorRef.current;
+        if (anchor) {
+          const moved = Math.hypot(e.clientX - anchor.x, e.clientY - anchor.y);
+          // Still within a jog of where the scroll left off: the cursor has not
+          // meant anything by it yet, so leave the scrolled position alone.
+          if (moved <= FAN_POINTER_TAKEOVER_PX) return;
+          wheelAnchorRef.current = null;
+        }
+
         aim(computeCursorTravel(e.clientY, window.innerHeight, thresholdPx));
       };
-      const handleMouseLeave = () => aim(0);
+
+      const handleWheel = (e: WheelEvent) => {
+        wheelAnchorRef.current = pointerRef.current ?? { x: 0, y: 0 };
+        aim(travelAfterWheel(targetRef.current, e.deltaY));
+      };
+
+      const handleMouseLeave = () => {
+        wheelAnchorRef.current = null;
+        aim(0);
+      };
+
       window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("wheel", handleWheel, { passive: true });
       document.documentElement.addEventListener("mouseleave", handleMouseLeave);
       return () => {
         window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("wheel", handleWheel);
         document.documentElement.removeEventListener("mouseleave", handleMouseLeave);
       };
     }
