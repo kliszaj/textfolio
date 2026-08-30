@@ -9,8 +9,8 @@ the stack and navigates to its own route.
 
 **Status:** everything below is implemented and green — 28 suites / 297 tests
 (5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. The current
-checkout is `main` at `cc9e76c`; this continuation adds uncommitted test and
-component changes, so preserve them when you take over.
+checkout is `main` at `e4254a7`; this Cloudflare repair adds an uncommitted
+lockfile and handoff update, so preserve them when you take over.
 
 **Latest continuation (2026-08-30):** added DOM-contract tests for
 `ASCIIText`, `WarpText`, and `StrokeText` covering accessible labels, fallback
@@ -22,6 +22,12 @@ The Warp treatment's scripted load demo now moves its simulated pointer
 left-to-right along one restrained sine cycle (`demoPointerAt` varies both x
 and y), rather than following a straight horizontal line. Real pointer input
 still takes over immediately when the visitor moves.
+
+**Cloudflare repair (2026-08-30):** Cloudflare's build image uses npm 10.9.2,
+which rejected the prior lockfile because optional `@emnapi/core` and
+`@emnapi/runtime` entries were missing. `package-lock.json` is now regenerated
+with npm 10.9.2. The exact Cloudflare sequence (`npm ci`, then `npm run build`)
+passes locally; keep the lockfile committed.
 
 **Latest handoff (2026-08-30):** the headline is now a short story rather than
 a static word. On load it plays four stages — **sketch → ascii → warp →
