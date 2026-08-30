@@ -7,7 +7,7 @@ A designer portfolio built as a stack of paper. The landing page (the name
 cursor travels toward the bottom of the viewport. Clicking one lifts it out of
 the stack and navigates to its own route.
 
-**Status:** everything below is implemented and green — 34 suites / 382 passed
+**Status:** everything below is implemented and green — 34 suites / 385 passed
 (5 skipped), `npx tsc --noEmit` clean, `npm run lint` clean, `next build`
 succeeds. The `react-hooks/set-state-in-effect` error at
 `hooks/useFanProgress.ts` is fixed: the rest position is derived on return
@@ -753,12 +753,28 @@ run through the same `splitTravel` as a real gesture so the collapse is the
 reveal played backwards. It returns `null` (not `0`) when done, so a reader
 whose cursor is already low does not get the stack pinned shut under them.
 
+**The effect must key off state, not the module flag.** Consuming
+`returningHome` inside the effect meant React's development remount (mount →
+cleanup → mount) took the early return on the second pass, never rescheduled
+the frame, and left the stack frozen wide open — the animation simply never
+ran. The decision is taken during render into `playing` state; the effect
+clears the flag and keys off `playing`, so a remount restarts cleanly. Covered
+by a test that wraps the hook in `StrictMode`.
+
 ### Intro plays once per page load
 
-`hooks/useIntroOnce.ts` — module-scope flag claimed in a `useState`
-initialiser, so the answer is known at first paint. Home from a case study is a
-client-side navigation and would otherwise replay the whole story. A hard
-refresh is a new bundle and earns the intro again.
+`hooks/useIntroOnce.ts` — a module-scope flag read through
+`useSyncExternalStore`. Home from a case study is a client-side navigation and
+would otherwise replay the whole story; a hard refresh is a new bundle and
+earns the intro again.
+
+**The server snapshot must stay `false`.** Claiming the flag during an ordinary
+render consumed it *at prerender time*: the built HTML shipped the resting hero
+while the client, with a fresh module, hydrated straight into the intro's
+stroke phase — a hydration mismatch on every first visit (cream `#F5EDE6`
+server vs white `#FFFFFF` client). `useSyncExternalStore` rather than an
+effect + `setState`, because the latter trips
+`react-hooks/set-state-in-effect`. Covered by a `renderToString` test.
 
 ### Typography
 
@@ -774,6 +790,13 @@ a element to `font-body` also takes it out of the boil — intended for a grotes
 - **jsdom rAF mocks that re-arm inside the callback spin forever** and OOM V8.
   Drive frames by hand instead (`hooks/useStackCollapse.test.ts` shows the
   shape).
+- **Module-scope flags read during render break static export.** The prerender
+  runs the same module, so anything consumed during render is consumed at build
+  time. Read them through `useSyncExternalStore` with a `false` server
+  snapshot, or in an effect.
+- **A green suite is not proof.** Both of the above shipped past 382 passing
+  tests. When adding a regression test after a fix, reintroduce the bug and
+  watch the test fail before trusting it.
 - The working tree is CRLF (`core.autocrlf=true`). Writes must preserve it.
 
 ## History worth knowing

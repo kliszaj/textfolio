@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import {
   markReturningHome,
@@ -64,5 +65,22 @@ test("only replays the collapse once per return", () => {
   markReturningHome();
   renderHook(() => useStackCollapse(700));
   const { result } = renderHook(() => useStackCollapse(700));
+  expect(result.current).toBeNull();
+});
+
+test("still collapses when React mounts the effect twice", () => {
+  // Development remounts every component once. Consuming the flag inside the
+  // effect meant the second run took the early return, the frame was never
+  // rescheduled, and the stack sat frozen wide open.
+  markReturningHome();
+  const { result } = renderHook(() => useStackCollapse(700), {
+    wrapper: StrictMode,
+  });
+  expect(result.current).toBe(1);
+
+  frame(350);
+  expect(result.current).toBeLessThan(1);
+
+  frame(700);
   expect(result.current).toBeNull();
 });
