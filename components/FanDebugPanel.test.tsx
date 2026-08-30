@@ -133,7 +133,7 @@ test("starts on the ASCII text settings button and exposes its controls", () => 
 test("uses the requested ASCII defaults", () => {
   expect(DEFAULT_ASCII_TEXT_CONFIG).toEqual({
     enableWaves: false,
-    asciiFontSize: 12,
+    asciiFontSize: 11,
     textFontSize: 340,
     planeScale: 1,
     extrudeDepth: 0.16,

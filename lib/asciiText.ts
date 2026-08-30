@@ -111,7 +111,7 @@ export function planeHeightForFontSize({
 
 export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
   enableWaves: false,
-  asciiFontSize: 12,
+  asciiFontSize: 11,
   textFontSize: 340,
   planeScale: 1,
   extrudeDepth: 0.16,
