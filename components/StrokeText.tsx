@@ -5,10 +5,15 @@ import type { CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
+  CORRECTION_DRAW_MS,
+  CORRECTION_INK,
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
   STROKE_INK_LIFT_PX,
+  correctionArrowPath,
+  correctionLoopPath,
   inkCentringOffset,
+  mirrorAboutBox,
   sketchColors,
 } from "@/lib/strokeText";
 import { useLineBoilFrame } from "@/hooks/useLineBoilFrame";
@@ -33,6 +38,9 @@ type StrokeTextProps = {
   trigger?: StrokeTextTrigger;
   fillMode?: StrokeTextFillMode;
   sketchStyle?: StrokeTextSketchStyle;
+  // Index of the character to show back to front and mark up in red pen, as a
+  // correction caught mid-sketch. Omit for a clean headline.
+  correctionIndex?: number;
   fontSize?: number | string;
   fontWeight?: number;
   letterSpacing?: number;
@@ -55,6 +63,7 @@ export function StrokeText({
   trigger = "mount",
   fillMode = "wipe",
   sketchStyle = "pencil",
+  correctionIndex,
   fontSize = "var(--headline-font-size, 128px)",
   fontWeight = 800,
   letterSpacing = -4,
@@ -71,6 +80,7 @@ export function StrokeText({
   // scale an ink-hugging viewBox instead made the size a function of the
   // container's aspect, which is why this treatment never matched the others.
   const [hostSize, setHostSize] = useState<{ width: number; height: number } | null>(null);
+  const [markBox, setMarkBox] = useState<MeasuredBox | null>(null);
   const rawId = useId();
   const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "");
   const wipeId = `stroke-text-wipe-${safeId}`;
@@ -122,10 +132,33 @@ export function StrokeText({
         // SVG measurements are unavailable in a few non-browser renderers.
       }
     };
+    const measureMark = () => {
+      if (cancelled || correctionIndex === undefined || !rootRef.current) return;
+      const glyph = rootRef.current.querySelectorAll<SVGTSpanElement>("[data-stroke-char]")[
+        correctionIndex
+      ];
+      if (!glyph) return;
+      try {
+        const bounds = glyph.getBBox();
+        if (!bounds.width) return;
+        setMarkBox((previous) =>
+          previous && Math.abs(previous.x - bounds.x) < 0.5 && Math.abs(previous.width - bounds.width) < 0.5
+            ? previous
+            : { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+        );
+      } catch {
+        // No SVG measurement outside a browser; the mark simply does not draw.
+      }
+    };
+
     measure();
-    document.fonts?.ready.then(measure).catch(() => {});
+    measureMark();
+    document.fonts?.ready.then(() => {
+      measure();
+      measureMark();
+    }).catch(() => {});
     return () => { cancelled = true; };
-  }, [characters, fontSize, fontWeight, letterSpacing, strokeWidth, hostSize]);
+  }, [characters, fontSize, fontWeight, letterSpacing, strokeWidth, hostSize, correctionIndex]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -326,11 +359,64 @@ export function StrokeText({
           style={{ opacity: hostSize ? 1 : 0, transition: "opacity 120ms ease-out" }}
         >
         <text ref={textRef} className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
-          {characters.map((character, index) => <tspan data-stroke-char key={`stroke-${index}`}>{character}</tspan>)}
+          {characters.map((character, index) => (
+            <tspan
+              data-stroke-char
+              key={`stroke-${index}`}
+              opacity={index === correctionIndex ? 0 : 1}
+            >
+              {character}
+            </tspan>
+          ))}
         </text>
         <text className={styles.fill} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill={fillPaint} stroke="none" style={fontStyle} clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}>
-          {characters.map((character, index) => <tspan data-fill-char key={`fill-${index}`}>{character}</tspan>)}
+          {characters.map((character, index) => (
+            <tspan
+              data-fill-char
+              key={`fill-${index}`}
+              opacity={index === correctionIndex ? 0 : 1}
+            >
+              {character}
+            </tspan>
+          ))}
         </text>
+
+          {markBox && correctionIndex !== undefined && (
+            <g data-testid="stroke-text-correction">
+              {/* The letter itself, drawn back to front in its own place. */}
+              <text
+                x={markBox.x}
+                y={centreY}
+                dominantBaseline="central"
+                transform={mirrorAboutBox(markBox)}
+                fill="none"
+                stroke={inked.strokeColor}
+                strokeWidth={strokeWidth}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                style={fontStyle}
+              >
+                {characters[correctionIndex]}
+              </text>
+
+              {/* Red pen, drawn on after the letters have been sketched. */}
+              <g
+                className="boil-line"
+                fill="none"
+                stroke={CORRECTION_INK}
+                strokeWidth={strokeWidth * 1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  animation: `stroke-correction-in ${CORRECTION_DRAW_MS}ms ease-out both`,
+                  animationDelay: `${drawDuration * 1000}ms`,
+                }}
+              >
+                <path d={correctionLoopPath(markBox)} />
+                <path d={correctionArrowPath(markBox)} />
+              </g>
+            </g>
+          )}
         </g>
       </svg>
     </span>

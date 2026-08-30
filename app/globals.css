@@ -498,3 +498,21 @@ body {
   }
 
 }
+
+/* Red pen arriving after the sketch has been drawn. */
+@keyframes stroke-correction-in {
+  from {
+    opacity: 0;
+    transform: rotate(-2.5deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="stroke-correction-in"] {
+    animation: none !important;
+  }
+}

@@ -296,9 +296,9 @@ test("exposes the stroke sketch style, defaulting to pencil", () => {
   const select = screen.getByLabelText(/Sketch style/i);
   expect(select).toHaveValue("pencil");
 
-  fireEvent.change(select, { target: { value: "blueprint" } });
+  fireEvent.change(select, { target: { value: "clean" } });
   expect(onStrokeConfigChange).toHaveBeenCalledWith({
     ...DEFAULT_STROKE_TEXT_CONFIG,
-    sketchStyle: "blueprint",
+    sketchStyle: "clean",
   });
 });

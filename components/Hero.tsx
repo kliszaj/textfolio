@@ -162,6 +162,7 @@ export function Hero({
               {...strokeConfig}
               fontSize={HEADLINE_SIZE}
               fontWeight={HEADLINE_FONT_WEIGHT}
+              correctionIndex={NAME.length - 1}
               style={{ fontFamily: HEADLINE_FONT_FAMILY }}
             />
           ) : (

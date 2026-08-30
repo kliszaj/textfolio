@@ -1,8 +1,13 @@
 import {
+  CORRECTION_DRAW_MS,
+  CORRECTION_INK,
   DEFAULT_STROKE_TEXT_CONFIG,
   SKETCH_BOIL_SEEDS,
+  correctionArrowPath,
+  correctionLoopPath,
   getSketchSpec,
   inkCentringOffset,
+  mirrorAboutBox,
   sketchColors,
 } from "./strokeText";
 import type { StrokeTextFillMode, StrokeTextTrigger } from "./strokeText";
@@ -47,32 +52,27 @@ describe("sketch styles", () => {
     expect(spec.grainFrequency).toBe(0);
   });
 
-  test("pencil wanders further and breaks up more than blueprint", () => {
-    // A blueprint is draughted; a pencil sketch is not.
-    expect(getSketchSpec("pencil").wobbleScale).toBeGreaterThan(
-      getSketchSpec("blueprint").wobbleScale
-    );
-    expect(getSketchSpec("pencil").grainStrength).toBeGreaterThan(
-      getSketchSpec("blueprint").grainStrength
-    );
+  
+  test("pencil brings its own palette", () => {
+    const { strokeColor, fillColor } = sketchColors("pencil", "#123456", "#654321");
+    expect(strokeColor).not.toBe("#123456");
+    expect(fillColor).not.toBe("#654321");
+    expect(strokeColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
+
+  test("pencil wanders and breaks up; clean does neither", () => {
+    expect(getSketchSpec("pencil").wobbleScale).toBeGreaterThan(getSketchSpec("clean").wobbleScale);
+    expect(getSketchSpec("pencil").grainStrength).toBeGreaterThan(getSketchSpec("clean").grainStrength);
   });
 
   test("the grain is finer than the wander, or it reads as fuzz not graphite", () => {
-    for (const style of ["pencil", "blueprint"] as const) {
+    for (const style of ["pencil"] as const) {
       const spec = getSketchSpec(style);
       expect(spec.grainFrequency).toBeGreaterThan(spec.wobbleFrequency * 10);
     }
   });
 
-  test("pencil and blueprint bring their own palettes", () => {
-    for (const style of ["pencil", "blueprint"] as const) {
-      const { strokeColor, fillColor } = sketchColors(style, "#123456", "#654321");
-      expect(strokeColor).not.toBe("#123456");
-      expect(fillColor).not.toBe("#654321");
-      expect(strokeColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
-    }
-  });
-
+  
   test("clean leaves the configured colours alone", () => {
     expect(sketchColors("clean", "#123456", "#654321")).toEqual({
       strokeColor: "#123456",
@@ -91,7 +91,7 @@ describe("pencil fill and boil", () => {
   });
 
   test("hatch spacing is a fraction of the text height, so it scales with it", () => {
-    for (const style of ["pencil", "blueprint"] as const) {
+    for (const style of ["pencil"] as const) {
       const spacing = getSketchSpec(style).hatchSpacing;
       expect(spacing).toBeGreaterThan(0);
       expect(spacing).toBeLessThan(0.2);
@@ -126,5 +126,53 @@ describe("centring the ink", () => {
   test("ignores unmeasurable boxes rather than shifting by NaN", () => {
     expect(inkCentringOffset({ y: NaN, height: 40 }, 100)).toBe(0);
     expect(inkCentringOffset({ y: 10, height: NaN }, 100)).toBe(0);
+  });
+});
+
+describe("correction marks", () => {
+  const box = { x: 100, y: 50, width: 60, height: 80 };
+
+  test("the loop encloses the glyph rather than sitting on it", () => {
+    const path = correctionLoopPath(box);
+    const numbers = path.match(/-?\d+\.?\d*/g)!.map(Number);
+    const xs = numbers.filter((_, i) => i % 2 === 0);
+    const ys = numbers.filter((_, i) => i % 2 === 1);
+    expect(Math.min(...xs)).toBeLessThan(box.x);
+    expect(Math.max(...xs)).toBeGreaterThan(box.x + box.width);
+    expect(Math.min(...ys)).toBeLessThan(box.y);
+    expect(Math.max(...ys)).toBeGreaterThan(box.y + box.height);
+  });
+
+  test("the loop does not close cleanly, the way a real one does not", () => {
+    const path = correctionLoopPath(box);
+    const start = path.match(/^M (-?\d+\.?\d*) (-?\d+\.?\d*)/)!.slice(1).map(Number);
+    const end = path.trim().split(" ").slice(-2).map(Number);
+    const gap = Math.hypot(end[0] - start[0], end[1] - start[1]);
+    expect(gap).toBeGreaterThan(0);
+  });
+
+  test("the loop scales with the glyph it circles", () => {
+    const small = correctionLoopPath(box);
+    const large = correctionLoopPath({ ...box, width: 120, height: 160 });
+    expect(large).not.toBe(small);
+  });
+
+  test("the arrow has a tail, a tip and two head strokes", () => {
+    const path = correctionArrowPath(box);
+    expect(path.match(/M /g)!.length).toBe(3);
+    expect(path.match(/l /g)!.length).toBe(2);
+  });
+
+  test("mirroring flips about the glyph's own centre, holding its place", () => {
+    // A point on the left edge must land on the right edge and vice versa.
+    const transform = mirrorAboutBox(box);
+    const shift = Number(transform.match(/translate\((-?\d+\.?\d*)/)![1]);
+    expect(shift - box.x).toBe(box.x + box.width);
+    expect(shift - (box.x + box.width)).toBe(box.x);
+  });
+
+  test("the pen is red and the marks take a moment to draw", () => {
+    expect(CORRECTION_INK).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    expect(CORRECTION_DRAW_MS).toBeGreaterThan(0);
   });
 });

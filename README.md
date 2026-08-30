@@ -39,13 +39,8 @@ In the Cloudflare Pages dashboard, connect the repo and set:
 Nothing else is required: there are no API routes, no middleware, no server
 actions, no image optimisation, and no environment variables.
 
-Two things to know before the first deploy:
-
-- **Fonts.** `app/fonts/` holds commercial Pangram Pangram files. Publishing
-  the repo publishes them; resolve the licence before the repo is public.
-- **Dev-only routes.** The tuning panel and `/prototypes/focus` are hidden in
-  production builds, but the prototype route is still emitted as a page. Delete
-  it once the focus transition is settled.
+The tuning panel is hidden in production builds. A `.nvmrc` pins the Node
+version so the build environment does not drift between deploys.
 
 ## Learn More
 

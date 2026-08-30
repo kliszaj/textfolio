@@ -621,7 +621,6 @@ export function FanDebugPanel({
             >
               <option value="clean">Clean</option>
               <option value="pencil">Pencil</option>
-              <option value="blueprint">Blueprint</option>
             </select>
           </label>
 
