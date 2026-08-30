@@ -7,7 +7,7 @@ A designer portfolio built as a stack of paper. The landing page (the name
 cursor travels toward the bottom of the viewport. Clicking one lifts it out of
 the stack and navigates to its own route.
 
-**Status:** everything below is implemented and green — 28 suites / 297 tests
+**Status:** everything below is implemented and green — 29 suites / 301 tests
 (5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. The current
 checkout is `main`; the latest Cloudflare Workers deployment configuration is
 committed.
@@ -25,14 +25,16 @@ ASCII redraw their rasterised textures after `document.fonts.ready`, preventing
 a fallback font from being captured during a deployed visitor's first paint.
 
 **Graphite sketch treatment (2026-08-30):** The opening StrokeText treatment
-now draws all six outlines in sequence (2.8s each, 120ms stagger) before any
-shading starts. Its default fill is not a static pattern: clipped diagonal SVG
-lines animate one-by-one as pencil hatching. The sketch phase dynamically
-waits for its correction marks, with a 6.2s minimum. Settings exposes the
-longer draw range, `Pencil pressure` easing, and `Pencil hatching` fill. For
-genuinely human letterforms, use a straight, high-resolution scan/photo of the
-actual word as an SVG/transparent asset; texture alone can only roughen the
-typed PP Frama shape.
+draws all six outlines in sequence (2.8s each, 120ms stagger) before any
+shading starts. Its default fill is clipped SVG hatching whose lines draw
+one-by-one with deterministic variation in spacing, angle, length, opacity,
+and weight. The red correction circle and X wait until that graphite shade has
+finished plus a small settling beat; the sketch intro holds for at least 8s so
+the pen never gets cut off. Settings exposes the longer draw range, `Pencil
+pressure` easing, and `Pencil hatching` fill. For genuinely human letterforms,
+use a straight, high-resolution scan/photo of the actual word as an
+SVG/transparent asset; texture alone can only roughen the typed PP Frama
+shape.
 
 **Treatment surfaces (2026-08-30):** `Hero.module.css` owns full-hero,
 pointer-inert treatment surfaces rather than putting a backdrop behind the

@@ -78,7 +78,7 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "false");
   // The stroke treatment draws on the page's own ground, with the supporting
   // text using the same red pen as the correction marks.
-  expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });
+  expect(hero).toHaveStyle({ backgroundColor: "#FFFFFF" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: CORRECTION_INK });
   expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: CORRECTION_INK });

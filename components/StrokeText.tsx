@@ -54,7 +54,32 @@ type StrokeTextProps = {
 
 type MeasuredBox = { x: number; y: number; width: number; height: number };
 
-type HatchStroke = { x1: number; y1: number; x2: number; y2: number };
+type HatchStroke = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  opacity: number;
+  strokeWidth: number;
+};
+
+// These stay shared between the GSAP fill timeline and the correction-mark
+// delay below. The red pen must never get ahead of the graphite shading.
+const HATCH_LINE_DRAW_SECONDS = 0.22;
+const HATCH_LINE_STAGGER_SECONDS = 0.014;
+const HATCH_SETTLE_SECONDS = 0.18;
+
+function hatchSequenceSeconds(lineCount: number): number {
+  if (lineCount <= 0) return 0;
+  return HATCH_LINE_DRAW_SECONDS + HATCH_LINE_STAGGER_SECONDS * (lineCount - 1);
+}
+
+// A tiny, deterministic value in [0, 1). It gives each pencil stroke its own
+// character without making the treatment flicker differently on every render.
+function graphiteNoise(index: number, salt: number): number {
+  const value = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
 
 function hatchStrokesForBox(box: MeasuredBox | null, gap: number): HatchStroke[] {
   if (!box) return [];
@@ -63,13 +88,26 @@ function hatchStrokesForBox(box: MeasuredBox | null, gap: number): HatchStroke[]
   const end = box.x + box.width + box.height + overscan;
   const rise = box.height + overscan * 2;
   const strokes: HatchStroke[] = [];
-  for (let x = start; x <= end; x += gap * 1.3) {
+  let x = start;
+  let index = 0;
+  while (x <= end) {
+    const spacing = gap * (1.08 + graphiteNoise(index, 1) * 0.42);
+    const startJitter = (graphiteNoise(index, 2) - 0.5) * gap * 0.68;
+    const endJitter = (graphiteNoise(index, 3) - 0.5) * gap * 0.92;
+    const lowerLift = graphiteNoise(index, 4) * gap * 1.15;
+    const upperDrop = graphiteNoise(index, 5) * gap * 1.25;
     strokes.push({
-      x1: x,
-      y1: box.y + box.height + overscan,
-      x2: x + rise,
-      y2: box.y - overscan,
+      // The lengths, angle and spacing all drift a little, like separate
+      // pencil passes rather than a repeated vector hatch pattern.
+      x1: x + startJitter,
+      y1: box.y + box.height + overscan - lowerLift,
+      x2: x + rise + endJitter,
+      y2: box.y - overscan + upperDrop,
+      opacity: 0.42 + graphiteNoise(index, 6) * 0.34,
+      strokeWidth: Math.max(0.55, gap * (0.09 + graphiteNoise(index, 7) * 0.11)),
     });
+    x += spacing;
+    index += 1;
   }
   return strokes;
 }
@@ -275,7 +313,12 @@ export function StrokeText({
         // graphite stroke travels across the letter after its outline lands.
         timeline.to(
           hatchLines,
-          { strokeDashoffset: 0, duration: 0.24, ease: "power1.inOut", stagger: 0.012 },
+          {
+            strokeDashoffset: 0,
+            duration: HATCH_LINE_DRAW_SECONDS,
+            ease: "power1.inOut",
+            stagger: HATCH_LINE_STAGGER_SECONDS,
+          },
           fillStart
         );
       } else if (useWipe && wipe) {
@@ -330,8 +373,21 @@ export function StrokeText({
         markBox.width * 0.55
       )
     : null;
-  const letterSequenceMs = letterSequenceSeconds(drawDuration, stagger, characters.length) * 1000;
+  const outlineSequenceSeconds = letterSequenceSeconds(drawDuration, stagger, characters.length);
+  const fillEnabled = fillMode !== "none";
   const useHatchFill = fillMode === "hatch" && sketch.fillTexture === "hatch";
+  const fillDuration = Math.max(0.4, drawDuration * 0.5);
+  const fillCompletionSeconds = !fillEnabled
+    ? outlineSequenceSeconds
+    : useHatchFill
+      ? outlineSequenceSeconds + fillDelay + hatchSequenceSeconds(hatchStrokes.length)
+      : outlineSequenceSeconds + fillDelay + fillDuration;
+  // Let the graphite settle before the red pen makes its correction. The
+  // circle used to key only off the outline, which made it look like it was
+  // jumping in front of an unfinished shade.
+  const correctionDelayMs = Math.round(
+    (fillCompletionSeconds + (fillEnabled ? HATCH_SETTLE_SECONDS : 0)) * 1000
+  );
   return (
     <span
       ref={rootRef}
@@ -474,12 +530,15 @@ export function StrokeText({
                 <line
                   key={`hatch-stroke-${index}`}
                   data-hatch-stroke
-                  {...stroke}
+                  x1={stroke.x1}
+                  y1={stroke.y1}
+                  x2={stroke.x2}
+                  y2={stroke.y2}
                   pathLength={1}
                   stroke={inked.fillColor}
-                  strokeWidth={Math.max(0.7, hatchGap * 0.16)}
+                  strokeWidth={stroke.strokeWidth}
                   strokeLinecap="round"
-                  opacity="0.72"
+                  opacity={stroke.opacity}
                   strokeDasharray={1}
                   strokeDashoffset={1}
                 />
@@ -541,7 +600,7 @@ export function StrokeText({
                     style={{
                       strokeDasharray: 1,
                       animation: `stroke-correction-draw ${CORRECTION_DRAW_MS}ms ease-out both`,
-                      animationDelay: `${letterSequenceMs}ms`,
+                      animationDelay: `${correctionDelayMs}ms`,
                     }}
                   />
                   {[marks.crossA, marks.crossB].map((stroke, index) => (
@@ -553,7 +612,7 @@ export function StrokeText({
                         strokeDasharray: 1,
                         animation: `stroke-correction-draw ${CORRECTION_CROSS_MS}ms ease-out both`,
                         animationDelay: `${
-                          letterSequenceMs +
+                          correctionDelayMs +
                           CORRECTION_CROSS_LEAD_MS +
                           CORRECTION_CROSS_DELAY_MS * index
                         }ms`,

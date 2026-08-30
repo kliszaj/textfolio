@@ -5,9 +5,12 @@ import { DEFAULT_STROKE_TEXT_CONFIG, correctionSequenceMs } from "./strokeText";
 // when it has had its time.
 export type HeadlineIntroPhase = "sketch" | "ascii" | "warp" | "final";
 
+// The graphite fill is drawn one pencil stroke at a time before the red
+// correction mark starts. Give that slower sequence a generous stage so the
+// headline never hands off while the X is still being written.
 const SKETCH_SETTLE_MS = 900;
 const SKETCH_INTRO_DURATION_MS = Math.max(
-  6200,
+  8000,
   correctionSequenceMs(
     DEFAULT_STROKE_TEXT_CONFIG.drawDuration,
     DEFAULT_STROKE_TEXT_CONFIG.stagger,
