@@ -140,6 +140,13 @@ export function ASCIIText({
         return parseFloat(window.getComputedStyle(fallback).fontSize) || 0;
       };
 
+      const headlineCanvasFont = () => {
+        const fallback = host.querySelector(`.${styles.fallback}`);
+        if (!fallback) return `900 ${textFontSize}px sans-serif`;
+        const computed = window.getComputedStyle(fallback);
+        return `${computed.fontWeight || "900"} ${textFontSize}px ${computed.fontFamily || "sans-serif"}`;
+      };
+
       // Sized to match the font rather than to a fixed world height, because
       // the headline grows with the viewport while its container stops at a
       // clamp -- so the ratio between them is not constant.
@@ -157,7 +164,8 @@ export function ASCIIText({
       };
 
       const createTextTexture = () => {
-        textContext.font = `900 ${textFontSize}px "PP Frama", sans-serif`;
+        const font = headlineCanvasFont();
+        textContext.font = font;
         const metrics = textContext.measureText(text);
         // The body is drawn behind the face, so the canvas has to make room
         // for it or the deepest layers would be clipped away.
@@ -168,7 +176,7 @@ export function ASCIIText({
           Math.ceil(
             metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent + extrudeY
           ) + 40;
-        textContext.font = `900 ${textFontSize}px "PP Frama", sans-serif`;
+        textContext.font = font;
 
         const baseX = 20;
         const baseY = 20 + metrics.actualBoundingBoxAscent;
@@ -184,12 +192,13 @@ export function ASCIIText({
 
         textContext.fillStyle = "#ffffff";
         textContext.fillText(text, baseX, baseY);
-        texture = new THREE.CanvasTexture(textCanvas);
-        texture.minFilter = THREE.NearestFilter;
+        const nextTexture = new THREE.CanvasTexture(textCanvas);
+        nextTexture.minFilter = THREE.NearestFilter;
+        return nextTexture;
       };
 
       const buildMesh = () => {
-        createTextTexture();
+        texture = createTextTexture();
         const aspect = textCanvas.width / textCanvas.height;
         material = new THREE.ShaderMaterial({
           vertexShader,
@@ -201,6 +210,15 @@ export function ASCIIText({
         // costs a scale write rather than a geometry rebuild.
         mesh = new THREE.Mesh(new THREE.PlaneGeometry(aspect, 1, 36, 36), material);
         scene.add(mesh);
+        applyPlaneScale();
+      };
+
+      const refreshTextTexture = () => {
+        const nextTexture = createTextTexture();
+        const previousTexture = texture;
+        texture = nextTexture;
+        if (material) material.uniforms.uTexture.value = nextTexture;
+        previousTexture?.dispose();
         applyPlaneScale();
       };
 
@@ -297,6 +315,12 @@ export function ASCIIText({
 
       buildMesh();
       resize();
+      // Canvas text is rasterised at draw time. Redraw after Next's bundled
+      // PP Frama face is ready so a fast fallback never gets baked into the
+      // ASCII texture on a first visit.
+      document.fonts?.ready.then(() => {
+        if (!disposed) refreshTextTexture();
+      }).catch(() => {});
       demoStart = performance.now();
       host.addEventListener("pointermove", onPointerMove);
       const observer = new ResizeObserver(resize);

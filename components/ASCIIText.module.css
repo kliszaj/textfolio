@@ -21,7 +21,7 @@
   width: 100%;
   height: 100%;
   color: inherit;
-  font-family: var(--headline-font-family, "PP Frama", sans-serif);
+  font-family: var(--headline-font-family, var(--font-pp-frama, sans-serif));
   font-size: var(--headline-font-size, max(3rem, 15.97vw));
   font-weight: var(--headline-font-weight, 900);
   line-height: 1;

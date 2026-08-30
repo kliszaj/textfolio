@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-@theme {
+@theme inline {
   --color-cream: #f5ede6;
   --color-ink: #1c1c1c;
-  --font-display: "PP Frama", sans-serif;
-  --font-script: "Adrian", cursive;
+  --font-display: var(--font-pp-frama);
+  --font-script: var(--font-adrian);
 }
 
 /* Line boil: the Adrian handwriting is redrawn with a slightly different

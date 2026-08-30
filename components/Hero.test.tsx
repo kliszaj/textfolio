@@ -24,7 +24,7 @@ test("uses one shared headline frame and typography baseline across treatments",
   expect(frame).toHaveClass("relative", "isolate");
   expect(frame).toHaveStyle({
     "--headline-font-size": "clamp(3rem, 15.97vw, 14.5rem)",
-    "--headline-font-family": '"PP Frama", sans-serif',
+    "--headline-font-family": "var(--font-pp-frama)",
     "--headline-font-weight": "900",
   });
 });
@@ -91,7 +91,7 @@ test("the down-arrow hint fades as fanProgress increases", () => {
 test("attaches the given subheaderRef to the tagline paragraph", () => {
   const subheaderRef = createRef<HTMLParagraphElement>();
   render(<Hero playIntro={false} fanProgress={0} subheaderRef={subheaderRef} />);
-  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, prototyper, idea-refiner"));
+  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, product builder"));
 });
 
 test("pulls the tagline up close under the headline", () => {

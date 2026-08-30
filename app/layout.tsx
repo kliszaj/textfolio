@@ -5,19 +5,20 @@ import "./globals.css";
 
 const displayFont = localFont({
   src: "./fonts/PPFrama-Black.otf",
-  variable: "--font-display",
+  weight: "900",
+  variable: "--font-pp-frama",
   display: "swap",
 });
 
 const scriptFont = localFont({
   src: "./fonts/Adrian-Regular.otf",
-  variable: "--font-script",
+  variable: "--font-adrian",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Adrian",
-  description: "Designer, tinkerer, prototyper, idea-refiner",
+  description: "Designer, tinkerer, product builder",
 };
 
 export default function RootLayout({

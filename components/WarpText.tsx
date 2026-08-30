@@ -117,7 +117,7 @@ export function WarpText({
   ripple = true,
   fontSize = "clamp(3rem, 15.97vw, 14.5rem)",
   fontWeight = 900,
-  fontFamily = '"PP Frama", sans-serif',
+  fontFamily = "var(--font-pp-frama)",
   letterSpacing = "0",
   lineHeight = 0.9,
   onActiveChange,
@@ -213,6 +213,12 @@ export function WarpText({
       container.addEventListener("pointermove", onPointerMove);
       container.addEventListener("pointerleave", onPointerLeave);
       resize();
+      // The texture captures pixels, rather than live text. Regenerate it
+      // once Next's self-hosted face has loaded so deployed visitors never
+      // retain a system-font texture from the first paint.
+      document.fonts?.ready.then(() => {
+        if (!disposed) resize();
+      }).catch(() => {});
       contextRef.current = {
         setTextColor: (nextColor) => {
           program.uniforms.uTextColor.value.set(colorVector(nextColor));

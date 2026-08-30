@@ -37,7 +37,7 @@ const ASCII_ACCENT_COLOR = "#3E18FF";
 const WARP_ACCENT_COLOR = "#FF04FF";
 const TAGLINE_SIZE = "clamp(1.1rem, 4.44vw, 4rem)";
 const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
-const HEADLINE_FONT_FAMILY = '"PP Frama", sans-serif';
+const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;
 
 type HeroProps = {
@@ -197,7 +197,7 @@ export function Hero({
             transition: "color 420ms ease",
           }}
         >
-          Designer, tinkerer, prototyper, idea-refiner
+          Designer, tinkerer, product builder
         </p>
       </div>
       <div

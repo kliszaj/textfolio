@@ -18,6 +18,12 @@ copies, readiness flags, shared typography forwarding, and configurable SVG
 colors. `ASCIIText`'s props are now correctly typed as a partial config because
 the component already supplies defaults for every setting.
 
+**Bundled PP Frama (2026-08-30):** PP Frama is self-hosted through
+`next/font/local` as `--font-pp-frama`. Use that variable, never the local
+machine font name `"PP Frama"`, in headline CSS, SVG, and canvas code. Warp and
+ASCII redraw their rasterised textures after `document.fonts.ready`, preventing
+a fallback font from being captured during a deployed visitor's first paint.
+
 The Warp treatment's scripted load demo now moves its simulated pointer
 left-to-right along one restrained sine cycle (`demoPointerAt` varies both x
 and y), rather than following a straight horizontal line. Real pointer input
