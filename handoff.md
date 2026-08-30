@@ -78,7 +78,8 @@ seed. The current default paper is pure white with a neutral `#E3E3E3` fibre
 at full opacity. `colorBack` also becomes the sketch hero's fallback/background
 colour, so no seam shows around the shader canvas.
 
-**ASCII CRT pass (2026-08-30):** `ASCIIText` applies a barrel curve and
+**ASCII CRT pass (2026-08-30):** `ASCIIText` applies a restrained 0.06 extrusion
+depth, barrel curve, and
 scanline modulation in its existing Three.js fragment shader before the frame
 is sampled into ASCII cells. The scanline intensity stays at `0.68`; barrel
 curvature is now an independent `crtCurvature` setting with a restrained

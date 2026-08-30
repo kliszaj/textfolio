@@ -217,6 +217,10 @@ describe("the scripted tilt sweep", () => {
 });
 
 describe("extruding the letters", () => {
+  test("the default extrusion stays subtle", () => {
+    expect(DEFAULT_ASCII_TEXT_CONFIG.extrudeDepth).toBeLessThanOrEqual(0.06);
+  });
+
   test("the back of the body is black and the front nearly white", () => {
     // Spanning that range is what gives the depth ramp every colour to use,
     // including the darkest containers.

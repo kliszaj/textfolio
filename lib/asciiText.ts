@@ -117,7 +117,8 @@ export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
   asciiFontSize: 11,
   textFontSize: 340,
   planeScale: 1,
-  extrudeDepth: 0.16,
+  // Keep the depth as a quiet edge rather than a stack of noisy offset glyphs.
+  extrudeDepth: 0.06,
   tiltStrength: 0.3,
   crtCurvature: 0.32,
   randomizeGlyphColors: true,
