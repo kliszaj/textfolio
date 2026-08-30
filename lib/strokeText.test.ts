@@ -1,10 +1,10 @@
 import {
+  CORRECTION_CROSS_DELAY_MS,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
   DEFAULT_STROKE_TEXT_CONFIG,
   SKETCH_BOIL_SEEDS,
-  correctionArrowPath,
-  correctionLoopPath,
+  correctionMarks,
   getSketchSpec,
   inkCentringOffset,
   mirrorAboutBox,
@@ -131,48 +131,99 @@ describe("centring the ink", () => {
 
 describe("correction marks", () => {
   const box = { x: 100, y: 50, width: 60, height: 80 };
+  const bounds = { width: 400, height: 300 };
 
-  test("the loop encloses the glyph rather than sitting on it", () => {
-    const path = correctionLoopPath(box);
-    const numbers = path.match(/-?\d+\.?\d*/g)!.map(Number);
-    const xs = numbers.filter((_, i) => i % 2 === 0);
-    const ys = numbers.filter((_, i) => i % 2 === 1);
-    expect(Math.min(...xs)).toBeLessThan(box.x);
-    expect(Math.max(...xs)).toBeGreaterThan(box.x + box.width);
-    expect(Math.min(...ys)).toBeLessThan(box.y);
-    expect(Math.max(...ys)).toBeGreaterThan(box.y + box.height);
+  test("the mark is a circle, not an ellipse", () => {
+    // A glyph is roughly square; an ellipse round it read as a mistake.
+    const { circle } = correctionMarks(box);
+    expect(circle.r).toBeGreaterThan(0);
+    expect(circle.cx).toBeCloseTo(box.x + box.width / 2);
+    expect(circle.cy).toBeCloseTo(box.y + box.height / 2);
+  });
+
+  test("the circle encloses the glyph", () => {
+    const { circle } = correctionMarks(box);
+    expect(circle.r).toBeGreaterThan(Math.max(box.width, box.height) / 2);
+  });
+
+  test("it is pulled inside the frame rather than running off the edge", () => {
+    // A glyph hard against the right edge is where the mark looked clipped.
+    const edge = { x: 380, y: 40, width: 60, height: 80 };
+    const { circle } = correctionMarks(edge, bounds);
+    expect(circle.cx - circle.r).toBeGreaterThanOrEqual(0);
+    expect(circle.cx + circle.r).toBeLessThanOrEqual(bounds.width);
+    expect(circle.cy - circle.r).toBeGreaterThanOrEqual(0);
+    expect(circle.cy + circle.r).toBeLessThanOrEqual(bounds.height);
+  });
+
+  test("a frame smaller than the mark shrinks it rather than overflowing", () => {
+    const { circle } = correctionMarks(box, { width: 40, height: 40 });
+    expect(circle.r).toBeLessThanOrEqual(20);
+    expect(circle.r).toBeGreaterThan(0);
+  });
+
+  test("without a frame it sits on the glyph, unclamped", () => {
+    const { circle } = correctionMarks(box);
+    expect(circle.cx).toBe(box.x + box.width / 2);
   });
 
   test("the loop does not close cleanly, the way a real one does not", () => {
-    const path = correctionLoopPath(box);
-    const start = path.match(/^M (-?\d+\.?\d*) (-?\d+\.?\d*)/)!.slice(1).map(Number);
-    const end = path.trim().split(" ").slice(-2).map(Number);
-    const gap = Math.hypot(end[0] - start[0], end[1] - start[1]);
-    expect(gap).toBeGreaterThan(0);
+    const { loop } = correctionMarks(box);
+    const start = loop.match(/^M (-?\d+\.?\d*) (-?\d+\.?\d*)/)!.slice(1).map(Number);
+    const end = loop.trim().split(" ").slice(-2).map(Number);
+    expect(Math.hypot(end[0] - start[0], end[1] - start[1])).toBeGreaterThan(0);
   });
 
-  test("the loop scales with the glyph it circles", () => {
-    const small = correctionLoopPath(box);
-    const large = correctionLoopPath({ ...box, width: 120, height: 160 });
-    expect(large).not.toBe(small);
+  test("the X is struck through the glyph, not floating beside it", () => {
+    const { crossA, crossB } = correctionMarks(box);
+    for (const stroke of [crossA, crossB]) {
+      const nums = stroke.match(/-?\d+\.?\d*/g)!.map(Number);
+      const xs = nums.filter((_: number, i: number) => i % 2 === 0);
+      const ys = nums.filter((_: number, i: number) => i % 2 === 1);
+      expect(Math.min(...xs)).toBeLessThanOrEqual(box.x);
+      expect(Math.max(...xs)).toBeGreaterThanOrEqual(box.x + box.width);
+      expect(Math.min(...ys)).toBeLessThanOrEqual(box.y);
+      expect(Math.max(...ys)).toBeGreaterThanOrEqual(box.y + box.height);
+    }
   });
 
-  test("the arrow has a tail, a tip and two head strokes", () => {
-    const path = correctionArrowPath(box);
-    expect(path.match(/M /g)!.length).toBe(3);
-    expect(path.match(/l /g)!.length).toBe(2);
+  test("the two strokes cross rather than running together", () => {
+    const { crossA, crossB } = correctionMarks(box);
+    expect(crossA).not.toBe(crossB);
+    // One starts top-left, the other top-right.
+    const startX = (d: string) => Number(d.match(/^M (-?\d+\.?\d*)/)![1]);
+    expect(startX(crossA)).toBeLessThan(startX(crossB));
+  });
+
+  test("every drawn pixel stays inside the frame, pen width included", () => {
+    // The wobble draws wider than the nominal radius, and the pen is drawn
+    // centred on the path -- both have to be inside, not just the geometry.
+    const pen = 8;
+    const edge = { x: 380, y: 250, width: 60, height: 80 };
+    const { circle, loop, crossA, crossB } = correctionMarks(edge, bounds, pen / 2);
+    expect(circle.cx + circle.r * 1.05 + pen / 2).toBeLessThanOrEqual(bounds.width);
+    expect(circle.cy + circle.r * 1.05 + pen / 2).toBeLessThanOrEqual(bounds.height);
+    for (const d of [loop, crossA, crossB]) {
+      const nums = d.match(/-?\d+\.?\d*/g)!.map(Number);
+      const xs = nums.filter((_: number, i: number) => i % 2 === 0);
+      const ys = nums.filter((_: number, i: number) => i % 2 === 1);
+      expect(Math.min(...xs)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...xs)).toBeLessThanOrEqual(bounds.width);
+      expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...ys)).toBeLessThanOrEqual(bounds.height);
+    }
   });
 
   test("mirroring flips about the glyph's own centre, holding its place", () => {
-    // A point on the left edge must land on the right edge and vice versa.
     const transform = mirrorAboutBox(box);
     const shift = Number(transform.match(/translate\((-?\d+\.?\d*)/)![1]);
     expect(shift - box.x).toBe(box.x + box.width);
     expect(shift - (box.x + box.width)).toBe(box.x);
   });
 
-  test("the pen is red and the marks take a moment to draw", () => {
-    expect(CORRECTION_INK).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  test("the pen is pure red and the marks take a moment to draw", () => {
+    expect(CORRECTION_INK).toBe("#FF0000");
     expect(CORRECTION_DRAW_MS).toBeGreaterThan(0);
+    expect(CORRECTION_CROSS_DELAY_MS).toBeGreaterThan(0);
   });
 });

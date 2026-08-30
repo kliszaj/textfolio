@@ -5,13 +5,13 @@ import type { CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
+  CORRECTION_CROSS_DELAY_MS,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
   STROKE_INK_LIFT_PX,
-  correctionArrowPath,
-  correctionLoopPath,
+  correctionMarks,
   inkCentringOffset,
   mirrorAboutBox,
   sketchColors,
@@ -259,6 +259,12 @@ export function StrokeText({
   // Measured off the untransformed <text>, and applied to the group around it,
   // so correcting the position can never feed back into the measurement.
   const inkOffset = inkCentringOffset(box, centreY, STROKE_INK_LIFT_PX);
+  // Bounded by the host, so a mark is pulled inside the frame rather than
+  // running off the edge and reading as clipped.
+  const correctionPen = strokeWidth * 1.6;
+  const marks = markBox
+    ? correctionMarks(markBox, hostSize ?? undefined, correctionPen / 2)
+    : null;
   return (
     <span
       ref={rootRef}
@@ -383,38 +389,75 @@ export function StrokeText({
 
           {markBox && correctionIndex !== undefined && (
             <g data-testid="stroke-text-correction">
-              {/* The letter itself, drawn back to front in its own place. */}
-              <text
-                x={markBox.x}
-                y={centreY}
-                dominantBaseline="central"
-                transform={mirrorAboutBox(markBox)}
-                fill="none"
-                stroke={inked.strokeColor}
-                strokeWidth={strokeWidth}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                style={fontStyle}
-              >
-                {characters[correctionIndex]}
-              </text>
-
-              {/* Red pen, drawn on after the letters have been sketched. */}
-              <g
-                className="boil-line"
-                fill="none"
-                stroke={CORRECTION_INK}
-                strokeWidth={strokeWidth * 1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  animation: `stroke-correction-in ${CORRECTION_DRAW_MS}ms ease-out both`,
-                  animationDelay: `${drawDuration * 1000}ms`,
-                }}
-              >
-                <path d={correctionLoopPath(markBox)} />
-                <path d={correctionArrowPath(markBox)} />
+              {/* The letter drawn back to front in its own place -- outline
+                  and shading together, or the hatching would stay the right
+                  way round inside a reversed outline. */}
+              <g transform={mirrorAboutBox(markBox)}>
+                <text
+                  x={markBox.x}
+                  y={centreY}
+                  dominantBaseline="central"
+                  fill={fillPaint}
+                  stroke="none"
+                  style={fontStyle}
+                  clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}
+                >
+                  {characters[correctionIndex]}
+                </text>
+                <text
+                  x={markBox.x}
+                  y={centreY}
+                  dominantBaseline="central"
+                  fill="none"
+                  stroke={inked.strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  style={fontStyle}
+                >
+                  {characters[correctionIndex]}
+                </text>
               </g>
+
+              {/* Red pen, drawn on after the letters have been sketched.
+                  pathLength normalises each path to 1, so the dash animation
+                  draws it stroke-by-stroke without needing its real length. */}
+              {marks && (
+                <g
+                  className="boil-line"
+                  fill="none"
+                  stroke={CORRECTION_INK}
+                  strokeWidth={correctionPen}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path
+                    d={marks.loop}
+                    pathLength={1}
+                    style={{
+                      strokeDasharray: 1,
+                      animation: `stroke-correction-draw ${CORRECTION_DRAW_MS}ms ease-out both`,
+                      animationDelay: `${drawDuration * 1000}ms`,
+                    }}
+                  />
+                  {[marks.crossA, marks.crossB].map((stroke, index) => (
+                    <path
+                      key={index}
+                      d={stroke}
+                      pathLength={1}
+                      style={{
+                        strokeDasharray: 1,
+                        animation: `stroke-correction-draw ${CORRECTION_DRAW_MS * 0.45}ms ease-out both`,
+                        animationDelay: `${
+                          drawDuration * 1000 +
+                          CORRECTION_DRAW_MS * 0.7 +
+                          CORRECTION_CROSS_DELAY_MS * index
+                        }ms`,
+                      }}
+                    />
+                  ))}
+                </g>
+              )}
             </g>
           )}
         </g>

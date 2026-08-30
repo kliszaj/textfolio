@@ -92,6 +92,11 @@ export function ASCIIText({
 
       const pre = document.createElement("pre");
       pre.style.fontSize = `${asciiFontSize}px`;
+      // It carries a full-bleed gradient clipped to its own text. With the
+      // colour canvas drawing instead, it has no text to clip to, and any
+      // browser that fails that clip paints the whole box -- which is the
+      // rectangle that flashes on the way into this treatment.
+      pre.style.display = randomizeGlyphColors ? "none" : "block";
       host.appendChild(pre);
 
       const outputCanvas = document.createElement("canvas");

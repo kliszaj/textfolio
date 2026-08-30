@@ -8,7 +8,7 @@ import {
   computeCursorTravel,
   computeScrollTravel,
   splitTravel,
-  travelAfterWheel,
+  // travelAfterWheel,
 } from "@/lib/fanProgress";
 import { smoothTowards } from "@/lib/smoothing";
 import type { FanPhases } from "@/lib/fanProgress";
@@ -78,10 +78,14 @@ export function useFanProgress(
         aim(computeCursorTravel(e.clientY, window.innerHeight, thresholdPx));
       };
 
-      const handleWheel = (e: WheelEvent) => {
-        wheelAnchorRef.current = pointerRef.current ?? { x: 0, y: 0 };
-        aim(travelAfterWheel(targetRef.current, e.deltaY));
-      };
+      // Wheel input is parked for now. Uncomment this handler, its listener
+      // and its teardown below, plus the travelAfterWheel import, to bring the
+      // scroll gesture back. The pointer-takeover guard it relies on is still
+      // in handleMouseMove and is inert while no wheel event ever fires.
+      // const handleWheel = (e: WheelEvent) => {
+      //   wheelAnchorRef.current = pointerRef.current ?? { x: 0, y: 0 };
+      //   aim(travelAfterWheel(targetRef.current, e.deltaY));
+      // };
 
       const handleMouseLeave = () => {
         wheelAnchorRef.current = null;
@@ -89,11 +93,11 @@ export function useFanProgress(
       };
 
       window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("wheel", handleWheel, { passive: true });
+      // window.addEventListener("wheel", handleWheel, { passive: true });
       document.documentElement.addEventListener("mouseleave", handleMouseLeave);
       return () => {
         window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("wheel", handleWheel);
+        // window.removeEventListener("wheel", handleWheel);
         document.documentElement.removeEventListener("mouseleave", handleMouseLeave);
       };
     }

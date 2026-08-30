@@ -125,55 +125,107 @@ export const STROKE_INK_LIFT_PX = 12;
 // The sketch stage shows the name mid-correction: the final N drawn back to
 // front, then marked up in red the way you would on paper.
 
-export const CORRECTION_INK = "#E03A2F";
-export const CORRECTION_DRAW_MS = 620;
+export const CORRECTION_INK = "#FF0000";
+export const CORRECTION_DRAW_MS = 780;
+// Each stroke of the X follows the loop rather than arriving with it.
+export const CORRECTION_CROSS_DELAY_MS = 380;
+// Circle radius as a share of the glyph's longest side.
+const LOOP_REACH = 0.72;
+// Kept off the frame edge, so a mark never reads as clipped.
+const LOOP_MARGIN = 4;
+// The loop's radius wanders; the widest it ever draws is this much over
+// nominal. Clamping the nominal radius alone let the wobble hang over the
+// edge, which is exactly what looked clipped.
+const LOOP_WOBBLE_MAX = 1.05;
+const WOBBLE = [1, 1.045, 0.97, 1.03, 0.985, 1.01];
 
 export type MarkBox = { x: number; y: number; width: number; height: number };
+export type MarkBounds = { width: number; height: number };
+export type CorrectionMarks = {
+  loop: string;
+  crossA: string;
+  crossB: string;
+  circle: { cx: number; cy: number; r: number };
+};
 
-// A loop drawn round a glyph. Two arcs rather than an ellipse, and overshooting
-// where it closes, because a circled correction never joins up cleanly.
-export function correctionLoopPath(box: MarkBox, slack = 0.28): string {
-  const padX = box.width * slack;
-  const padY = box.height * slack * 0.7;
-  const left = box.x - padX;
-  const right = box.x + box.width + padX;
-  const top = box.y - padY;
-  const bottom = box.y + box.height + padY;
-  const cx = (left + right) / 2;
-  const cy = (top + bottom) / 2;
-  const rx = (right - left) / 2;
-  const ry = (bottom - top) / 2;
-
-  // Start low-left, sweep all the way round, then overshoot past the start.
-  const startX = cx - rx * 0.72;
-  const startY = cy + ry * 0.78;
-  const overshootX = cx - rx * 0.2;
-  const overshootY = cy + ry * 1.04;
-
-  return [
-    `M ${startX} ${startY}`,
-    `C ${cx - rx * 1.25} ${cy + ry * 0.35} ${cx - rx * 1.1} ${cy - ry * 0.95} ${cx} ${cy - ry}`,
-    `C ${cx + rx * 1.15} ${cy - ry * 0.95} ${cx + rx * 1.22} ${cy + ry * 0.5} ${cx + rx * 0.5} ${cy + ry * 0.95}`,
-    `C ${cx + rx * 0.15} ${cy + ry * 1.15} ${cx - rx * 0.1} ${cy + ry * 1.12} ${overshootX} ${overshootY}`,
-  ].join(" ");
+function clamp(value: number, low: number, high: number): number {
+  if (high < low) return (low + high) / 2;
+  return Math.min(high, Math.max(low, value));
 }
 
-// A short arrow pointing in at the loop from below-right, with its head.
-export function correctionArrowPath(box: MarkBox): string {
-  const tipX = box.x + box.width * 0.82;
-  const tipY = box.y + box.height * 1.32;
-  const tailX = tipX + box.width * 1.15;
-  const tailY = tipY + box.height * 0.72;
-  const headBack = box.width * 0.3;
+// A circle, not an ellipse -- a glyph is roughly square, and an ellipse round
+// it read as a mistake rather than a mark. Four arcs with the radius wandering
+// slightly, overshooting where it closes, because a circled correction never
+// joins up cleanly. Then an X struck through the glyph itself.
+//
+// `bounds` is the frame the marks live in and `padding` is half the pen's
+// width. Given both, every drawn pixel is kept inside the frame -- not just
+// the nominal geometry.
+export function correctionMarks(
+  box: MarkBox,
+  bounds?: MarkBounds,
+  padding = 0
+): CorrectionMarks {
+  let r = Math.max(box.width, box.height) * LOOP_REACH;
+  let cx = box.x + box.width / 2;
+  let cy = box.y + box.height / 2;
 
-  return [
-    `M ${tailX} ${tailY}`,
-    `Q ${tipX + headBack * 1.6} ${tipY + headBack * 1.1} ${tipX} ${tipY}`,
-    `M ${tipX} ${tipY}`,
-    `l ${headBack * 1.15} ${headBack * 0.15}`,
-    `M ${tipX} ${tipY}`,
-    `l ${headBack * 0.2} ${headBack * 1.1}`,
-  ].join(" ");
+  if (bounds) {
+    const room = Math.min(bounds.width, bounds.height) / 2 - padding - LOOP_MARGIN;
+    r = Math.max(1, Math.min(r, room / LOOP_WOBBLE_MAX));
+    const inset = r * LOOP_WOBBLE_MAX + padding + LOOP_MARGIN;
+    cx = clamp(cx, inset, bounds.width - inset);
+    cy = clamp(cy, inset, bounds.height - inset);
+  }
+
+  const START = -2.3;
+  const SWEEP = Math.PI * 2 + 0.4;
+  const SEGMENTS = 5;
+  const step = SWEEP / SEGMENTS;
+  const k = (4 / 3) * Math.tan(step / 4);
+
+  const at = (angle: number, scale: number) => [
+    cx + Math.cos(angle) * r * scale,
+    cy + Math.sin(angle) * r * scale,
+  ];
+
+  const [sx, sy] = at(START, WOBBLE[0]);
+  const parts = [`M ${sx} ${sy}`];
+  for (let i = 0; i < SEGMENTS; i += 1) {
+    const a0 = START + step * i;
+    const a1 = a0 + step;
+    const s0 = WOBBLE[i % WOBBLE.length];
+    const s1 = WOBBLE[(i + 1) % WOBBLE.length];
+    const [x0, y0] = at(a0, s0);
+    const [x1, y1] = at(a1, s1);
+    parts.push(
+      `C ${x0 - Math.sin(a0) * r * s0 * k} ${y0 + Math.cos(a0) * r * s0 * k}` +
+        ` ${x1 + Math.sin(a1) * r * s1 * k} ${y1 - Math.cos(a1) * r * s1 * k}` +
+        ` ${x1} ${y1}`
+    );
+  }
+
+  // The X is struck through the glyph, overshooting it a little the way a
+  // crossing-out does, and held inside the frame like the loop.
+  const overX = box.width * 0.18;
+  const overY = box.height * 0.1;
+  const limit = (value: number, high: number) =>
+    bounds ? clamp(value, padding + LOOP_MARGIN, high - padding - LOOP_MARGIN) : value;
+
+  const left = limit(box.x - overX, bounds?.width ?? 0);
+  const right = limit(box.x + box.width + overX, bounds?.width ?? 0);
+  const top = limit(box.y - overY, bounds?.height ?? 0);
+  const bottom = limit(box.y + box.height + overY, bounds?.height ?? 0);
+  const bow = Math.max(box.width, box.height) * 0.05;
+
+  const crossA = `M ${left} ${top} Q ${(left + right) / 2 + bow} ${
+    (top + bottom) / 2 - bow
+  } ${right} ${bottom}`;
+  const crossB = `M ${right} ${top} Q ${(left + right) / 2 - bow} ${
+    (top + bottom) / 2 + bow
+  } ${left} ${bottom}`;
+
+  return { loop: parts.join(" "), crossA, crossB, circle: { cx, cy, r } };
 }
 
 // Mirrors a glyph about its own centre, so the N reads back to front while

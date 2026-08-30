@@ -109,7 +109,9 @@ describe("useFanProgress", () => {
   });
 });
 
-describe("scrolling with a mouse", () => {
+// Parked alongside the wheel handler in useFanProgress. Unskip when the
+// scroll gesture is brought back.
+describe.skip("scrolling with a mouse", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockUsePointerType.mockReturnValue("fine");
