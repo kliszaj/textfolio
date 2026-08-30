@@ -68,6 +68,10 @@ type HatchStroke = {
 const HATCH_LINE_DRAW_SECONDS = 0.22;
 const HATCH_LINE_STAGGER_SECONDS = 0.014;
 const HATCH_SETTLE_SECONDS = 0.18;
+// Pencil shading is allowed to catch the tail of the final outline. Waiting
+// for every last vector dash to close made a static-looking gap, even with a
+// near-zero configured fill delay.
+const HATCH_OUTLINE_OVERLAP_SECONDS = 0.42;
 
 function hatchSequenceSeconds(lineCount: number): number {
   if (lineCount <= 0) return 0;
@@ -286,7 +290,9 @@ export function StrokeText({
     const fillDuration = Math.max(0.4, drawDuration * 0.5);
     const staggerConfig = reverse ? { each: stagger, from: "end" as const } : stagger;
     const outlineEnd = letterSequenceSeconds(drawDuration, stagger, strokes.length);
-    const fillStart = outlineEnd + fillDelay;
+    const fillStart = useHatchFill
+      ? Math.max(0, outlineEnd - HATCH_OUTLINE_OVERLAP_SECONDS + fillDelay)
+      : outlineEnd + fillDelay;
     const targets = [...strokes, ...fills, ...hatchLines, ...correctionPaths, wipe].filter(Boolean);
 
     const setStart = () => {
