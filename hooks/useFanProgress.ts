@@ -16,7 +16,8 @@ import type { FanPhases } from "@/lib/fanProgress";
 export function useFanProgress(
   thresholdPx: number = FAN_THRESHOLD_PX,
   fanSplit: number = FAN_SPLIT,
-  smoothingMs: number = FAN_SMOOTHING_MS
+  smoothingMs: number = FAN_SMOOTHING_MS,
+  enabled: boolean = true
 ): FanPhases {
   const pointerType = usePointerType();
   // Pointer and scroll events fire faster than the screen refreshes. They only
@@ -57,6 +58,15 @@ export function useFanProgress(
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      targetRef.current = 0;
+      wheelAnchorRef.current = null;
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
+      setTravel(0);
+      return;
+    }
+
     const aim = (next: number) => {
       targetRef.current = next;
       startAnimating();
@@ -109,7 +119,7 @@ export function useFanProgress(
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [pointerType, thresholdPx, startAnimating]);
+  }, [enabled, pointerType, thresholdPx, startAnimating]);
 
   useEffect(() => {
     const frame = frameRef;

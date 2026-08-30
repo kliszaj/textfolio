@@ -3,16 +3,17 @@ import { useEffect, useState } from "react";
 export type PointerType = "fine" | "coarse";
 
 export function usePointerType(): PointerType {
-  const [pointerType, setPointerType] = useState<PointerType>(() =>
-    typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
-      ? "coarse"
-      : "fine"
-  );
+  // Keep the server and first client render identical. The media query is
+  // applied immediately after hydration, before any mobile interaction is
+  // enabled, rather than replacing the exported desktop markup mid-hydration.
+  const [pointerType, setPointerType] = useState<PointerType>("fine");
 
   useEffect(() => {
     const mql = window.matchMedia("(pointer: coarse)");
+    const updatePointerType = (matches: boolean) => setPointerType(matches ? "coarse" : "fine");
     const handleChange = (e: MediaQueryListEvent) =>
-      setPointerType(e.matches ? "coarse" : "fine");
+      updatePointerType(e.matches);
+    updatePointerType(mql.matches);
     mql.addEventListener("change", handleChange);
     return () => mql.removeEventListener("change", handleChange);
   }, []);

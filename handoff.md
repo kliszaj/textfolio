@@ -24,6 +24,13 @@ machine font name `"PP Frama"`, in headline CSS, SVG, and canvas code. Warp and
 ASCII redraw their rasterised textures after `document.fonts.ready`, preventing
 a fallback font from being captured during a deployed visitor's first paint.
 
+**Mobile interaction (2026-08-30):** coarse-pointer devices mount
+`MobilePortfolio`, not the fixed desktop paper stack. It is a native vertical
+scroll: full hero first, then every case study as a full-width tappable sheet.
+There is no cursor trigger, scroll spacer, emphasis sweep, or rotation on this
+path. Fine-pointer desktop devices continue to use the original cursor-driven,
+rotating stack unchanged; `useFanProgress` is disabled while mobile is active.
+
 The Warp treatment's scripted load demo now moves its simulated pointer
 left-to-right along one restrained sine cycle (`demoPointerAt` varies both x
 and y), rather than following a straight horizontal line. Real pointer input

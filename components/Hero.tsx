@@ -121,7 +121,7 @@ export function Hero({
 
   return (
     <div
-      className="relative w-full h-screen flex flex-col items-center justify-center transition-[background-color] duration-500 ease-out"
+      className="relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center transition-[background-color] duration-500 ease-out"
       style={{
         backgroundColor: stageBackground,
         // The stroke treatment draws on the page's own ground, so the tagline

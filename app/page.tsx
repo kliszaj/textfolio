@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useFanProgress } from "@/hooks/useFanProgress";
 import { usePointerType } from "@/hooks/usePointerType";
 import { PaperStack } from "@/components/PaperStack";
+import { MobilePortfolio } from "@/components/MobilePortfolio";
 import { FanDebugPanel } from "@/components/FanDebugPanel";
 import { CaseStudyFocus } from "@/components/CaseStudyFocus";
 import type { FocusOrigin } from "@/components/CaseStudyFocus";
@@ -52,8 +53,16 @@ export default function HomePage() {
   const [asciiConfig, setAsciiConfig] = useState<ASCIITextConfig>(DEFAULT_ASCII_TEXT_CONFIG);
   const [warpConfig, setWarpConfig] = useState<WarpTextConfig>(DEFAULT_WARP_TEXT_CONFIG);
   const [strokeConfig, setStrokeConfig] = useState<StrokeTextConfig>(DEFAULT_STROKE_TEXT_CONFIG);
-  const { fanProgress, sweepProgress } = useFanProgress(thresholdPx, fanSplit, smoothingMs);
   const pointerType = usePointerType();
+  const isMobileLayout = pointerType === "coarse";
+  // Touch layouts use native vertical scrolling rather than keeping the fixed
+  // desktop stack alive underneath the page.
+  const { fanProgress, sweepProgress } = useFanProgress(
+    thresholdPx,
+    fanSplit,
+    smoothingMs,
+    !isMobileLayout
+  );
 
   // Warm every case study route so the push at the end of the lift is instant
   // and the colour carries straight through.
@@ -70,24 +79,28 @@ export default function HomePage() {
     };
   }
 
-  function liftCaseStudy(caseStudy: CaseStudy) {
-    setLifting({ caseStudy, origin: focusOriginRef.current });
+  function liftCaseStudy(caseStudy: CaseStudy, origin: FocusOrigin = focusOriginRef.current) {
+    setLifting({ caseStudy, origin });
   }
 
   return (
     <>
-      <div className="fixed inset-0 overflow-hidden" onClickCapture={rememberOrigin}>
-        <PaperStack
-          fanProgress={fanProgress}
-          sweepProgress={sweepProgress}
-          config={config}
-          transitionMs={transitionMs}
-          asciiConfig={asciiConfig}
-          warpConfig={warpConfig}
-          strokeConfig={strokeConfig}
-          onSelectCaseStudy={liftCaseStudy}
-        />
-      </div>
+      {isMobileLayout ? (
+        <MobilePortfolio onSelectCaseStudy={liftCaseStudy} />
+      ) : (
+        <div className="fixed inset-0 overflow-hidden" onClickCapture={rememberOrigin}>
+          <PaperStack
+            fanProgress={fanProgress}
+            sweepProgress={sweepProgress}
+            config={config}
+            transitionMs={transitionMs}
+            asciiConfig={asciiConfig}
+            warpConfig={warpConfig}
+            strokeConfig={strokeConfig}
+            onSelectCaseStudy={liftCaseStudy}
+          />
+        </div>
+      )}
       {lifting && (
         <CaseStudyFocus
           caseStudy={lifting.caseStudy}
@@ -96,8 +109,7 @@ export default function HomePage() {
           onEntered={() => router.push(`/work/${lifting.caseStudy.slug}`)}
         />
       )}
-      {pointerType === "coarse" && <div data-testid="scroll-spacer" style={{ height: "150vh" }} aria-hidden="true" />}
-      {SHOW_DEBUG_PANEL && (
+      {SHOW_DEBUG_PANEL && !isMobileLayout && (
       <FanDebugPanel
         config={config}
         onConfigChange={setConfig}

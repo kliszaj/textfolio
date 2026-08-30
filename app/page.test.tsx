@@ -39,15 +39,22 @@ test("keeps the tuning panel behind a Settings button", () => {
   expect(screen.queryByTestId("fan-debug-panel")).not.toBeInTheDocument();
 });
 
-test("renders a scroll spacer on touch devices", () => {
+test("uses a native vertical case-study list on touch devices", () => {
   mockUsePointerType.mockReturnValue("coarse");
   render(<HomePage />);
-  expect(screen.getByTestId("scroll-spacer")).toBeInTheDocument();
+  expect(screen.getByTestId("mobile-portfolio")).toBeInTheDocument();
+  expect(screen.getByTestId("mobile-case-list")).toBeInTheDocument();
+  caseStudies.forEach((caseStudy) => {
+    expect(screen.getByTestId(`mobile-case-${caseStudy.slug}`)).toBeInTheDocument();
+  });
+  expect(screen.queryByTestId("paper-sheet-0")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("scroll-spacer")).not.toBeInTheDocument();
 });
 
-test("renders no scroll spacer on fine-pointer devices", () => {
+test("keeps the fixed cursor-driven stack on fine-pointer devices", () => {
   render(<HomePage />);
-  expect(screen.queryByTestId("scroll-spacer")).not.toBeInTheDocument();
+  expect(screen.getByTestId("paper-sheet-0")).toBeInTheDocument();
+  expect(screen.queryByTestId("mobile-portfolio")).not.toBeInTheDocument();
 });
 
 test("prefetches every case study route so the lift lands instantly", () => {
