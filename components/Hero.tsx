@@ -4,15 +4,16 @@ import { useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import dynamic from "next/dynamic";
 import { NAME } from "@/data/letterTreatments";
-import { ASCII_DEMO_TILT_MS, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
+import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
-import { DEFAULT_WARP_TEXT_CONFIG, WARP_DEMO_SWEEP_MS } from "@/lib/warpText";
+import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG, SKETCH_INK } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
+import { HEADLINE_INTRO_DEMO_MS } from "@/lib/headlineIntro";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
@@ -187,7 +188,7 @@ export function Hero({
             <ASCIIText
               text={NAME}
               {...asciiConfig}
-              demoTiltMs={intro.done ? 0 : ASCII_DEMO_TILT_MS}
+              demoTiltMs={intro.phase === "ascii" ? HEADLINE_INTRO_DEMO_MS : 0}
             />
           ) : activeEffect === "stroke" ? (
             <StrokeText
@@ -206,7 +207,7 @@ export function Hero({
               fontSize={HEADLINE_SIZE}
               fontWeight={HEADLINE_FONT_WEIGHT}
               fontFamily={HEADLINE_FONT_FAMILY}
-              demoSweepMs={intro.phase === "warp" ? WARP_DEMO_SWEEP_MS : 0}
+              demoSweepMs={intro.phase === "warp" ? HEADLINE_INTRO_DEMO_MS : 0}
               letterSpacing="0"
               lineHeight={1}
             />

@@ -1,11 +1,11 @@
-import { ASCII_DEMO_TILT_MS } from "./asciiText";
 import { DEFAULT_STROKE_TEXT_CONFIG, correctionSequenceMs } from "./strokeText";
-import { WARP_DEMO_SWEEP_MS } from "./warpText";
 import {
   HEADLINE_HANDOVER_MS,
+  HEADLINE_INTRO_DEMO_MS,
   HEADLINE_INTRO_BOUNDARIES_MS,
   HEADLINE_INTRO_DURATION_MS,
   HEADLINE_INTRO_STEPS,
+  HEADLINE_TREATMENT_DURATION_MS,
   handoverOpacityAt,
   introStateAt,
 } from "./headlineIntro";
@@ -60,23 +60,22 @@ test("survives nonsense elapsed values", () => {
   expect(introStateAt(NaN).phase).toBe("sketch");
 });
 
-describe("the sweeps fit the stages that hold them", () => {
-  // A sweep cut off by its handover leaves the headline mid-lean, so each one
-  // has to finish with room to settle before the next stage takes over.
+describe("the refresh treatments share a cadence", () => {
   const stage = (phase: string) =>
     HEADLINE_INTRO_STEPS.find((step) => step.phase === phase)!.durationMs;
 
-  test("the ascii tilt sweep finishes inside the ascii stage", () => {
-    expect(ASCII_DEMO_TILT_MS).toBeLessThan(stage("ascii"));
+  test("each treatment gets the sketch's full screen-time", () => {
+    expect(stage("sketch")).toBe(HEADLINE_TREATMENT_DURATION_MS);
+    expect(stage("ascii")).toBe(HEADLINE_TREATMENT_DURATION_MS);
+    expect(stage("warp")).toBe(HEADLINE_TREATMENT_DURATION_MS);
   });
 
-  test("the warp pointer sweep finishes inside the warp stage", () => {
-    expect(WARP_DEMO_SWEEP_MS).toBeLessThan(stage("warp"));
-  });
-
-  test("each sweep leaves a beat to settle, not just a millisecond", () => {
-    expect(stage("ascii") - ASCII_DEMO_TILT_MS).toBeGreaterThanOrEqual(300);
-    expect(stage("warp") - WARP_DEMO_SWEEP_MS).toBeGreaterThanOrEqual(300);
+  test("the ASCII and warp demos extend to the handover, whatever sketch needs", () => {
+    expect(HEADLINE_INTRO_DEMO_MS).toBe(
+      HEADLINE_TREATMENT_DURATION_MS - HEADLINE_HANDOVER_MS / 2
+    );
+    expect(HEADLINE_INTRO_DEMO_MS).toBeLessThan(stage("ascii"));
+    expect(HEADLINE_INTRO_DEMO_MS).toBeLessThan(stage("warp"));
   });
 });
 

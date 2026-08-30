@@ -5,11 +5,16 @@ import { DEFAULT_STROKE_TEXT_CONFIG, correctionSequenceMs } from "./strokeText";
 // when it has had its time.
 export type HeadlineIntroPhase = "sketch" | "ascii" | "warp" | "final";
 
+// How long the headline fades down and back up around each treatment change.
+// Keep this separate from the phase length: the demo motion ends before the
+// outgoing half of the handover starts, rather than vanishing mid-gesture.
+export const HEADLINE_HANDOVER_MS = 600;
+
 // The graphite fill is drawn one pencil stroke at a time before the red
 // correction mark starts. Give that slower sequence a generous stage so the
 // headline never hands off while the X is still being written.
 const SKETCH_SETTLE_MS = 900;
-const SKETCH_INTRO_DURATION_MS = Math.max(
+export const SKETCH_INTRO_DURATION_MS = Math.max(
   8000,
   correctionSequenceMs(
     DEFAULT_STROKE_TEXT_CONFIG.drawDuration,
@@ -18,27 +23,26 @@ const SKETCH_INTRO_DURATION_MS = Math.max(
   ) + SKETCH_SETTLE_MS
 );
 
+// The sketch establishes the cadence. ASCII and Warp deliberately inherit
+// this value, so if the sketch sequence needs more time later their refresh
+// beats and demos lengthen with it instead of becoming brief interludes.
+export const HEADLINE_TREATMENT_DURATION_MS = SKETCH_INTRO_DURATION_MS;
+export const HEADLINE_INTRO_DEMO_MS =
+  HEADLINE_TREATMENT_DURATION_MS - HEADLINE_HANDOVER_MS / 2;
+
 export const HEADLINE_INTRO_STEPS: { phase: HeadlineIntroPhase; durationMs: number }[] = [
-  // Long enough for the stroke to draw itself, take its fill, and be marked
-  // up in red -- see the test pinning it against correctionSequenceMs.
-  { phase: "sketch", durationMs: SKETCH_INTRO_DURATION_MS },
-  // Long enough for the ascii treatment to arrive, run its full sweep, and
-  // settle before handing over.
-  { phase: "ascii", durationMs: 2700 },
-  // The warp treatment in its active state, before it settles into the calm
-  // resting version of itself that the page lives on.
-  { phase: "warp", durationMs: 2700 },
+  // Every treatment receives the same screen time. The sketch is the source
+  // of truth because its drawn lines and correction have the longest natural
+  // sequence; the other effects use the shared demo duration above.
+  { phase: "sketch", durationMs: HEADLINE_TREATMENT_DURATION_MS },
+  { phase: "ascii", durationMs: HEADLINE_TREATMENT_DURATION_MS },
+  { phase: "warp", durationMs: HEADLINE_TREATMENT_DURATION_MS },
 ];
 
 export const HEADLINE_INTRO_DURATION_MS = HEADLINE_INTRO_STEPS.reduce(
   (total, step) => total + step.durationMs,
   0
 );
-
-// How long a handover takes. The headline dips out and back in around each
-// stage boundary, so one treatment is swapped for the next while nothing is
-// on screen -- a mount is invisible instead of a hard cut.
-export const HEADLINE_HANDOVER_MS = 600;
 
 function smoothstep(t: number): number {
   const x = Math.min(1, Math.max(0, t));

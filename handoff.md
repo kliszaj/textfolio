@@ -252,8 +252,8 @@ factor. The frame is `overflow-hidden` and clips transient overflow.
 off one rAF loop:
 
 ```
-sketch 2600ms  ->  ascii 2700ms  ->  warp 2700ms  ->  final
-                                     total 8000ms + a 300ms fade-in tail
+sketch 8000ms  ->  ascii 8000ms  ->  warp 8000ms  ->  final
+                                      total 24000ms + a 300ms fade-in tail
 ```
 
 `introStateAt(elapsed)` returns `{ phase, opacity, done }`.
@@ -265,11 +265,11 @@ fade-in, and the last stage still fades back in before `done` flips.
 `Hero` maps `phase` to a treatment: `sketch → StrokeText`, `ascii →
 ASCIIText`, `warp → WarpText`, `final → null`, and `null` falls through to
 `WarpText` in its calm resting state. During the story, `ASCIIText` gets
-`demoTiltMs = ASCII_DEMO_TILT_MS` and `WarpText` gets `demoSweepMs =
-WARP_DEMO_SWEEP_MS` — scripted left-to-right passes (`demoTiltAt`,
-`demoPointerAt`) that show the interaction off without the visitor having to
-find it. Both hand control to the real pointer the instant one moves, and both
-are 0 once the story is over.
+`demoTiltMs = HEADLINE_INTRO_DEMO_MS` and `WarpText` gets `demoSweepMs =
+HEADLINE_INTRO_DEMO_MS`. That duration is derived from the sketch's stage,
+leaving only the outgoing fade beat; if the sketch needs longer, both demos
+and every treatment stage grow with it. Both hand control to the real pointer
+the instant one moves, and both are 0 once the story is over.
 
 **Hover cycling only takes over once the story ends** (`if (!intro.done)
 return` in `activateHeadline`). The cycle is ascii → warp → stroke → repeat,
