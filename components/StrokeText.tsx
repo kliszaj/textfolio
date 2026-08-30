@@ -286,12 +286,11 @@ export function StrokeText({
     const fillDuration = Math.max(0.4, drawDuration * 0.5);
     const staggerConfig = reverse ? { each: stagger, from: "end" as const } : stagger;
     const outlineEnd = letterSequenceSeconds(drawDuration, stagger, strokes.length);
-    // As soon as the first letter has finished outlining, graphite begins to
-    // build in the centre while the remaining outlines catch up. This avoids
-    // a separate "stroke phase" and "fill phase" with a dead beat between.
-    const firstOutlineEnd = drawDuration;
+    // Pencil hatching starts on the same beat as the outlines, so the fill
+    // grows with the letters instead of waiting for the first one to finish.
+    // A configured delay still remains available for deliberate tuning.
     const fillStart = useHatchFill
-      ? Math.max(0, firstOutlineEnd + fillDelay)
+      ? Math.max(0, fillDelay)
       : outlineEnd + fillDelay;
     const targets = [...strokes, ...fills, ...hatchLines, ...correctionPaths, wipe].filter(Boolean);
 
@@ -355,7 +354,10 @@ export function StrokeText({
         : fillEnabled
           ? fillStart + fillDuration
           : outlineEnd;
-      const correctionStart = fillEnd + (fillEnabled ? HATCH_SETTLE_SECONDS : 0);
+      // The correction mark must wait for both animations: when hatching now
+      // starts at t=0 it can finish before the last outline has landed.
+      const correctionStart =
+        Math.max(outlineEnd, fillEnd) + (fillEnabled ? HATCH_SETTLE_SECONDS : 0);
       if (correctionLoop) {
         timeline.to(
           correctionLoop,
