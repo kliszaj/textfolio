@@ -57,8 +57,9 @@ of truth for the shader config. The dev-only Settings panel has its own `Paper
 Texture` tab, wired through `page` → `PaperStack` → `Hero` →
 `SketchPaperShader`. It exposes both colours, opacity, contrast, roughness,
 fibre and size, crumples and size, folds and count, speckles, fade, scale, and
-seed. `colorBack` also becomes the sketch hero's fallback/background colour,
-so no seam shows around the shader canvas.
+seed. The current default paper is pure white with a neutral `#E3E3E3` fibre
+at full opacity. `colorBack` also becomes the sketch hero's fallback/background
+colour, so no seam shows around the shader canvas.
 
 **ASCII CRT pass (2026-08-30):** `ASCIIText` now applies a restrained barrel
 curve and scanline modulation in its existing Three.js fragment shader before

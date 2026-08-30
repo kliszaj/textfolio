@@ -20,8 +20,8 @@ export type PaperTextureConfig = {
 // paper, not a crumpled-paper demo, so every material control starts low.
 export const DEFAULT_PAPER_TEXTURE_CONFIG: PaperTextureConfig = {
   colorBack: "#FFFFFF",
-  colorFront: "#E7E7D9",
-  opacity: 0.9,
+  colorFront: "#E3E3E3",
+  opacity: 1,
   contrast: 0.16,
   roughness: 0.32,
   fiber: 0.3,

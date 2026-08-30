@@ -2,7 +2,8 @@ import { DEFAULT_PAPER_TEXTURE_CONFIG } from "./paperTexture";
 
 test("keeps the paper material restrained and its colours usable by the shader", () => {
   expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorBack).toBe("#FFFFFF");
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorFront).toBe("#E7E7D9");
+  expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorFront).toBe("#E3E3E3");
+  expect(DEFAULT_PAPER_TEXTURE_CONFIG.opacity).toBe(1);
   expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorBack).toMatch(/^#[0-9A-F]{6}$/i);
   expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorFront).toMatch(/^#[0-9A-F]{6}$/i);
   for (const key of [
