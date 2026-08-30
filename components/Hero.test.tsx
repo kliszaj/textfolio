@@ -18,7 +18,10 @@ test("uses one shared headline frame and typography baseline across treatments",
   render(<Hero playIntro={false} fanProgress={0} />);
   const frame = screen.getByTestId("headline-frame");
 
-  expect(frame).toHaveClass("overflow-hidden");
+  // The frame sizes the treatments; it deliberately does not clip them, or a
+  // mark drawn past a glyph would be cut off.
+  expect(frame).not.toHaveClass("overflow-hidden");
+  expect(frame).toHaveClass("relative", "isolate");
   expect(frame).toHaveStyle({
     "--headline-font-size": "clamp(3rem, 15.97vw, 14.5rem)",
     "--headline-font-family": '"PP Frama", sans-serif',

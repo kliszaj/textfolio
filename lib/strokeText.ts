@@ -126,9 +126,25 @@ export const STROKE_INK_LIFT_PX = 12;
 // front, then marked up in red the way you would on paper.
 
 export const CORRECTION_INK = "#FF0000";
-export const CORRECTION_DRAW_MS = 780;
-// Each stroke of the X follows the loop rather than arriving with it.
-export const CORRECTION_CROSS_DELAY_MS = 380;
+// Slow enough to actually watch the pen move.
+export const CORRECTION_DRAW_MS = 1100;
+export const CORRECTION_CROSS_MS = 560;
+// The X starts before the loop has quite closed, the way a hand would.
+export const CORRECTION_CROSS_LEAD_MS = 770;
+// And its second stroke follows its first.
+export const CORRECTION_CROSS_DELAY_MS = 420;
+
+// How long the whole correction takes from the moment the letters start
+// drawing. The stage that holds it has to be longer than this, or the pen is
+// still moving when the treatment hands over.
+export function correctionSequenceMs(drawDurationSeconds: number): number {
+  return (
+    drawDurationSeconds * 1000 +
+    CORRECTION_CROSS_LEAD_MS +
+    CORRECTION_CROSS_DELAY_MS +
+    CORRECTION_CROSS_MS
+  );
+}
 // Circle radius as a share of the glyph's longest side.
 const LOOP_REACH = 0.72;
 // Kept off the frame edge, so a mark never reads as clipped.
@@ -164,16 +180,18 @@ function clamp(value: number, low: number, high: number): number {
 export function correctionMarks(
   box: MarkBox,
   bounds?: MarkBounds,
-  padding = 0
+  padding = 0,
+  bleed = 0
 ): CorrectionMarks {
   let r = Math.max(box.width, box.height) * LOOP_REACH;
   let cx = box.x + box.width / 2;
   let cy = box.y + box.height / 2;
 
   if (bounds) {
-    const room = Math.min(bounds.width, bounds.height) / 2 - padding - LOOP_MARGIN;
+    const room =
+      Math.min(bounds.width, bounds.height) / 2 + bleed - padding - LOOP_MARGIN;
     r = Math.max(1, Math.min(r, room / LOOP_WOBBLE_MAX));
-    const inset = r * LOOP_WOBBLE_MAX + padding + LOOP_MARGIN;
+    const inset = r * LOOP_WOBBLE_MAX + padding + LOOP_MARGIN - bleed;
     cx = clamp(cx, inset, bounds.width - inset);
     cy = clamp(cy, inset, bounds.height - inset);
   }
@@ -210,7 +228,9 @@ export function correctionMarks(
   const overX = box.width * 0.18;
   const overY = box.height * 0.1;
   const limit = (value: number, high: number) =>
-    bounds ? clamp(value, padding + LOOP_MARGIN, high - padding - LOOP_MARGIN) : value;
+    bounds
+      ? clamp(value, padding + LOOP_MARGIN - bleed, high - padding - LOOP_MARGIN + bleed)
+      : value;
 
   const left = limit(box.x - overX, bounds?.width ?? 0);
   const right = limit(box.x + box.width + overX, bounds?.width ?? 0);

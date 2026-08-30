@@ -134,9 +134,13 @@ export function Hero({
         className="flex flex-col items-center"
         style={{ transform: `translateY(-${liftPercent}vh)` }}
       >
+        {/* The frame sizes every treatment but no longer clips them: one
+            that draws past its own box -- a correction mark, a warp, a tilted
+            plane -- now paints instead of being cut off. Its layout box is
+            unchanged, so nothing moves or resizes. */}
         <div
           data-testid="headline-frame"
-          className="relative isolate w-[min(86vw,72rem)] overflow-hidden"
+          className="relative isolate w-[min(86vw,72rem)]"
           style={{
             height: "clamp(13rem, 25vw, 20rem)",
             "--headline-font-size": HEADLINE_SIZE,

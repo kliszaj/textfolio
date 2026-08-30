@@ -6,6 +6,8 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   CORRECTION_CROSS_DELAY_MS,
+  CORRECTION_CROSS_LEAD_MS,
+  CORRECTION_CROSS_MS,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
   SKETCH_BOIL_SEEDS,
@@ -220,9 +222,11 @@ export function StrokeText({
       });
       timeline.to(strokes, { strokeDashoffset: 0, duration: drawDuration, ease, stagger: staggerConfig }, 0);
       if (useWipe && wipe) {
-        timeline.to(wipe, { attr: { width: box.width }, duration: fillDuration, ease: "power2.inOut" }, drawDuration + fillDelay);
+        timeline.to(wipe, { attr: { width: box.width }, duration: fillDuration, ease: "power2.inOut" }, fillDelay);
       } else if (fillEnabled) {
-        timeline.to(fills, { opacity: 1, duration: fillDuration, ease: "power2.out", stagger: staggerConfig }, drawDuration + fillDelay);
+        // Shades in alongside the outline rather than after it: fillDelay is
+      // now the absolute start, not a wait tacked onto the whole draw.
+      timeline.to(fills, { opacity: 1, duration: fillDuration, ease: "power2.out", stagger: staggerConfig }, fillDelay);
       }
       return timeline;
     };
@@ -262,8 +266,14 @@ export function StrokeText({
   // Bounded by the host, so a mark is pulled inside the frame rather than
   // running off the edge and reading as clipped.
   const correctionPen = strokeWidth * 1.6;
+  // Nothing clips the frame any more, so a mark may sit a little outside it.
   const marks = markBox
-    ? correctionMarks(markBox, hostSize ?? undefined, correctionPen / 2)
+    ? correctionMarks(
+        markBox,
+        hostSize ?? undefined,
+        correctionPen / 2,
+        markBox.width * 0.55
+      )
     : null;
   return (
     <span
@@ -369,7 +379,7 @@ export function StrokeText({
             <tspan
               data-stroke-char
               key={`stroke-${index}`}
-              opacity={index === correctionIndex ? 0 : 1}
+              stroke={index === correctionIndex ? "none" : undefined}
             >
               {character}
             </tspan>
@@ -380,7 +390,7 @@ export function StrokeText({
             <tspan
               data-fill-char
               key={`fill-${index}`}
-              opacity={index === correctionIndex ? 0 : 1}
+              fill={index === correctionIndex ? "none" : undefined}
             >
               {character}
             </tspan>
@@ -394,6 +404,7 @@ export function StrokeText({
                   way round inside a reversed outline. */}
               <g transform={mirrorAboutBox(markBox)}>
                 <text
+                  data-fill-char
                   x={markBox.x}
                   y={centreY}
                   dominantBaseline="central"
@@ -405,6 +416,7 @@ export function StrokeText({
                   {characters[correctionIndex]}
                 </text>
                 <text
+                  data-stroke-char
                   x={markBox.x}
                   y={centreY}
                   dominantBaseline="central"
@@ -447,10 +459,10 @@ export function StrokeText({
                       pathLength={1}
                       style={{
                         strokeDasharray: 1,
-                        animation: `stroke-correction-draw ${CORRECTION_DRAW_MS * 0.45}ms ease-out both`,
+                        animation: `stroke-correction-draw ${CORRECTION_CROSS_MS}ms ease-out both`,
                         animationDelay: `${
                           drawDuration * 1000 +
-                          CORRECTION_DRAW_MS * 0.7 +
+                          CORRECTION_CROSS_LEAD_MS +
                           CORRECTION_CROSS_DELAY_MS * index
                         }ms`,
                       }}

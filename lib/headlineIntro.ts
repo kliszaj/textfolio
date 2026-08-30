@@ -4,8 +4,9 @@
 export type HeadlineIntroPhase = "sketch" | "ascii" | "warp" | "final";
 
 export const HEADLINE_INTRO_STEPS: { phase: HeadlineIntroPhase; durationMs: number }[] = [
-  // Long enough for the stroke to draw itself and take its fill.
-  { phase: "sketch", durationMs: 2600 },
+  // Long enough for the stroke to draw itself, take its fill, and be marked
+  // up in red -- see the test pinning it against correctionSequenceMs.
+  { phase: "sketch", durationMs: 4200 },
   // Long enough for the ascii treatment to arrive, run its full sweep, and
   // settle before handing over.
   { phase: "ascii", durationMs: 2700 },

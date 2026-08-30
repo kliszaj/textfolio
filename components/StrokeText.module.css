@@ -9,6 +9,9 @@
   display: block;
   width: 100%;
   height: 100%;
+  /* An svg clips to its own viewport unless told otherwise, which cut the
+     correction marks even once the frame stopped clipping. */
+  overflow: visible;
 }
 
 .stroke,

@@ -1,4 +1,5 @@
 import { ASCII_DEMO_TILT_MS } from "./asciiText";
+import { DEFAULT_STROKE_TEXT_CONFIG, correctionSequenceMs } from "./strokeText";
 import { WARP_DEMO_SWEEP_MS } from "./warpText";
 import {
   HEADLINE_HANDOVER_MS,
@@ -109,5 +110,16 @@ describe("handing over between stages", () => {
     // Otherwise the finished treatment would arrive in a hard cut of its own.
     expect(introStateAt(HEADLINE_INTRO_DURATION_MS).done).toBe(false);
     expect(introStateAt(HEADLINE_INTRO_DURATION_MS).phase).toBe("final");
+  });
+});
+
+describe("the sketch stage holds its correction", () => {
+  test("the red pen finishes before the treatment hands over", () => {
+    // Otherwise the loop and the X are still drawing when the stage ends, and
+    // the correction is never actually seen.
+    const sketch = HEADLINE_INTRO_STEPS.find((step) => step.phase === "sketch")!;
+    const correction = correctionSequenceMs(DEFAULT_STROKE_TEXT_CONFIG.drawDuration);
+    expect(correction).toBeLessThan(sketch.durationMs);
+    expect(sketch.durationMs - correction).toBeGreaterThanOrEqual(300);
   });
 });
