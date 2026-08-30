@@ -112,7 +112,7 @@ test("pulls the tagline up close under the headline", () => {
 test("scales the tagline up toward the headline while keeping a readable floor", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({
-    fontSize: "clamp(1.6rem, 6.5vw, 6rem)",
+    fontSize: "clamp(1.6rem, 6vw, 5.5rem)",
   });
 });
 

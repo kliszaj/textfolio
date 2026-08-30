@@ -46,7 +46,7 @@ const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = "#3E18FF";
 const WARP_ACCENT_COLOR = "#FF04FF";
-const TAGLINE_SIZE = "clamp(1.6rem, 6.5vw, 6rem)";
+const TAGLINE_SIZE = "clamp(1.6rem, 6vw, 5.5rem)";
 const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;
