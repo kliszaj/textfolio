@@ -74,6 +74,7 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.getByTestId("cool-s")).toBeInTheDocument();
   expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "true");
   expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "false");
   // The stroke treatment draws on the page's own ground, with the supporting

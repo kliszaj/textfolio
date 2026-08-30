@@ -29,3 +29,14 @@
 .visible {
   opacity: 1;
 }
+
+.coolS {
+  position: absolute;
+  top: clamp(1rem, 3vw, 2.75rem);
+  left: clamp(1rem, 3vw, 2.75rem);
+  z-index: 10;
+  width: clamp(3.5rem, 8vw, 7rem);
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
