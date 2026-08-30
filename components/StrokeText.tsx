@@ -65,9 +65,9 @@ type HatchStroke = {
 
 // These stay shared between the GSAP fill timeline and the correction-mark
 // delay below. The red pen must never get ahead of the graphite shading.
-const HATCH_LINE_DRAW_SECONDS = 0.22;
-const HATCH_LINE_STAGGER_SECONDS = 0.014;
-const HATCH_SETTLE_SECONDS = 0.18;
+const HATCH_LINE_DRAW_SECONDS = 0.16;
+const HATCH_LINE_STAGGER_SECONDS = 0.006;
+const HATCH_SETTLE_SECONDS = 0.14;
 
 function hatchSequenceSeconds(lineCount: number): number {
   if (lineCount <= 0) return 0;

@@ -23,11 +23,11 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
   strokeColor: "#FFFFFF",
   fillColor: "#FFFFFF",
   strokeWidth: 2.6,
-  drawDuration: 2.8,
+  drawDuration: 1.1,
   // Give the letter strokes a short head start before the pencil shade joins
   // them, so the two actions read as one motion without starting together.
   fillDelay: 1,
-  stagger: 0.12,
+  stagger: 0.03,
   ease: "power1.inOut",
   trigger: "mount",
   fillMode: "hatch",

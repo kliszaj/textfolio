@@ -1,5 +1,3 @@
-import { DEFAULT_STROKE_TEXT_CONFIG, correctionSequenceMs } from "./strokeText";
-
 // The headline tells the story of the work on load: sketched, prototyped in
 // ascii, warped into shape, then finished. Each phase hands over to the next
 // when it has had its time.
@@ -10,18 +8,9 @@ export type HeadlineIntroPhase = "sketch" | "ascii" | "warp" | "final";
 // outgoing half of the handover starts, rather than vanishing mid-gesture.
 export const HEADLINE_HANDOVER_MS = 600;
 
-// The graphite fill is drawn one pencil stroke at a time before the red
-// correction mark starts. Give that slower sequence a generous stage so the
-// headline never hands off while the X is still being written.
-const SKETCH_SETTLE_MS = 900;
-export const SKETCH_INTRO_DURATION_MS = Math.max(
-  8000,
-  correctionSequenceMs(
-    DEFAULT_STROKE_TEXT_CONFIG.drawDuration,
-    DEFAULT_STROKE_TEXT_CONFIG.stagger,
-    6
-  ) + SKETCH_SETTLE_MS
-);
+// Keep each treatment brisk enough for a refresh: the sketch's outlines,
+// pencil fill, and correction mark all finish inside this shared window.
+export const SKETCH_INTRO_DURATION_MS = 3000;
 
 // The sketch establishes the cadence. ASCII and Warp deliberately inherit
 // this value, so if the sketch sequence needs more time later their refresh
