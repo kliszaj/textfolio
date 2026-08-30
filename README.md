@@ -20,6 +20,33 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Deploying to Cloudflare Pages
+
+Every route prerenders, so `next build` emits a plain static site and no
+adapter or server runtime is needed. `next.config.ts` sets `output: "export"`,
+and `generateStaticParams` in `app/work/[slug]/page.tsx` builds a page per case
+study.
+
+In the Cloudflare Pages dashboard, connect the repo and set:
+
+| Setting | Value |
+|---|---|
+| Framework preset | None (or "Next.js (Static HTML Export)") |
+| Build command | `npm run build` |
+| Build output directory | `out` |
+| Node version | 20 or newer (`NODE_VERSION` environment variable) |
+
+Nothing else is required: there are no API routes, no middleware, no server
+actions, no image optimisation, and no environment variables.
+
+Two things to know before the first deploy:
+
+- **Fonts.** `app/fonts/` holds commercial Pangram Pangram files. Publishing
+  the repo publishes them; resolve the licence before the repo is public.
+- **Dev-only routes.** The tuning panel and `/prototypes/focus` are hidden in
+  production builds, but the prototype route is still emitted as a page. Delete
+  it once the focus transition is settled.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
