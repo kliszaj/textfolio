@@ -28,9 +28,9 @@ a fallback font from being captured during a deployed visitor's first paint.
 draws all six outlines in sequence (2.8s each, 120ms stagger) before any
 shading starts. Its default fill is clipped SVG hatching whose lines draw
 one-by-one with deterministic variation in spacing, angle, length, opacity,
-and weight. The red correction circle and X wait until that graphite shade has
-finished plus a small settling beat; the sketch intro holds for at least 8s so
-the pen never gets cut off. Settings exposes the longer draw range, `Pencil
+and weight. The red correction circle and X share the same GSAP timeline as
+the hatching, starting only after its final line and a small settling beat;
+the sketch intro holds for at least 8s so the pen never gets cut off. Settings exposes the longer draw range, `Pencil
 pressure` easing, and `Pencil hatching` fill. For genuinely human letterforms,
 use a straight, high-resolution scan/photo of the actual word as an
 SVG/transparent asset; texture alone can only roughen the typed PP Frama

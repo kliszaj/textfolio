@@ -269,6 +269,13 @@ export function StrokeText({
       .map((fill, index) => (index === correctionIndex && correctionFill ? correctionFill : fill))
       .filter((fill) => fill.getAttribute("fill") !== "none");
     const hatchLines = Array.from(root.querySelectorAll<SVGLineElement>("[data-hatch-stroke]"));
+    const correctionLoop = root.querySelector<SVGPathElement>("[data-correction-loop]");
+    const correctionCrosses = Array.from(
+      root.querySelectorAll<SVGPathElement>("[data-correction-cross]")
+    );
+    const correctionPaths = [correctionLoop, ...correctionCrosses].filter(
+      (path): path is SVGPathElement => path !== null
+    );
     const wipe = wipeRectRef.current;
     if (!strokes.length) return;
     const fillEnabled = fillMode !== "none";
@@ -278,13 +285,14 @@ export function StrokeText({
     const staggerConfig = reverse ? { each: stagger, from: "end" as const } : stagger;
     const outlineEnd = letterSequenceSeconds(drawDuration, stagger, strokes.length);
     const fillStart = outlineEnd + fillDelay;
-    const targets = [...strokes, ...fills, ...hatchLines, wipe].filter(Boolean);
+    const targets = [...strokes, ...fills, ...hatchLines, ...correctionPaths, wipe].filter(Boolean);
 
     const setStart = () => {
       gsap.killTweensOf(targets);
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: dash });
       gsap.set(fills, { opacity: useWipe ? 1 : 0 });
       gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 1 });
+      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 1 });
       if (wipe) gsap.set(wipe, { attr: { width: 0 } });
     };
     const setEnd = () => {
@@ -292,6 +300,7 @@ export function StrokeText({
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: 0 });
       gsap.set(fills, { opacity: fillEnabled ? 1 : 0 });
       gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 0 });
+      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 0 });
       if (wipe) gsap.set(wipe, { attr: { width: fillEnabled ? box.width : 0 } });
     };
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
@@ -326,6 +335,40 @@ export function StrokeText({
       } else if (fillEnabled) {
         timeline.to(fills, { opacity: 1, duration: fillDuration, ease: "power2.out", stagger: staggerConfig }, fillStart);
       }
+      // Correction ink belongs to this same timeline, rather than an
+      // independent CSS animation. Measuring the SVG can add hatch lines in
+      // a later render, and a separate clock could then start before the
+      // final pencil line had landed.
+      const fillEnd = useHatchFill
+        ? fillStart + hatchSequenceSeconds(hatchLines.length)
+        : fillEnabled
+          ? fillStart + fillDuration
+          : outlineEnd;
+      const correctionStart = fillEnd + (fillEnabled ? HATCH_SETTLE_SECONDS : 0);
+      if (correctionLoop) {
+        timeline.to(
+          correctionLoop,
+          {
+            strokeDashoffset: 0,
+            duration: CORRECTION_DRAW_MS / 1000,
+            ease: "power1.out",
+          },
+          correctionStart
+        );
+      }
+      correctionCrosses.forEach((cross, index) => {
+        timeline.to(
+          cross,
+          {
+            strokeDashoffset: 0,
+            duration: CORRECTION_CROSS_MS / 1000,
+            ease: "power1.out",
+          },
+          correctionStart +
+            CORRECTION_CROSS_LEAD_MS / 1000 +
+            (CORRECTION_CROSS_DELAY_MS / 1000) * index
+        );
+      });
       return timeline;
     };
 
@@ -353,7 +396,21 @@ export function StrokeText({
       timeline?.kill();
       gsap.killTweensOf(targets);
     };
-  }, [box, correctionIndex, dash, drawDuration, ease, fillDelay, fillMode, reverse, sketch.fillTexture, stagger, trigger]);
+  }, [
+    box,
+    correctionIndex,
+    dash,
+    drawDuration,
+    ease,
+    fillDelay,
+    fillMode,
+    hatchStrokes.length,
+    markBox,
+    reverse,
+    sketch.fillTexture,
+    stagger,
+    trigger,
+  ]);
 
   const viewBox = hostSize ? `0 0 ${hostSize.width} ${hostSize.height}` : "0 0 600 200";
   const centreX = hostSize ? hostSize.width / 2 : 300;
@@ -373,21 +430,7 @@ export function StrokeText({
         markBox.width * 0.55
       )
     : null;
-  const outlineSequenceSeconds = letterSequenceSeconds(drawDuration, stagger, characters.length);
-  const fillEnabled = fillMode !== "none";
   const useHatchFill = fillMode === "hatch" && sketch.fillTexture === "hatch";
-  const fillDuration = Math.max(0.4, drawDuration * 0.5);
-  const fillCompletionSeconds = !fillEnabled
-    ? outlineSequenceSeconds
-    : useHatchFill
-      ? outlineSequenceSeconds + fillDelay + hatchSequenceSeconds(hatchStrokes.length)
-      : outlineSequenceSeconds + fillDelay + fillDuration;
-  // Let the graphite settle before the red pen makes its correction. The
-  // circle used to key only off the outline, which made it look like it was
-  // jumping in front of an unfinished shade.
-  const correctionDelayMs = Math.round(
-    (fillCompletionSeconds + (fillEnabled ? HATCH_SETTLE_SECONDS : 0)) * 1000
-  );
   return (
     <span
       ref={rootRef}
@@ -595,27 +638,23 @@ export function StrokeText({
                   strokeLinejoin="round"
                 >
                   <path
+                    data-correction-loop
                     d={marks.loop}
                     pathLength={1}
                     style={{
                       strokeDasharray: 1,
-                      animation: `stroke-correction-draw ${CORRECTION_DRAW_MS}ms ease-out both`,
-                      animationDelay: `${correctionDelayMs}ms`,
+                      strokeDashoffset: 1,
                     }}
                   />
                   {[marks.crossA, marks.crossB].map((stroke, index) => (
                     <path
                       key={index}
+                      data-correction-cross
                       d={stroke}
                       pathLength={1}
                       style={{
                         strokeDasharray: 1,
-                        animation: `stroke-correction-draw ${CORRECTION_CROSS_MS}ms ease-out both`,
-                        animationDelay: `${
-                          correctionDelayMs +
-                          CORRECTION_CROSS_LEAD_MS +
-                          CORRECTION_CROSS_DELAY_MS * index
-                        }ms`,
+                        strokeDashoffset: 1,
                       }}
                     />
                   ))}
