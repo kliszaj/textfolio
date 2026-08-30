@@ -118,7 +118,11 @@ describe("the sketch stage holds its correction", () => {
     // Otherwise the loop and the X are still drawing when the stage ends, and
     // the correction is never actually seen.
     const sketch = HEADLINE_INTRO_STEPS.find((step) => step.phase === "sketch")!;
-    const correction = correctionSequenceMs(DEFAULT_STROKE_TEXT_CONFIG.drawDuration);
+    const correction = correctionSequenceMs(
+      DEFAULT_STROKE_TEXT_CONFIG.drawDuration,
+      DEFAULT_STROKE_TEXT_CONFIG.stagger,
+      6
+    );
     expect(correction).toBeLessThan(sketch.durationMs);
     expect(sketch.durationMs - correction).toBeGreaterThanOrEqual(300);
   });

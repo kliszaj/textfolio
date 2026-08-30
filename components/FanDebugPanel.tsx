@@ -576,7 +576,7 @@ export function FanDebugPanel({
 
           <label className="block leading-tight" htmlFor="stroke-draw-duration">
             Draw duration: {strokeConfig.drawDuration.toFixed(1)}s
-            <input id="stroke-draw-duration" type="range" min={0.2} max={4} step={0.1} value={strokeConfig.drawDuration} onChange={(event) => updateStroke("drawDuration", Number(event.target.value))} className="mt-1 w-full" />
+            <input id="stroke-draw-duration" type="range" min={0.2} max={6} step={0.1} value={strokeConfig.drawDuration} onChange={(event) => updateStroke("drawDuration", Number(event.target.value))} className="mt-1 w-full" />
           </label>
 
           <label className="block leading-tight" htmlFor="stroke-fill-delay">
@@ -593,6 +593,7 @@ export function FanDebugPanel({
             Easing
             <select id="stroke-ease" value={strokeConfig.ease} onChange={(event) => updateStroke("ease", event.target.value)} className="mt-1 w-full rounded border border-white/30 bg-[#252322] px-2 py-1">
               <option value="power2.out">Power 2 out</option>
+              <option value="power1.inOut">Pencil pressure</option>
               <option value="expo.out">Expo out</option>
               <option value="power3.out">Power 3 out</option>
               <option value="linear">Linear</option>
@@ -629,6 +630,7 @@ export function FanDebugPanel({
             <select id="stroke-fill-mode" value={strokeConfig.fillMode} onChange={(event) => updateStroke("fillMode", event.target.value as StrokeTextConfig["fillMode"])} className="mt-1 w-full rounded border border-white/30 bg-[#252322] px-2 py-1">
               <option value="fade">Fade</option>
               <option value="wipe">Wipe</option>
+              <option value="hatch">Pencil hatching</option>
               <option value="none">None</option>
             </select>
           </label>

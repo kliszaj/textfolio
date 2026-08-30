@@ -10,6 +10,7 @@ import {
   CORRECTION_CROSS_MS,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
+  letterSequenceSeconds,
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
   STROKE_INK_LIFT_PX,
@@ -53,6 +54,26 @@ type StrokeTextProps = {
 
 type MeasuredBox = { x: number; y: number; width: number; height: number };
 
+type HatchStroke = { x1: number; y1: number; x2: number; y2: number };
+
+function hatchStrokesForBox(box: MeasuredBox | null, gap: number): HatchStroke[] {
+  if (!box) return [];
+  const overscan = gap * 1.5;
+  const start = box.x - box.height - overscan;
+  const end = box.x + box.width + box.height + overscan;
+  const rise = box.height + overscan * 2;
+  const strokes: HatchStroke[] = [];
+  for (let x = start; x <= end; x += gap * 1.3) {
+    strokes.push({
+      x1: x,
+      y1: box.y + box.height + overscan,
+      x2: x + rise,
+      y2: box.y - overscan,
+    });
+  }
+  return strokes;
+}
+
 export function StrokeText({
   text,
   strokeColor = "#A78BFA",
@@ -91,6 +112,7 @@ export function StrokeText({
   const inked = sketchColors(sketchStyle, strokeColor, fillColor);
   const hatchId = `stroke-text-hatch-${safeId}`;
   const hatchMirrorId = `stroke-text-hatch-mirror-${safeId}`;
+  const hatchClipId = `stroke-text-hatch-clip-${safeId}`;
   // Re-seeded turbulence on the shared boil beat, so the drawn line is redrawn
   // a few times a second instead of holding perfectly still.
   const boilFrame = useLineBoilFrame(SKETCH_BOIL_SEEDS.length);
@@ -105,6 +127,7 @@ export function StrokeText({
   const mirroredFillPaint =
     sketch.fillTexture === "hatch" ? `url(#${hatchMirrorId})` : inked.fillColor;
   const characters = useMemo(() => Array.from(text), [text]);
+  const hatchStrokes = useMemo(() => hatchStrokesForBox(box, hatchGap), [box, hatchGap]);
   const dash = box ? Math.max(box.width, box.height) * 4 : 4000;
   const fontStyle = useMemo<CSSProperties>(
     () => ({
@@ -191,26 +214,46 @@ export function StrokeText({
   useEffect(() => {
     const root = rootRef.current;
     if (!root || !box) return;
-    const strokes = Array.from(root.querySelectorAll<SVGTSpanElement>("[data-stroke-char]"));
-    const fills = Array.from(root.querySelectorAll<SVGTSpanElement>("[data-fill-char]"));
+    const normalStrokes = Array.from(
+      root.querySelectorAll<SVGTSpanElement>("[data-stroke-layer] [data-stroke-char]")
+    );
+    const normalFills = Array.from(
+      root.querySelectorAll<SVGTSpanElement>("[data-fill-layer] [data-fill-char]")
+    );
+    const correctionStroke = root.querySelector<SVGTextElement>("[data-correction-stroke]");
+    const correctionFill = root.querySelector<SVGTextElement>("[data-correction-fill]");
+    const strokes = normalStrokes
+      .map((stroke, index) =>
+        index === correctionIndex && correctionStroke ? correctionStroke : stroke
+      )
+      .filter((stroke) => stroke.getAttribute("stroke") !== "none");
+    const fills = normalFills
+      .map((fill, index) => (index === correctionIndex && correctionFill ? correctionFill : fill))
+      .filter((fill) => fill.getAttribute("fill") !== "none");
+    const hatchLines = Array.from(root.querySelectorAll<SVGLineElement>("[data-hatch-stroke]"));
     const wipe = wipeRectRef.current;
     if (!strokes.length) return;
     const fillEnabled = fillMode !== "none";
     const useWipe = fillEnabled && fillMode === "wipe";
+    const useHatchFill = fillEnabled && fillMode === "hatch" && sketch.fillTexture === "hatch";
     const fillDuration = Math.max(0.4, drawDuration * 0.5);
     const staggerConfig = reverse ? { each: stagger, from: "end" as const } : stagger;
-    const targets = [...strokes, ...fills, wipe].filter(Boolean);
+    const outlineEnd = letterSequenceSeconds(drawDuration, stagger, strokes.length);
+    const fillStart = outlineEnd + fillDelay;
+    const targets = [...strokes, ...fills, ...hatchLines, wipe].filter(Boolean);
 
     const setStart = () => {
       gsap.killTweensOf(targets);
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: dash });
       gsap.set(fills, { opacity: useWipe ? 1 : 0 });
+      gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 1 });
       if (wipe) gsap.set(wipe, { attr: { width: 0 } });
     };
     const setEnd = () => {
       gsap.killTweensOf(targets);
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: 0 });
       gsap.set(fills, { opacity: fillEnabled ? 1 : 0 });
+      gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 0 });
       if (wipe) gsap.set(wipe, { attr: { width: fillEnabled ? box.width : 0 } });
     };
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
@@ -227,12 +270,18 @@ export function StrokeText({
         defaults: { overwrite: "auto" },
       });
       timeline.to(strokes, { strokeDashoffset: 0, duration: drawDuration, ease, stagger: staggerConfig }, 0);
-      if (useWipe && wipe) {
-        timeline.to(wipe, { attr: { width: box.width }, duration: fillDuration, ease: "power2.inOut" }, drawDuration + fillDelay);
+      if (useHatchFill && hatchLines.length) {
+        // A pencil shade is not a mask appearing all at once. Each loose
+        // graphite stroke travels across the letter after its outline lands.
+        timeline.to(
+          hatchLines,
+          { strokeDashoffset: 0, duration: 0.24, ease: "power1.inOut", stagger: 0.012 },
+          fillStart
+        );
+      } else if (useWipe && wipe) {
+        timeline.to(wipe, { attr: { width: box.width }, duration: fillDuration, ease: "power2.inOut" }, fillStart);
       } else if (fillEnabled) {
-        // Outline first, shading promptly behind it. The wait is short because
-      // drawDuration is short, not because the gap was removed.
-      timeline.to(fills, { opacity: 1, duration: fillDuration, ease: "power2.out", stagger: staggerConfig }, drawDuration + fillDelay);
+        timeline.to(fills, { opacity: 1, duration: fillDuration, ease: "power2.out", stagger: staggerConfig }, fillStart);
       }
       return timeline;
     };
@@ -261,7 +310,7 @@ export function StrokeText({
       timeline?.kill();
       gsap.killTweensOf(targets);
     };
-  }, [box, dash, drawDuration, ease, fillDelay, fillMode, reverse, stagger, trigger]);
+  }, [box, correctionIndex, dash, drawDuration, ease, fillDelay, fillMode, reverse, sketch.fillTexture, stagger, trigger]);
 
   const viewBox = hostSize ? `0 0 ${hostSize.width} ${hostSize.height}` : "0 0 600 200";
   const centreX = hostSize ? hostSize.width / 2 : 300;
@@ -281,6 +330,8 @@ export function StrokeText({
         markBox.width * 0.55
       )
     : null;
+  const letterSequenceMs = letterSequenceSeconds(drawDuration, stagger, characters.length) * 1000;
+  const useHatchFill = fillMode === "hatch" && sketch.fillTexture === "hatch";
   return (
     <span
       ref={rootRef}
@@ -295,6 +346,15 @@ export function StrokeText({
           {fillMode === "wipe" && box && (
             <clipPath id={wipeId} clipPathUnits="userSpaceOnUse">
               <rect ref={wipeRectRef} x={box.x} y={box.y} width="0" height={box.height} />
+            </clipPath>
+          )}
+          {useHatchFill && (
+            <clipPath id={hatchClipId} clipPathUnits="userSpaceOnUse">
+              <text x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" style={fontStyle}>
+                {characters.map((character, index) => (
+                  <tspan key={`hatch-clip-${index}`}>{character}</tspan>
+                ))}
+              </text>
             </clipPath>
           )}
           {sketchFilter &&
@@ -385,7 +445,7 @@ export function StrokeText({
           // back rather than show that flash.
           style={{ opacity: hostSize ? 1 : 0, transition: "opacity 120ms ease-out" }}
         >
-        <text ref={textRef} className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
+        <text ref={textRef} data-stroke-layer className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
           {characters.map((character, index) => (
             <tspan
               data-stroke-char
@@ -396,7 +456,7 @@ export function StrokeText({
             </tspan>
           ))}
         </text>
-        <text className={styles.fill} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill={fillPaint} stroke="none" style={fontStyle} clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}>
+        <text data-fill-layer className={styles.fill} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill={useHatchFill ? "none" : fillPaint} stroke="none" style={fontStyle} clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}>
           {characters.map((character, index) => (
             <tspan
               data-fill-char
@@ -408,6 +468,25 @@ export function StrokeText({
           ))}
         </text>
 
+          {useHatchFill && (
+            <g data-testid="stroke-text-hatch-fill" clipPath={`url(#${hatchClipId})`}>
+              {hatchStrokes.map((stroke, index) => (
+                <line
+                  key={`hatch-stroke-${index}`}
+                  data-hatch-stroke
+                  {...stroke}
+                  pathLength={1}
+                  stroke={inked.fillColor}
+                  strokeWidth={Math.max(0.7, hatchGap * 0.16)}
+                  strokeLinecap="round"
+                  opacity="0.72"
+                  strokeDasharray={1}
+                  strokeDashoffset={1}
+                />
+              ))}
+            </g>
+          )}
+
           {markBox && correctionIndex !== undefined && (
             <g data-testid="stroke-text-correction">
               {/* The letter drawn back to front in its own place -- outline
@@ -415,11 +494,12 @@ export function StrokeText({
                   way round inside a reversed outline. */}
               <g transform={mirrorAboutBox(markBox)}>
                 <text
+                  data-correction-fill
                   data-fill-char
                   x={markBox.x}
                   y={centreY}
                   dominantBaseline="central"
-                  fill={mirroredFillPaint}
+                  fill={useHatchFill ? "none" : mirroredFillPaint}
                   stroke="none"
                   style={fontStyle}
                   clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}
@@ -427,6 +507,7 @@ export function StrokeText({
                   {characters[correctionIndex]}
                 </text>
                 <text
+                  data-correction-stroke
                   data-stroke-char
                   x={markBox.x}
                   y={centreY}
@@ -460,7 +541,7 @@ export function StrokeText({
                     style={{
                       strokeDasharray: 1,
                       animation: `stroke-correction-draw ${CORRECTION_DRAW_MS}ms ease-out both`,
-                      animationDelay: `${drawDuration * 1000}ms`,
+                      animationDelay: `${letterSequenceMs}ms`,
                     }}
                   />
                   {[marks.crossA, marks.crossB].map((stroke, index) => (
@@ -472,7 +553,7 @@ export function StrokeText({
                         strokeDasharray: 1,
                         animation: `stroke-correction-draw ${CORRECTION_CROSS_MS}ms ease-out both`,
                         animationDelay: `${
-                          drawDuration * 1000 +
+                          letterSequenceMs +
                           CORRECTION_CROSS_LEAD_MS +
                           CORRECTION_CROSS_DELAY_MS * index
                         }ms`,

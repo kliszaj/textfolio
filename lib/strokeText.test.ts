@@ -13,7 +13,7 @@ import {
 import type { StrokeTextFillMode, StrokeTextTrigger } from "./strokeText";
 
 const TRIGGERS: StrokeTextTrigger[] = ["mount", "hover", "scroll", "loop"];
-const FILL_MODES: StrokeTextFillMode[] = ["fade", "wipe", "none"];
+const FILL_MODES: StrokeTextFillMode[] = ["fade", "wipe", "hatch", "none"];
 
 test("the default trigger and fill mode are ones the component handles", () => {
   expect(TRIGGERS).toContain(DEFAULT_STROKE_TEXT_CONFIG.trigger);
@@ -84,6 +84,7 @@ describe("sketch styles", () => {
 describe("pencil fill and boil", () => {
   test("pencil shades its fill with drawn strokes, not flat colour", () => {
     expect(getSketchSpec("pencil").fillTexture).toBe("hatch");
+    expect(DEFAULT_STROKE_TEXT_CONFIG.fillMode).toBe("hatch");
   });
 
   test("clean stays a flat fill", () => {

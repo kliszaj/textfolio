@@ -1,12 +1,24 @@
+import { DEFAULT_STROKE_TEXT_CONFIG, correctionSequenceMs } from "./strokeText";
+
 // The headline tells the story of the work on load: sketched, prototyped in
 // ascii, warped into shape, then finished. Each phase hands over to the next
 // when it has had its time.
 export type HeadlineIntroPhase = "sketch" | "ascii" | "warp" | "final";
 
+const SKETCH_SETTLE_MS = 900;
+const SKETCH_INTRO_DURATION_MS = Math.max(
+  6200,
+  correctionSequenceMs(
+    DEFAULT_STROKE_TEXT_CONFIG.drawDuration,
+    DEFAULT_STROKE_TEXT_CONFIG.stagger,
+    6
+  ) + SKETCH_SETTLE_MS
+);
+
 export const HEADLINE_INTRO_STEPS: { phase: HeadlineIntroPhase; durationMs: number }[] = [
   // Long enough for the stroke to draw itself, take its fill, and be marked
   // up in red -- see the test pinning it against correctionSequenceMs.
-  { phase: "sketch", durationMs: 4200 },
+  { phase: "sketch", durationMs: SKETCH_INTRO_DURATION_MS },
   // Long enough for the ascii treatment to arrive, run its full sweep, and
   // settle before handing over.
   { phase: "ascii", durationMs: 2700 },

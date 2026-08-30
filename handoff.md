@@ -24,6 +24,16 @@ machine font name `"PP Frama"`, in headline CSS, SVG, and canvas code. Warp and
 ASCII redraw their rasterised textures after `document.fonts.ready`, preventing
 a fallback font from being captured during a deployed visitor's first paint.
 
+**Graphite sketch treatment (2026-08-30):** The opening StrokeText treatment
+now draws all six outlines in sequence (2.8s each, 120ms stagger) before any
+shading starts. Its default fill is not a static pattern: clipped diagonal SVG
+lines animate one-by-one as pencil hatching. The sketch phase dynamically
+waits for its correction marks, with a 6.2s minimum. Settings exposes the
+longer draw range, `Pencil pressure` easing, and `Pencil hatching` fill. For
+genuinely human letterforms, use a straight, high-resolution scan/photo of the
+actual word as an SVG/transparent asset; texture alone can only roughen the
+typed PP Frama shape.
+
 **Mobile interaction (2026-08-30):** coarse-pointer devices mount
 `MobilePortfolio`, not the fixed desktop paper stack. It is a native vertical
 scroll: full hero first, then every case study as a full-width tappable sheet.

@@ -1,5 +1,5 @@
 export type StrokeTextTrigger = "mount" | "hover" | "scroll" | "loop";
-export type StrokeTextFillMode = "fade" | "wipe" | "none";
+export type StrokeTextFillMode = "fade" | "wipe" | "hatch" | "none";
 export type StrokeTextSketchStyle = "clean" | "pencil";
 
 export type StrokeTextConfig = {
@@ -23,12 +23,12 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
   strokeColor: "#FFFFFF",
   fillColor: "#FFFFFF",
   strokeWidth: 2.6,
-  drawDuration: 2,
-  fillDelay: 0.12,
-  stagger: 0.05,
-  ease: "expo.out",
+  drawDuration: 2.8,
+  fillDelay: 0.38,
+  stagger: 0.12,
+  ease: "power1.inOut",
   trigger: "mount",
-  fillMode: "fade",
+  fillMode: "hatch",
   sketchStyle: "pencil",
   fontSize: 220,
   fontWeight: 900,
@@ -134,12 +134,25 @@ export const CORRECTION_CROSS_LEAD_MS = 580;
 // And its second stroke follows its first.
 export const CORRECTION_CROSS_DELAY_MS = 320;
 
+export function letterSequenceSeconds(
+  drawDurationSeconds: number,
+  staggerSeconds: number,
+  characterCount: number
+): number {
+  return Math.max(0, drawDurationSeconds) +
+    Math.max(0, staggerSeconds) * Math.max(0, characterCount - 1);
+}
+
 // How long the whole correction takes from the moment the letters start
 // drawing. The stage that holds it has to be longer than this, or the pen is
 // still moving when the treatment hands over.
-export function correctionSequenceMs(drawDurationSeconds: number): number {
+export function correctionSequenceMs(
+  drawDurationSeconds: number,
+  staggerSeconds = 0,
+  characterCount = 1
+): number {
   return (
-    drawDurationSeconds * 1000 +
+    letterSequenceSeconds(drawDurationSeconds, staggerSeconds, characterCount) * 1000 +
     CORRECTION_CROSS_LEAD_MS +
     CORRECTION_CROSS_DELAY_MS +
     CORRECTION_CROSS_MS
