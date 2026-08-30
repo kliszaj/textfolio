@@ -389,16 +389,30 @@ export function FanDebugPanel({
           />
         </label>
 
-        <label className="block leading-tight" htmlFor="ascii-plane-height">
-          Plane height: {asciiConfig.planeBaseHeight.toFixed(1)}
+        <label className="block leading-tight" htmlFor="ascii-plane-scale">
+          Plane scale: {asciiConfig.planeScale.toFixed(2)}x
           <input
-            id="ascii-plane-height"
+            id="ascii-plane-scale"
             type="range"
-            min={4}
-            max={14}
-            step={0.5}
-            value={asciiConfig.planeBaseHeight}
-            onChange={(event) => updateAscii("planeBaseHeight", Number(event.target.value))}
+            min={0.5}
+            max={2}
+            step={0.05}
+            value={asciiConfig.planeScale}
+            onChange={(event) => updateAscii("planeScale", Number(event.target.value))}
+            className="mt-1 w-full"
+          />
+        </label>
+
+        <label className="block leading-tight" htmlFor="ascii-tilt">
+          Cursor tilt: {asciiConfig.tiltStrength.toFixed(2)}
+          <input
+            id="ascii-tilt"
+            type="range"
+            min={0}
+            max={0.9}
+            step={0.01}
+            value={asciiConfig.tiltStrength}
+            onChange={(event) => updateAscii("tiltStrength", Number(event.target.value))}
             className="mt-1 w-full"
           />
         </label>
@@ -578,6 +592,22 @@ export function FanDebugPanel({
               <option value="hover">On hover</option>
               <option value="scroll">On scroll</option>
               <option value="loop">Loop</option>
+            </select>
+          </label>
+
+          <label className="block leading-tight" htmlFor="stroke-sketch-style">
+            Sketch style
+            <select
+              id="stroke-sketch-style"
+              value={strokeConfig.sketchStyle}
+              onChange={(event) =>
+                updateStroke("sketchStyle", event.target.value as StrokeTextConfig["sketchStyle"])
+              }
+              className="mt-1 w-full rounded border border-white/30 bg-[#252322] px-2 py-1"
+            >
+              <option value="clean">Clean</option>
+              <option value="pencil">Pencil</option>
+              <option value="blueprint">Blueprint</option>
             </select>
           </label>
 

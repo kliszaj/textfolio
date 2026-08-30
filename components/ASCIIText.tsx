@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { DEFAULT_ASCII_TEXT_CONFIG, pickAsciiChip } from "@/lib/asciiText";
+import {
+  ASCII_CAMERA_DISTANCE,
+  ASCII_CAMERA_FOV_DEG,
+  ASCII_TILT_Y_RATIO,
+  DEFAULT_ASCII_TEXT_CONFIG,
+  chipForBrightness,
+  planeHeightForFontSize,
+} from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import styles from "./ASCIIText.module.css";
 
@@ -21,15 +28,16 @@ void main() {
 
 const fragmentShader = `
 varying vec2 vUv;
-uniform float uTime;
 uniform sampler2D uTexture;
 void main() {
-  float time = uTime;
-  vec2 pos = vUv;
-  float r = texture2D(uTexture, pos + cos(time * 2.0 - time + pos.x) * 0.01).r;
-  float g = texture2D(uTexture, pos + tan(time * 0.5 + pos.x - time) * 0.01).g;
-  float b = texture2D(uTexture, pos - cos(time * 2.0 + time + pos.y) * 0.01).b;
-  float a = texture2D(uTexture, pos).a;
+  // A fixed chromatic split. It fringes the glyph edges, which is what gives
+  // the depth ramp an edge to colour -- driving it off time instead made the
+  // whole treatment shimmer.
+  vec2 split = vec2(0.006, 0.0);
+  float r = texture2D(uTexture, vUv + split).r;
+  float g = texture2D(uTexture, vUv).g;
+  float b = texture2D(uTexture, vUv - split).b;
+  float a = texture2D(uTexture, vUv).a;
   gl_FragColor = vec4(r, g, b, a);
 }`;
 
@@ -43,7 +51,8 @@ export function ASCIIText({
   enableWaves = DEFAULT_ASCII_TEXT_CONFIG.enableWaves,
   asciiFontSize = DEFAULT_ASCII_TEXT_CONFIG.asciiFontSize,
   textFontSize = DEFAULT_ASCII_TEXT_CONFIG.textFontSize,
-  planeBaseHeight = DEFAULT_ASCII_TEXT_CONFIG.planeBaseHeight,
+  planeScale = DEFAULT_ASCII_TEXT_CONFIG.planeScale,
+  tiltStrength = DEFAULT_ASCII_TEXT_CONFIG.tiltStrength,
   randomizeGlyphColors = DEFAULT_ASCII_TEXT_CONFIG.randomizeGlyphColors,
 }: ASCIITextProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -86,14 +95,45 @@ export function ASCIIText({
       host.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 1, 1000);
-      camera.position.z = 30;
+      const camera = new THREE.PerspectiveCamera(
+        ASCII_CAMERA_FOV_DEG,
+        rect.width / rect.height,
+        1,
+        1000
+      );
+      camera.position.z = ASCII_CAMERA_DISTANCE;
       let frame = 0;
       let mesh: InstanceType<typeof THREE.Mesh> | undefined;
       let material: InstanceType<typeof THREE.ShaderMaterial> | undefined;
       let texture: InstanceType<typeof THREE.CanvasTexture> | undefined;
       let characterWidth = asciiFontSize * 0.6;
+      const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
       const colorSeed = Math.floor(Math.random() * 1_000_000);
+
+      // The original font's rendered size, straight off the fallback span --
+      // it already carries --headline-font-size, so this tracks the real
+      // headline at any viewport rather than assuming one.
+      const measureTargetFontSize = () => {
+        const fallback = host.querySelector(`.${styles.fallback}`);
+        if (!fallback) return 0;
+        return parseFloat(window.getComputedStyle(fallback).fontSize) || 0;
+      };
+
+      // Sized to match the font rather than to a fixed world height, because
+      // the headline grows with the viewport while its container stops at a
+      // clamp -- so the ratio between them is not constant.
+      const applyPlaneScale = () => {
+        if (!mesh) return;
+        const size = host.getBoundingClientRect();
+        const height = planeHeightForFontSize({
+          textureCanvasHeightPx: textCanvas.height,
+          hostHeightPx: size.height,
+          targetFontSizePx: measureTargetFontSize(),
+          textureFontSizePx: textFontSize,
+        });
+        const scale = height * planeScale;
+        mesh.scale.set(scale, scale, 1);
+      };
 
       const createTextTexture = () => {
         textContext.font = `900 ${textFontSize}px "PP Frama", sans-serif`;
@@ -116,8 +156,11 @@ export function ASCIIText({
           transparent: true,
           uniforms: { uTime: { value: 0 }, uTexture: { value: texture }, uEnableWaves: { value: enableWaves ? 1 : 0 } },
         });
-        mesh = new THREE.Mesh(new THREE.PlaneGeometry(planeBaseHeight * aspect, planeBaseHeight, 36, 36), material);
+        // Built at unit height and scaled, so matching the font on resize
+        // costs a scale write rather than a geometry rebuild.
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(aspect, 1, 36, 36), material);
         scene.add(mesh);
+        applyPlaneScale();
       };
 
       const resize = () => {
@@ -135,6 +178,7 @@ export function ASCIIText({
         characterWidth = outputContext.measureText("M").width || asciiFontSize * 0.6;
         sampleCanvas.width = Math.max(1, Math.floor(size.width / characterWidth));
         sampleCanvas.height = Math.max(1, Math.floor(size.height / asciiFontSize));
+        applyPlaneScale();
       };
 
       const asciify = () => {
@@ -160,8 +204,12 @@ export function ASCIIText({
             const character = CHARACTERS[Math.floor(brightness * (CHARACTERS.length - 1))];
             output += character;
             if (randomizeGlyphColors) {
+              // Same brightness that chose the glyph also chooses its colour,
+              // so ink and hue describe one surface. The hash is a per-cell
+              // nudge, stable across frames, that scatters the edge colours
+              // without touching the lit face.
               const noise = Math.sin(x * 12.9898 + y * 78.233 + colorSeed) * 43758.5453;
-              const colorChip = pickAsciiChip(noise - Math.floor(noise));
+              const colorChip = chipForBrightness(brightness, noise - Math.floor(noise));
               outputContext.fillStyle = colorChip.background;
               outputContext.fillRect(x * characterWidth, y * asciiFontSize, characterWidth, asciiFontSize);
               outputContext.fillStyle = colorChip.foreground;
@@ -173,8 +221,19 @@ export function ASCIIText({
         if (!randomizeGlyphColors) pre.textContent = output;
       };
 
+      const onPointerMove = (event: PointerEvent) => {
+        const bounds = host.getBoundingClientRect();
+        pointer.targetX = ((event.clientX - bounds.left) / bounds.width - 0.5) * tiltStrength;
+        pointer.targetY =
+          ((event.clientY - bounds.top) / bounds.height - 0.5) * -tiltStrength * ASCII_TILT_Y_RATIO;
+      };
+
       const render = (time: number) => {
         if (disposed || !mesh || !material) return;
+        pointer.x += (pointer.targetX - pointer.x) * 0.05;
+        pointer.y += (pointer.targetY - pointer.y) * 0.05;
+        mesh.rotation.x = pointer.y;
+        mesh.rotation.y = pointer.x;
         material.uniforms.uTime.value = time * 0.001;
         renderer.render(scene, camera);
         asciify();
@@ -183,6 +242,7 @@ export function ASCIIText({
 
       buildMesh();
       resize();
+      host.addEventListener("pointermove", onPointerMove);
       const observer = new ResizeObserver(resize);
       observer.observe(host);
       host.dataset.ready = "true";
@@ -190,6 +250,7 @@ export function ASCIIText({
       cleanup = () => {
         cancelAnimationFrame(frame);
         observer.disconnect();
+        host.removeEventListener("pointermove", onPointerMove);
         mesh?.geometry.dispose();
         material?.dispose();
         texture?.dispose();
@@ -206,7 +267,7 @@ export function ASCIIText({
       host.dataset.ready = "false";
       cleanup?.();
     };
-  }, [asciiFontSize, enableWaves, planeBaseHeight, randomizeGlyphColors, text, textFontSize]);
+  }, [asciiFontSize, enableWaves, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
 
   return (
     <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" role="img" aria-label={text}>

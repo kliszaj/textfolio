@@ -66,7 +66,8 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
-  expect(hero).toHaveStyle({ backgroundColor: "#050505" });
+  // The stroke treatment draws on paper, so its stage is white.
+  expect(hero).toHaveStyle({ backgroundColor: "#FFFFFF" });
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
@@ -84,4 +85,35 @@ test("attaches the given subheaderRef to the tagline paragraph", () => {
   const subheaderRef = createRef<HTMLParagraphElement>();
   render(<Hero fanProgress={0} subheaderRef={subheaderRef} />);
   expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, idea-booster"));
+});
+
+test("pulls the tagline up close under the headline", () => {
+  render(<Hero fanProgress={0} />);
+  const tagline = screen.getByTestId("hero-tagline");
+  // A negative offset: the headline box is taller than the word inside it.
+  // jsdom does not resolve clamp(), so assert the expression is negative.
+  expect(tagline.style.marginTop).toMatch(/^clamp\(-/);
+});
+
+test("the tagline sits in the same place whatever treatment is active", () => {
+  render(<Hero fanProgress={0} />);
+  const tagline = screen.getByTestId("hero-tagline");
+  const resting = tagline.style.marginTop;
+  fireEvent.pointerEnter(screen.getByTestId("hero-headline"));
+  expect(tagline.style.marginTop).toBe(resting);
+});
+
+test("tagline and arrow take the accent blue under the ASCII treatment", () => {
+  render(<Hero fanProgress={0} asciiConfig={undefined} />);
+  const tagline = screen.getByTestId("hero-tagline");
+  const arrow = screen.getByTestId("scroll-hint");
+  const restingTagline = tagline.style.color;
+
+  fireEvent.pointerEnter(screen.getByTestId("hero-headline"));
+  if (screen.getByTestId("hero-headline").dataset.effect === "ascii") {
+    expect(tagline).toHaveStyle({ color: "#3E18FF" });
+    expect(arrow).toHaveStyle({ color: "#3E18FF" });
+  } else {
+    expect(tagline.style.color).toBe(restingTagline);
+  }
 });

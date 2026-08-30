@@ -4,7 +4,12 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import type { CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import type { StrokeTextFillMode, StrokeTextTrigger } from "@/lib/strokeText";
+import { getSketchSpec, sketchColors } from "@/lib/strokeText";
+import type {
+  StrokeTextFillMode,
+  StrokeTextSketchStyle,
+  StrokeTextTrigger,
+} from "@/lib/strokeText";
 import styles from "./StrokeText.module.css";
 
 if (typeof window !== "undefined") gsap.registerPlugin(ScrollTrigger);
@@ -20,7 +25,8 @@ type StrokeTextProps = {
   ease?: string;
   trigger?: StrokeTextTrigger;
   fillMode?: StrokeTextFillMode;
-  fontSize?: number;
+  sketchStyle?: StrokeTextSketchStyle;
+  fontSize?: number | string;
   fontWeight?: number;
   letterSpacing?: number;
   reverse?: boolean;
@@ -41,7 +47,8 @@ export function StrokeText({
   ease = "power2.out",
   trigger = "mount",
   fillMode = "wipe",
-  fontSize = 128,
+  sketchStyle = "pencil",
+  fontSize = "var(--headline-font-size, 128px)",
   fontWeight = 800,
   letterSpacing = -4,
   reverse = false,
@@ -52,12 +59,26 @@ export function StrokeText({
   const textRef = useRef<SVGTextElement>(null);
   const wipeRectRef = useRef<SVGRectElement>(null);
   const [box, setBox] = useState<MeasuredBox | null>(null);
+  // The svg's user units are kept equal to css pixels, so the text renders at
+  // exactly the size the headline font would. Letting preserveAspectRatio
+  // scale an ink-hugging viewBox instead made the size a function of the
+  // container's aspect, which is why this treatment never matched the others.
+  const [hostSize, setHostSize] = useState<{ width: number; height: number } | null>(null);
   const rawId = useId();
-  const wipeId = `stroke-text-wipe-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const wipeId = `stroke-text-wipe-${safeId}`;
+  const sketchId = `stroke-text-sketch-${safeId}`;
+  const sketch = getSketchSpec(sketchStyle);
+  const inked = sketchColors(sketchStyle, strokeColor, fillColor);
+  const sketchFilter = sketch.wobbleScale > 0 ? `url(#${sketchId})` : undefined;
   const characters = useMemo(() => Array.from(text), [text]);
-  const dash = Math.max(fontSize * 7, 200);
+  const dash = box ? Math.max(box.width, box.height) * 4 : 4000;
   const fontStyle = useMemo<CSSProperties>(
-    () => ({ fontSize: `${fontSize}px`, fontWeight, letterSpacing: `${letterSpacing}px` }),
+    () => ({
+      fontSize: typeof fontSize === "number" ? `${fontSize}px` : fontSize,
+      fontWeight,
+      letterSpacing: `${letterSpacing}px`,
+    }),
     [fontSize, fontWeight, letterSpacing]
   );
 
@@ -70,7 +91,7 @@ export function StrokeText({
       try {
         const bounds = textRef.current.getBBox();
         if (!bounds.width) return;
-        const padding = Math.max(strokeWidth, fontSize * 0.1);
+        const padding = Math.max(strokeWidth, bounds.height * 0.12);
         const next = {
           x: bounds.x - padding,
           y: bounds.y - padding,
@@ -89,7 +110,27 @@ export function StrokeText({
     measure();
     document.fonts?.ready.then(measure).catch(() => {});
     return () => { cancelled = true; };
-  }, [characters, fontSize, fontWeight, letterSpacing, strokeWidth]);
+  }, [characters, fontSize, fontWeight, letterSpacing, strokeWidth, hostSize]);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof ResizeObserver === "undefined") return;
+    const read = () => {
+      const rect = root.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      setHostSize((previous) =>
+        previous &&
+        Math.abs(previous.width - rect.width) < 0.5 &&
+        Math.abs(previous.height - rect.height) < 0.5
+          ? previous
+          : { width: rect.width, height: rect.height }
+      );
+    };
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -164,7 +205,9 @@ export function StrokeText({
     };
   }, [box, dash, drawDuration, ease, fillDelay, fillMode, reverse, stagger, trigger]);
 
-  const viewBox = box ? `${box.x} ${box.y} ${box.width} ${box.height}` : `0 ${-fontSize} 600 ${fontSize * 1.3}`;
+  const viewBox = hostSize ? `0 0 ${hostSize.width} ${hostSize.height}` : "0 0 600 200";
+  const centreX = hostSize ? hostSize.width / 2 : 300;
+  const centreY = hostSize ? hostSize.height / 2 : 100;
   return (
     <span
       ref={rootRef}
@@ -175,15 +218,72 @@ export function StrokeText({
       data-testid="stroke-text"
     >
       <svg className={styles.svg} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-        {fillMode === "wipe" && box && (
-          <defs><clipPath id={wipeId} clipPathUnits="userSpaceOnUse"><rect ref={wipeRectRef} x={box.x} y={box.y} width="0" height={box.height} /></clipPath></defs>
-        )}
-        <text ref={textRef} className={styles.stroke} x="0" y="0" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
+        <defs>
+          {fillMode === "wipe" && box && (
+            <clipPath id={wipeId} clipPathUnits="userSpaceOnUse">
+              <rect ref={wipeRectRef} x={box.x} y={box.y} width="0" height={box.height} />
+            </clipPath>
+          )}
+          {sketchFilter && (
+            <filter
+              id={sketchId}
+              x="-12%"
+              y="-12%"
+              width="124%"
+              height="124%"
+              filterUnits="objectBoundingBox"
+              primitiveUnits="userSpaceOnUse"
+              colorInterpolationFilters="sRGB"
+            >
+              {/* The outline wanders off true, the way a drawn line does. */}
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency={sketch.wobbleFrequency}
+                numOctaves={sketch.wobbleOctaves}
+                seed="7"
+                result="wander"
+              />
+              <feDisplacementMap
+                in="SourceGraphic"
+                in2="wander"
+                scale={sketch.wobbleScale}
+                xChannelSelector="R"
+                yChannelSelector="G"
+                result="drawn"
+              />
+              {sketch.grainFrequency > 0 ? (
+                <>
+                  {/* Much finer noise, cut into the alpha so the ink breaks up
+                      across the paper instead of sitting flat. */}
+                  <feTurbulence
+                    type="fractalNoise"
+                    baseFrequency={sketch.grainFrequency}
+                    numOctaves="2"
+                    seed="11"
+                    result="tooth"
+                  />
+                  <feColorMatrix
+                    in="tooth"
+                    type="matrix"
+                    values={`0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 ${sketch.grainStrength} ${
+                      1 - sketch.grainStrength
+                    }`}
+                    result="graphite"
+                  />
+                  <feComposite in="drawn" in2="graphite" operator="in" />
+                </>
+              ) : null}
+            </filter>
+          )}
+        </defs>
+        <g filter={sketchFilter}>
+        <text ref={textRef} className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
           {characters.map((character, index) => <tspan data-stroke-char key={`stroke-${index}`}>{character}</tspan>)}
         </text>
-        <text className={styles.fill} x="0" y="0" fill={fillColor} stroke="none" style={fontStyle} clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}>
+        <text className={styles.fill} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill={inked.fillColor} stroke="none" style={fontStyle} clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}>
           {characters.map((character, index) => <tspan data-fill-char key={`fill-${index}`}>{character}</tspan>)}
         </text>
+        </g>
       </svg>
     </span>
   );

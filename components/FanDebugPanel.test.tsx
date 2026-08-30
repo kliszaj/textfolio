@@ -119,7 +119,8 @@ test("starts on the ASCII text settings button and exposes its controls", () => 
   expect(screen.getByRole("tab", { name: "ASCII Text" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByTestId("ascii-text-settings")).toBeInTheDocument();
   expect(screen.getByLabelText(/ASCII glyph size/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/Plane height/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Plane scale/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Cursor tilt/i)).toBeInTheDocument();
 });
 
 test("uses the requested ASCII defaults", () => {
@@ -127,7 +128,8 @@ test("uses the requested ASCII defaults", () => {
     enableWaves: false,
     asciiFontSize: 12,
     textFontSize: 340,
-    planeBaseHeight: 13,
+    planeScale: 1,
+    tiltStrength: 0.3,
     randomizeGlyphColors: true,
     // The stage holds one colour so it matches the reference; only the glyph
     // cells vary.
@@ -271,4 +273,31 @@ test("moving the max tilt slider updates the cap", () => {
   openStackControls();
   fireEvent.change(screen.getByLabelText(/Max tilt/i), { target: { value: "4" } });
   expect(onConfigChange).toHaveBeenCalledWith({ ...config, maxTiltDegrees: 4 });
+});
+
+test("the plane scale defaults to an exact match with the original font", () => {
+  // 1x means the ascii headline renders at the size the font itself would.
+  expect(DEFAULT_ASCII_TEXT_CONFIG.planeScale).toBe(1);
+});
+
+test("exposes the plane scale and cursor tilt controls", () => {
+  const { onAsciiConfigChange } = renderPanel();
+  fireEvent.change(screen.getByLabelText(/Plane scale/i), { target: { value: "1.2" } });
+  expect(onAsciiConfigChange).toHaveBeenCalledWith({ ...DEFAULT_ASCII_TEXT_CONFIG, planeScale: 1.2 });
+
+  fireEvent.change(screen.getByLabelText(/Cursor tilt/i), { target: { value: "0.4" } });
+  expect(onAsciiConfigChange).toHaveBeenCalledWith({ ...DEFAULT_ASCII_TEXT_CONFIG, tiltStrength: 0.4 });
+});
+
+test("exposes the stroke sketch style, defaulting to pencil", () => {
+  const { onStrokeConfigChange } = renderPanel();
+  fireEvent.click(screen.getByRole("tab", { name: "Stroke Text" }));
+  const select = screen.getByLabelText(/Sketch style/i);
+  expect(select).toHaveValue("pencil");
+
+  fireEvent.change(select, { target: { value: "blueprint" } });
+  expect(onStrokeConfigChange).toHaveBeenCalledWith({
+    ...DEFAULT_STROKE_TEXT_CONFIG,
+    sketchStyle: "blueprint",
+  });
 });

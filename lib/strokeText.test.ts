@@ -1,4 +1,4 @@
-import { DEFAULT_STROKE_TEXT_CONFIG } from "./strokeText";
+import { DEFAULT_STROKE_TEXT_CONFIG, getSketchSpec, sketchColors } from "./strokeText";
 import type { StrokeTextFillMode, StrokeTextTrigger } from "./strokeText";
 
 const TRIGGERS: StrokeTextTrigger[] = ["mount", "hover", "scroll", "loop"];
@@ -28,4 +28,49 @@ test("the fill lands after the stroke has started drawing", () => {
 
 test("names a gsap easing function", () => {
   expect(DEFAULT_STROKE_TEXT_CONFIG.ease).toMatch(/^[a-z0-9]+(\.[a-z]+)?$/i);
+});
+
+describe("sketch styles", () => {
+  test("defaults to pencil, the look that was asked for", () => {
+    expect(DEFAULT_STROKE_TEXT_CONFIG.sketchStyle).toBe("pencil");
+  });
+
+  test("clean is genuinely clean: no wander, no grain", () => {
+    const spec = getSketchSpec("clean");
+    expect(spec.wobbleScale).toBe(0);
+    expect(spec.grainFrequency).toBe(0);
+  });
+
+  test("pencil wanders further and breaks up more than blueprint", () => {
+    // A blueprint is draughted; a pencil sketch is not.
+    expect(getSketchSpec("pencil").wobbleScale).toBeGreaterThan(
+      getSketchSpec("blueprint").wobbleScale
+    );
+    expect(getSketchSpec("pencil").grainStrength).toBeGreaterThan(
+      getSketchSpec("blueprint").grainStrength
+    );
+  });
+
+  test("the grain is finer than the wander, or it reads as fuzz not graphite", () => {
+    for (const style of ["pencil", "blueprint"] as const) {
+      const spec = getSketchSpec(style);
+      expect(spec.grainFrequency).toBeGreaterThan(spec.wobbleFrequency * 10);
+    }
+  });
+
+  test("pencil and blueprint bring their own palettes", () => {
+    for (const style of ["pencil", "blueprint"] as const) {
+      const { strokeColor, fillColor } = sketchColors(style, "#123456", "#654321");
+      expect(strokeColor).not.toBe("#123456");
+      expect(fillColor).not.toBe("#654321");
+      expect(strokeColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    }
+  });
+
+  test("clean leaves the configured colours alone", () => {
+    expect(sketchColors("clean", "#123456", "#654321")).toEqual({
+      strokeColor: "#123456",
+      fillColor: "#654321",
+    });
+  });
 });
