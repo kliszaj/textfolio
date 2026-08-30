@@ -317,7 +317,14 @@ export function StrokeText({
             </pattern>
           )}
         </defs>
-        <g filter={sketchFilter} transform={`translate(0, ${inkOffset})`}>
+        <g
+          filter={sketchFilter}
+          transform={`translate(0, ${inkOffset})`}
+          // Until the host is measured the viewBox is a placeholder, which
+          // would render the letters at the wrong scale for a frame. Hold them
+          // back rather than show that flash.
+          style={{ opacity: hostSize ? 1 : 0, transition: "opacity 120ms ease-out" }}
+        >
         <text ref={textRef} className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
           {characters.map((character, index) => <tspan data-stroke-char key={`stroke-${index}`}>{character}</tspan>)}
         </text>
