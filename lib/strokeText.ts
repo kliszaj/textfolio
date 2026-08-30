@@ -23,7 +23,7 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
   strokeColor: "#FFFFFF",
   fillColor: "#FFFFFF",
   strokeWidth: 2.6,
-  drawDuration: 1.15,
+  drawDuration: 2,
   fillDelay: 0.12,
   stagger: 0.05,
   ease: "expo.out",

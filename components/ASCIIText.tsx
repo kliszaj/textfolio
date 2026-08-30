@@ -280,11 +280,10 @@ export function ASCIIText({
           if (swept !== null) {
             pointer.targetX = swept;
             pointer.targetY = 0;
-          } else if (demoTiltRef.current > 0) {
-            // The pass ends at the right, so level off rather than staying leant.
-            pointer.targetX = 0;
-            pointer.targetY = 0;
           }
+          // Nothing here on purpose: once the pass reaches the right it stops
+          // there. Returning the plane to level made a one-way sweep read as a
+          // boomerang, and the treatment fades out at the handover anyway.
         }
         pointer.x += (pointer.targetX - pointer.x) * 0.05;
         pointer.y += (pointer.targetY - pointer.y) * 0.05;
