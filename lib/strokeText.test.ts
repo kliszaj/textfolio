@@ -31,8 +31,8 @@ test("the draw actually takes time and the stroke is visible", () => {
   expect(DEFAULT_STROKE_TEXT_CONFIG.strokeWidth).toBeGreaterThan(0);
 });
 
-test("the fill lands after the stroke has started drawing", () => {
-  expect(DEFAULT_STROKE_TEXT_CONFIG.fillDelay).toBeGreaterThanOrEqual(0);
+test("the fill follows the outlines without a visible dead beat", () => {
+  expect(DEFAULT_STROKE_TEXT_CONFIG.fillDelay).toBe(0.05);
   expect(DEFAULT_STROKE_TEXT_CONFIG.fillDelay).toBeLessThan(
     DEFAULT_STROKE_TEXT_CONFIG.drawDuration
   );

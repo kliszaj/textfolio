@@ -71,7 +71,9 @@ const HATCH_SETTLE_SECONDS = 0.18;
 
 function hatchSequenceSeconds(lineCount: number): number {
   if (lineCount <= 0) return 0;
-  return HATCH_LINE_DRAW_SECONDS + HATCH_LINE_STAGGER_SECONDS * (lineCount - 1);
+  // The hatch starts in the middle of the word, then travels outward. The
+  // final two lines are therefore only half a sequence away, not at its end.
+  return HATCH_LINE_DRAW_SECONDS + HATCH_LINE_STAGGER_SECONDS * Math.floor(lineCount / 2);
 }
 
 // A tiny, deterministic value in [0, 1). It gives each pencil stroke its own
@@ -326,7 +328,10 @@ export function StrokeText({
             strokeDashoffset: 0,
             duration: HATCH_LINE_DRAW_SECONDS,
             ease: "power1.inOut",
-            stagger: HATCH_LINE_STAGGER_SECONDS,
+            // Start with central, visible lines. Left-to-right sequencing
+            // spent its first beat drawing clipped strokes beyond the glyphs,
+            // which looked like a long delay before the fill began.
+            stagger: { each: HATCH_LINE_STAGGER_SECONDS, from: "center" },
           },
           fillStart
         );
