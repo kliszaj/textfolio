@@ -9,8 +9,8 @@ the stack and navigates to its own route.
 
 **Status:** everything below is implemented and green — 28 suites / 297 tests
 (5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. The current
-checkout is `main` at `3d09411`; the working tree is clean and the latest
-Cloudflare deployment configuration is committed.
+checkout is `main`; the latest Cloudflare Workers deployment configuration is
+committed.
 
 **Latest continuation (2026-08-30):** added DOM-contract tests for
 `ASCIIText`, `WarpText`, and `StrokeText` covering accessible labels, fallback
@@ -29,12 +29,13 @@ which rejected the prior lockfile because optional `@emnapi/core` and
 with npm 10.9.2. The exact Cloudflare sequence (`npm ci`, then `npm run build`)
 passes locally; keep the lockfile committed.
 
-The follow-up deploy failure came from a custom `npx wrangler deploy` command:
-that invokes the Workers/OpenNext adapter and expects `.next/standalone`, which
-does not exist for this static export. `wrangler.jsonc` now declares
-`pages_build_output_dir: "./out"`, and `package.json` exposes `deploy:pages` for
-direct uploads. In the Pages Git integration, leave any separate deploy command
-blank; use `npm run build` with output directory `out`.
+The current Cloudflare integration uses Workers Builds with Workers Static
+Assets. `wrangler.jsonc` declares `assets.directory: "./out"` and a
+compatibility date, while `package.json` exposes `npm run deploy` as the
+production deploy command. Configure Workers Builds with `npm run build`,
+`npx wrangler deploy` (production), and `npx wrangler versions upload`
+(non-production/version command). This prevents Wrangler from auto-configuring
+the Next OpenNext adapter; the app remains a plain static export.
 
 **Latest handoff (2026-08-30):** the headline is now a short story rather than
 a static word. On load it plays four stages — **sketch → ascii → warp →
@@ -43,9 +44,9 @@ handover so a treatment is never seen mounting. Once the story ends, hovering
 the headline cycles the same three treatments on distinct entries (ascii →
 warp → stroke → repeat) and the calm Warp treatment is what the page rests on.
 
-The site is a **static export** deployed to Cloudflare Pages — `output:
-"export"`, `generateStaticParams` per case study, build output `./out`, no
-adapter and no server runtime.
+The site is a **static export** deployed with Cloudflare Workers Static Assets —
+`output: "export"`, `generateStaticParams` per case study, build output `./out`,
+no adapter and no server runtime.
 
 ---
 
@@ -77,11 +78,12 @@ every edit shows as a whole-file diff.
 
 ## Deployment
 
-`next build` emits a plain static site into `./out`. In Cloudflare Pages:
-build command `npm run build`, output directory `out`, framework preset None
-(or "Next.js (Static HTML Export)"). No API routes, no middleware, no server
-actions, no image optimisation (`images.unoptimized`), no environment
-variables. See `README.md` for the dashboard table.
+`next build` emits a plain static site into `./out`. In Cloudflare Workers Builds,
+use build command `npm run build`, production deploy command `npx wrangler deploy`,
+version command `npx wrangler versions upload`, and root directory `/`.
+`wrangler.jsonc` maps Worker Static Assets to `./out`. No API routes, no
+middleware, no server actions, no image optimisation (`images.unoptimized`), no
+environment variables. See `README.md` for the dashboard table.
 
 ---
 

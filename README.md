@@ -20,33 +20,35 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Deploying to Cloudflare Pages
+## Deploying to Cloudflare Workers Builds
 
 Every route prerenders, so `next build` emits a plain static site and no
 adapter or server runtime is needed. `next.config.ts` sets `output: "export"`,
 and `generateStaticParams` in `app/work/[slug]/page.tsx` builds a page per case
 study.
 
-For a Git-integrated Cloudflare Pages project, connect the repo and set:
+This static export is deployed with Cloudflare Workers Builds and Workers Static
+Assets. Connect the repo to a Workers application and set:
 
 | Setting | Value |
 |---|---|
-| Framework preset | Next.js (Static HTML Export) |
+| Framework preset | None (static site) |
 | Build command | `npm run build` |
-| Build output directory | `out` |
+| Production deploy command | `npx wrangler deploy` (or `npm run deploy`) |
+| Version command | `npx wrangler versions upload` |
+| Root directory | `/` |
 | Node version | `24.18.0` (read from `.nvmrc`) |
 
-Leave any separate deploy command blank. Pages' Git integration automatically
-uploads the contents of `out` after the build. Do **not** use `npx wrangler
-deploy` here: that is the Workers/OpenNext deployment path and expects a
-`.next/standalone` server bundle, which this static export intentionally does
-not produce.
+`wrangler.jsonc` points the Worker Static Assets directory at `./out`, so
+`npx wrangler deploy` uploads the generated export directly. The non-production
+version command is the Workers Builds preview command. Do not use the old
+`pages_build_output_dir` setting or `wrangler pages deploy` in this integrated
+Workers setup; this app is static and does not need OpenNext or vinext.
 
-For a manual Pages deployment, run `npm run build` followed by
-`npm run deploy:pages` (or `npx wrangler pages deploy ./out
---project-name textfolio`). The checked-in `wrangler.jsonc` records `out` as the
-Pages build directory. Cloudflare Pages has no API routes, middleware, server
-actions, image optimisation server, or environment variables in this project.
+For a manual deployment, run `npm run build` followed by `npm run deploy`. The
+checked-in `wrangler.jsonc` records `out` as the Worker Static Assets directory.
+There are no API routes, middleware, server actions, image optimisation server,
+or environment variables in this project.
 
 The tuning panel is hidden in production builds. A `.nvmrc` pins the Node
 version so the build environment does not drift between deploys.
