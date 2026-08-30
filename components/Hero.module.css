@@ -11,12 +11,8 @@
   /* A light dot grid and irregular fibres make the sketch read as a notebook
      page rather than a sterile flat fill. They live on the entire hero, not
      behind the word, so no rectangular treatment boundary is introduced. */
-  background-image:
-    radial-gradient(circle, rgb(126 109 95 / 32%) 1.5px, transparent 1.7px),
-    repeating-linear-gradient(8deg, transparent 0 5px, rgb(93 74 61 / 5%) 6px 7px),
-    repeating-linear-gradient(96deg, transparent 0 9px, rgb(255 255 255 / 30%) 10px 11px);
-  background-position: 0 0, 0 0, 0 0;
-  background-size: 28px 28px, auto, auto;
+  background-image: radial-gradient(circle, rgb(126 109 95 / 32%) 1.5px, transparent 1.7px);
+  background-size: 28px 28px;
   mix-blend-mode: multiply;
 }
 
