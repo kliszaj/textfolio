@@ -25,7 +25,7 @@ test("uses one shared headline frame and typography baseline across treatments",
   expect(frame).not.toHaveClass("overflow-hidden");
   expect(frame).toHaveClass("relative", "isolate");
   expect(frame).toHaveStyle({
-    "--headline-font-size": "clamp(3rem, 15.97vw, 14.5rem)",
+    "--headline-font-size": "clamp(3rem, min(13vw, 18vh), 14.5rem)",
     "--headline-font-family": "var(--font-pp-frama)",
     "--headline-font-weight": "900",
   });

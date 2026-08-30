@@ -7,8 +7,11 @@ A designer portfolio built as a stack of paper. The landing page (the name
 cursor travels toward the bottom of the viewport. Clicking one lifts it out of
 the stack and navigates to its own route.
 
-**Status:** everything below is implemented and green — 29 suites / 301 tests
-(5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. The current
+**Status:** everything below is implemented and green — 29 suites / 300 passed
+(5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. `npm run lint`
+still reports one pre-existing `react-hooks/set-state-in-effect` error at
+`hooks/useFanProgress.ts:66`; it is unrelated to the treatment sizing work.
+The current
 checkout is `main`; the latest Cloudflare Workers deployment configuration is
 committed.
 
@@ -87,6 +90,20 @@ curvature is now an independent `crtCurvature` setting with a restrained
 browser-native code, not ShaderGlass or a port of its GPL implementation. The
 page-wide CRT surface is complementary: the shader changes the characters;
 the CSS layer supplies the glass/screen context.
+
+**Responsive headline sizing (2026-08-30):** The shared headline clamp now
+uses both viewport width and height (`clamp(3rem, min(13vw, 18vh), 14.5rem)`),
+so laptop-height viewports do not inherit oversized desktop lettering. The
+headline frame follows the same rule with a smaller height floor. ASCII cells
+also scale down with the measured host width through `asciiFontSizeForHost`,
+with a 6px minimum, preserving the configured desktop size while adding finer
+detail on phones and narrow laptop layouts.
+
+**Latest continuation (2026-08-30):** responsive typography was verified in
+the local browser at a 1280×720 viewport: the ASCII word no longer fills the
+headline frame, while the tagline remains readable. The local dev server is
+available at `http://localhost:3000`. Focused treatment tests and the complete
+Jest suite pass; production build and TypeScript checks pass as well.
 
 **Mobile interaction (2026-08-30):** coarse-pointer devices mount
 `MobilePortfolio`, not the fixed desktop paper stack. It is a native vertical
@@ -539,8 +556,10 @@ line-boil intensity/fps/frequency (LineBoil.tsx), and every constant in
 
 Self-hosted via `next/font/local` from `app/fonts/`:
 `PPFrama-Black.otf` → `--font-display`, `Adrian-Regular.otf` → `--font-script`.
-Headline is `clamp(3rem, 15.97vw, 14.5rem)` — 230px at a 1440 frame, capped
-because the frame stops at `72rem × 20rem` and an uncapped size outgrows it.
+Headline is `clamp(3rem, min(13vw, 18vh), 14.5rem)`, so both viewport width
+and laptop/mobile height constrain the display size; the frame uses a matching
+height-aware clamp. The ASCII cell grid scales down with its measured host
+width and bottoms out at 6px.
 Tagline is `clamp(1.1rem, 4.44vw, 4rem)`, pulled back up under the letters by
 `TAGLINE_OFFSET` so it sits in the same place for every treatment. All three
 treatments share the frame, the `PP Frama` family and weight 900; Warp's canvas
@@ -652,9 +671,10 @@ filters ride the same beat.
     boilerplate intro. Only the Cloudflare section is ours.
 
 **Resolved since the last handoff, for the record:** font licensing is settled
-and is no longer an open issue. `framer-motion` has been dropped. Lint is
-clean. `/prototypes/focus` is deleted. The debug panel is gated. Everything is
-committed.
+and is no longer an open issue. `framer-motion` has been dropped.
+`/prototypes/focus` is deleted. The debug panel is gated. The current
+responsive sizing changes are tested and build cleanly. Everything is
+committed except any uncommitted work in the current checkout.
 
 ---
 

@@ -115,7 +115,7 @@ export function WarpText({
   pointerStrength = 0.38,
   refraction = 0.018,
   ripple = true,
-  fontSize = "clamp(3rem, 15.97vw, 14.5rem)",
+  fontSize = "clamp(3rem, min(13vw, 18vh), 14.5rem)",
   fontWeight = 900,
   fontFamily = "var(--font-pp-frama)",
   letterSpacing = "0",

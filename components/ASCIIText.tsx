@@ -11,6 +11,7 @@ import {
   demoTiltAt,
   DEFAULT_ASCII_TEXT_CONFIG,
   chipForBrightness,
+  asciiFontSizeForHost,
   planeHeightForFontSize,
 } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
@@ -148,6 +149,7 @@ export function ASCIIText({
       let material: InstanceType<typeof THREE.ShaderMaterial> | undefined;
       let texture: InstanceType<typeof THREE.CanvasTexture> | undefined;
       let characterWidth = asciiFontSize * 0.6;
+      let cellFontSize = asciiFontSize;
       const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
       const colorSeed = Math.floor(Math.random() * 1_000_000);
 
@@ -258,11 +260,13 @@ export function ASCIIText({
         outputCanvas.width = Math.max(1, Math.floor(size.width * dpr));
         outputCanvas.height = Math.max(1, Math.floor(size.height * dpr));
         outputContext.setTransform(dpr, 0, 0, dpr, 0, 0);
-        outputContext.font = `${asciiFontSize}px "IBM Plex Mono", ui-monospace, monospace`;
+        cellFontSize = asciiFontSizeForHost(asciiFontSize, size.width);
+        pre.style.fontSize = `${cellFontSize}px`;
+        outputContext.font = `${cellFontSize}px "IBM Plex Mono", ui-monospace, monospace`;
         outputContext.textBaseline = "top";
-        characterWidth = outputContext.measureText("M").width || asciiFontSize * 0.6;
+        characterWidth = outputContext.measureText("M").width || cellFontSize * 0.6;
         sampleCanvas.width = Math.max(1, Math.floor(size.width / characterWidth));
-        sampleCanvas.height = Math.max(1, Math.floor(size.height / asciiFontSize));
+        sampleCanvas.height = Math.max(1, Math.floor(size.height / cellFontSize));
         applyPlaneScale();
       };
 
@@ -296,9 +300,9 @@ export function ASCIIText({
               const noise = Math.sin(x * 12.9898 + y * 78.233 + colorSeed) * 43758.5453;
               const colorChip = chipForBrightness(brightness, noise - Math.floor(noise));
               outputContext.fillStyle = colorChip.background;
-              outputContext.fillRect(x * characterWidth, y * asciiFontSize, characterWidth, asciiFontSize);
+              outputContext.fillRect(x * characterWidth, y * cellFontSize, characterWidth, cellFontSize);
               outputContext.fillStyle = colorChip.foreground;
-              outputContext.fillText(character, x * characterWidth, y * asciiFontSize);
+              outputContext.fillText(character, x * characterWidth, y * cellFontSize);
             }
           }
           output += "\n";

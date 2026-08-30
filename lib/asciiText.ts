@@ -71,6 +71,34 @@ export function chipForBrightness(brightness: number, jitter = 0.5): AsciiColorC
 
 export const ASCII_CAMERA_FOV_DEG = 45;
 export const ASCII_CAMERA_DISTANCE = 30;
+// Keep the cell grid legible on narrow phones without letting the configured
+// desktop size turn into oversized blocks. The reference width is the shared
+// headline frame at a 1280px desktop viewport.
+export const ASCII_REFERENCE_HOST_WIDTH = 1100;
+export const ASCII_MIN_FONT_SIZE = 6;
+
+export function asciiFontSizeForHost(
+  configuredFontSize: number,
+  hostWidth: number,
+  referenceWidth: number = ASCII_REFERENCE_HOST_WIDTH,
+): number {
+  if (!Number.isFinite(configuredFontSize) || configuredFontSize <= 0) {
+    return ASCII_MIN_FONT_SIZE;
+  }
+  if (
+    !Number.isFinite(hostWidth) ||
+    hostWidth <= 0 ||
+    !Number.isFinite(referenceWidth) ||
+    referenceWidth <= 0
+  ) {
+    return configuredFontSize;
+  }
+  return Math.max(
+    ASCII_MIN_FONT_SIZE,
+    configuredFontSize * Math.min(1, hostWidth / referenceWidth),
+  );
+}
+
 // Used only if the host cannot be measured yet.
 export const ASCII_FALLBACK_PLANE_HEIGHT = 13;
 // The vertical lean is slightly shallower than the horizontal one, which is

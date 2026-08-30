@@ -6,6 +6,8 @@ import {
   ASCII_INK_BLUE,
   ASCII_INK_LIME,
   DEFAULT_ASCII_TEXT_CONFIG,
+  ASCII_MIN_FONT_SIZE,
+  asciiFontSizeForHost,
   chipForBrightness,
   demoTiltAt,
   planeHeightForFontSize,
@@ -37,6 +39,21 @@ test("the ascii grid is far finer than the text it samples", () => {
   expect(DEFAULT_ASCII_TEXT_CONFIG.asciiFontSize).toBeLessThan(
     DEFAULT_ASCII_TEXT_CONFIG.textFontSize
   );
+});
+
+describe("responsive ASCII cells", () => {
+  test("keeps the desktop setting at the reference width", () => {
+    expect(asciiFontSizeForHost(11, 1100)).toBe(11);
+  });
+
+  test("scales cells down on a narrow host while keeping a readable floor", () => {
+    expect(asciiFontSizeForHost(11, 550)).toBeCloseTo(ASCII_MIN_FONT_SIZE);
+    expect(asciiFontSizeForHost(11, 275)).toBe(ASCII_MIN_FONT_SIZE);
+  });
+
+  test("does not scale a configured size up on wide screens", () => {
+    expect(asciiFontSizeForHost(16, 2200)).toBe(16);
+  });
 });
 
 test("CRT curvature stays restrained by default but can be disabled", () => {

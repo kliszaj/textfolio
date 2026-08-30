@@ -137,7 +137,7 @@ test("uses the requested ASCII defaults", () => {
     asciiFontSize: 11,
     textFontSize: 340,
     planeScale: 1,
-    extrudeDepth: 0.16,
+    extrudeDepth: 0.06,
     tiltStrength: 0.3,
     crtCurvature: 0.32,
     randomizeGlyphColors: true,
