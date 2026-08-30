@@ -32,11 +32,34 @@
 
 .coolS {
   position: absolute;
-  top: clamp(1rem, 3vw, 2.75rem);
-  left: clamp(1rem, 3vw, 2.75rem);
+  top: clamp(1.25rem, 3vw, 3rem);
+  left: clamp(1.25rem, 3vw, 3rem);
   z-index: 10;
-  width: clamp(3.5rem, 8vw, 7rem);
+  width: clamp(2.75rem, 5vw, 5.25rem);
   height: auto;
   overflow: visible;
   pointer-events: none;
+  user-select: none;
+  transform: rotate(15deg);
+  transform-origin: top left;
+  opacity: 0;
+  animation: coolSIn 900ms ease-out 180ms both;
+}
+
+@keyframes coolSIn {
+  from {
+    opacity: 0;
+    transform: rotate(15deg) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(15deg) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coolS {
+    opacity: 1;
+    animation: none;
+  }
 }

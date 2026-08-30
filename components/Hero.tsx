@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { NAME } from "@/data/letterTreatments";
 import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
@@ -159,27 +160,16 @@ export function Hero({
         className={`${styles.surface} ${styles.asciiSurface} ${activeEffect === "ascii" ? styles.visible : ""}`}
       />
       {activeEffect === "stroke" && (
-        <svg
+        <Image
           data-testid="cool-s"
           className={`${styles.coolS} boil-line`}
-          viewBox="0 0 100 128"
+          src="/assets/cool-s.svg"
+          width={160}
+          height={431}
+          alt=""
           aria-hidden="true"
-        >
-          <path
-            d="M 83 15 C 68 3 38 4 25 16 C 12 28 17 42 34 50 L 65 64 C 83 72 87 87 75 102 C 62 118 30 123 12 108"
-            pathLength={1}
-            fill="none"
-            stroke={SKETCH_INK}
-            strokeWidth="7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeDasharray={1}
-            style={{
-              strokeDashoffset: 1,
-              animation: "stroke-correction-draw 1500ms ease-out 180ms both",
-            }}
-          />
-        </svg>
+          priority
+        />
       )}
       <div
         data-testid="hero-headline"

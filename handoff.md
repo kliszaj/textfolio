@@ -40,9 +40,10 @@ use a straight, high-resolution scan/photo of the actual word as an
 SVG/transparent asset; texture alone can only roughen the typed PP Frama
 shape.
 
-The sketch stage also mounts a small blue-pencil "cool S" doodle in the
-top-left corner. It is pointer-inert, only rendered while StrokeText is
-active, and uses the existing line-boil filter plus dash-draw animation.
+The sketch stage also mounts the supplied `public/assets/cool-s.svg` blue
+"cool S" mark in the top-left corner. It is pointer-inert, only rendered while
+StrokeText is active, and is rotated 15 degrees clockwise with a short
+reduced-motion-safe entrance fade.
 
 **Treatment surfaces (2026-08-30):** `Hero.module.css` owns full-hero,
 pointer-inert treatment surfaces rather than putting a backdrop behind the
