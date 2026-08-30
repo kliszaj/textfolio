@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
+import dynamic from "next/dynamic";
 import { NAME } from "@/data/letterTreatments";
 import { ASCII_DEMO_TILT_MS, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
@@ -14,6 +15,13 @@ import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
 import styles from "./Hero.module.css";
+
+// The shader package is only needed while the sketch treatment is visible;
+// avoid sending it with the resting hero or the other two effects.
+const SketchPaperShader = dynamic(
+  () => import("./SketchPaperShader").then((module) => module.SketchPaperShader),
+  { ssr: false }
+);
 
 const DEFAULT_BG_COLOR = "#F5EDE6";
 const SELECTED_BG_COLOR = "#050505";
@@ -132,6 +140,7 @@ export function Hero({
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
       }}
     >
+      {activeEffect === "stroke" && <SketchPaperShader />}
       <div
         aria-hidden="true"
         data-testid="sketch-paper-surface"

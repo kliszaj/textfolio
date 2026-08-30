@@ -42,6 +42,14 @@ stay below the `z-10` headline and arrow, so they cannot create a visible
 headline bounding box or intercept hover input. Keep these surfaces restrained:
 the glyph treatment is the focal point, not the texture.
 
+**Paper shader background (2026-08-30):** The sketch treatment also mounts
+`SketchPaperShader` through a client-only dynamic import. It uses the pinned
+Apache-2.0 `@paper-design/shaders-react@0.0.80` `PaperTexture` component under
+the CSS dot-grid layer. It is static (`speed={0}`), pointer-inert, capped at
+1.5M pixels, and only mounted during the Stroke phase. Do not statically move
+the dependency into `Hero`: the dynamic component keeps this extra WebGL
+payload out of the resting/ASCII/Warp path.
+
 **ASCII CRT pass (2026-08-30):** `ASCIIText` now applies a restrained barrel
 curve and scanline modulation in its existing Three.js fragment shader before
 the frame is sampled into ASCII cells (`CRT_INTENSITY = 0.68`). This is
