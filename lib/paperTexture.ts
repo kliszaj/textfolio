@@ -19,8 +19,8 @@ export type PaperTextureConfig = {
 // These are deliberately conservative. The word is a graphite drawing on
 // paper, not a crumpled-paper demo, so every material control starts low.
 export const DEFAULT_PAPER_TEXTURE_CONFIG: PaperTextureConfig = {
-  colorBack: "#F5EDE6",
-  colorFront: "#B8A596",
+  colorBack: "#FFFFFF",
+  colorFront: "#E7E7D9",
   opacity: 0.9,
   contrast: 0.16,
   roughness: 0.32,
