@@ -43,6 +43,8 @@ test("starts the hover cycle with ASCII text", () => {
 
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "true");
+  expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "false");
   expect(hero).toHaveStyle({ backgroundColor: "#05AEAE" });
   expect(hero).toHaveStyle({ color: "#FFFFFF" });
 
@@ -72,6 +74,8 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "true");
+  expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "false");
   // The stroke treatment draws on the page's own ground, with the supporting
   // text using the same red pen as the correction marks.
   expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });

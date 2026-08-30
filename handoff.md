@@ -34,6 +34,14 @@ genuinely human letterforms, use a straight, high-resolution scan/photo of the
 actual word as an SVG/transparent asset; texture alone can only roughen the
 typed PP Frama shape.
 
+**Treatment surfaces (2026-08-30):** `Hero.module.css` owns full-hero,
+pointer-inert treatment surfaces rather than putting a backdrop behind the
+headline frame. Stroke fades in a faint dot-grid/fibre paper field, and ASCII
+fades in scanlines, a subtle RGB grille, and an inset CRT vignette. Both layers
+stay below the `z-10` headline and arrow, so they cannot create a visible
+headline bounding box or intercept hover input. Keep these surfaces restrained:
+the glyph treatment is the focal point, not the texture.
+
 **Mobile interaction (2026-08-30):** coarse-pointer devices mount
 `MobilePortfolio`, not the fixed desktop paper stack. It is a native vertical
 scroll: full hero first, then every case study as a full-width tappable sheet.

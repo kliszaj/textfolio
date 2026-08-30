@@ -13,6 +13,7 @@ import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
+import styles from "./Hero.module.css";
 
 const DEFAULT_BG_COLOR = "#F5EDE6";
 const SELECTED_BG_COLOR = "#050505";
@@ -132,8 +133,20 @@ export function Hero({
       }}
     >
       <div
+        aria-hidden="true"
+        data-testid="sketch-paper-surface"
+        data-active={activeEffect === "stroke"}
+        className={`${styles.surface} ${styles.paperSurface} ${activeEffect === "stroke" ? styles.visible : ""}`}
+      />
+      <div
+        aria-hidden="true"
+        data-testid="ascii-crt-surface"
+        data-active={activeEffect === "ascii"}
+        className={`${styles.surface} ${styles.asciiSurface} ${activeEffect === "ascii" ? styles.visible : ""}`}
+      />
+      <div
         data-testid="hero-headline"
-        className="flex flex-col items-center"
+        className="relative z-10 flex flex-col items-center"
         style={{ transform: `translateY(-${liftPercent}vh)` }}
       >
         {/* The frame sizes every treatment but no longer clips them: one
@@ -204,7 +217,7 @@ export function Hero({
       </div>
       <div
         data-testid="scroll-hint"
-        className="boil-line absolute bottom-8 leading-none transition-opacity duration-300"
+        className="boil-line absolute z-10 bottom-8 leading-none transition-opacity duration-300"
         style={{
           opacity: arrowOpacity,
           color: accentColor,
