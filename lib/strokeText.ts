@@ -24,9 +24,9 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
   fillColor: "#FFFFFF",
   strokeWidth: 2.6,
   drawDuration: 2.8,
-  // Leave only a breath between the final outline and the first graphite
-  // stroke. A longer pause makes the lettering look as if it stalled.
-  fillDelay: 0.05,
+  // The pencil shade begins while the later letter outlines are still
+  // drawing, so the sketch reads as one uninterrupted hand movement.
+  fillDelay: 0,
   stagger: 0.12,
   ease: "power1.inOut",
   trigger: "mount",
