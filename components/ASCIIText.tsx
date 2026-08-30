@@ -304,20 +304,23 @@ export function ASCIIText({
             }
             const brightness = (pixels[index] * 0.3 + pixels[index + 1] * 0.6 + pixels[index + 2] * 0.1) / 255;
 
-            // Each cell types itself in on its own beat, scattered by a hash
-            // rather than marching across in a line, and shows junk for a
-            // moment before it settles. Seeded apart from the colour hash so
-            // the two do not correlate.
-            const typeNoise = Math.sin(x * 3.7891 + y * 21.317 + 4.113) * 21374.221;
-            const typeHash = typeNoise - Math.floor(typeNoise);
-            const cell = asciiCellStateAt(typeHash, typeProgressRef.current);
+            // Matrix rain: the column decides when it starts, the row decides
+            // how far down the stream has reached. Seeded apart from the
+            // colour hash so the two do not correlate.
+            const columnNoise = Math.sin(x * 3.7891 + 4.113) * 21374.221;
+            const columnHash = columnNoise - Math.floor(columnNoise);
+            const cell = asciiCellStateAt(
+              columnHash,
+              height > 1 ? y / (height - 1) : 0,
+              typeProgressRef.current
+            );
             if (cell === "hidden") {
               output += " ";
               continue;
             }
             const character =
               cell === "churning"
-                ? asciiJunkGlyph(typeHash, churnTick)
+                ? asciiJunkGlyph(columnHash + y * 0.137, churnTick)
                 : CHARACTERS[Math.floor(brightness * (CHARACTERS.length - 1))];
             output += character;
             if (randomizeGlyphColors) {

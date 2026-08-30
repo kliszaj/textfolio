@@ -8,6 +8,7 @@ import {
   DEFAULT_ASCII_TEXT_CONFIG,
   ASCII_MIN_FONT_SIZE,
   asciiFontSizeForHost,
+  ASCII_TYPE_COLUMN_SPREAD,
   ASCII_TYPE_JUNK,
   asciiCellStateAt,
   asciiJunkGlyph,
@@ -278,37 +279,54 @@ describe("extruding the letters", () => {
 
 describe("typing the ascii word in", () => {
   test("nothing is on screen at the start and everything is by the end", () => {
-    for (const hash of [0.01, 0.3, 0.7, 0.99]) {
-      expect(asciiCellStateAt(hash, 0)).toBe("hidden");
-      expect(asciiCellStateAt(hash, 1)).toBe("settled");
+    for (const column of [0.01, 0.5, 0.99]) {
+      for (const row of [0, 0.5, 1]) {
+        expect(asciiCellStateAt(column, row, 0)).toBe("hidden");
+        expect(asciiCellStateAt(column, row, 1)).toBe("settled");
+      }
     }
   });
 
-  test("cells arrive scattered rather than marching across in a line", () => {
-    // A wipe is what this replaced; at any moment mid-type there should be
-    // both settled and unarrived cells.
-    const states = Array.from({ length: 40 }, (_, i) =>
-      asciiCellStateAt(i / 40, 0.5)
-    );
-    expect(states).toContain("settled");
-    expect(states).toContain("hidden");
+  test("a column streams downward: upper cells land before lower ones", () => {
+    // This is what makes it read as rain rather than a scatter or a wipe.
+    const column = 0.2;
+    const order = { hidden: 0, churning: 1, settled: 2 };
+    for (let t = 0.05; t < 1; t += 0.05) {
+      const top = order[asciiCellStateAt(column, 0, t)];
+      const bottom = order[asciiCellStateAt(column, 1, t)];
+      expect(top).toBeGreaterThanOrEqual(bottom);
+    }
+  });
+
+  test("columns start at staggered moments rather than as one front", () => {
+    const early = asciiCellStateAt(0, 0, 0.2);
+    const late = asciiCellStateAt(1, 0, 0.2);
+    expect(early).not.toBe("hidden");
+    expect(late).toBe("hidden");
   });
 
   test("a cell churns through junk before it settles", () => {
-    const hash = 0.4;
-    expect(asciiCellStateAt(hash, 0.3)).toBe("hidden");
-    expect(asciiCellStateAt(hash, 0.45)).toBe("churning");
-    expect(asciiCellStateAt(hash, 0.9)).toBe("settled");
+    const column = 0;
+    expect(asciiCellStateAt(column, 0.9, 0.3)).toBe("hidden");
+    expect(asciiCellStateAt(column, 0.9, 0.52)).toBe("churning");
+    expect(asciiCellStateAt(column, 0.9, 0.95)).toBe("settled");
   });
 
   test("a cell never goes backwards as the type-in runs", () => {
     const order = { hidden: 0, churning: 1, settled: 2 };
     let previous = 0;
     for (let t = 0; t <= 1; t += 0.02) {
-      const rank = order[asciiCellStateAt(0.35, t)];
+      const rank = order[asciiCellStateAt(0.35, 0.6, t)];
       expect(rank).toBeGreaterThanOrEqual(previous);
       previous = rank;
     }
+  });
+
+  test("the last column's last row lands exactly as the type-in ends", () => {
+    // Any later and the word would still be arriving when the stage moves on.
+    expect(ASCII_TYPE_COLUMN_SPREAD).toBeGreaterThan(0);
+    expect(ASCII_TYPE_COLUMN_SPREAD).toBeLessThan(1);
+    expect(asciiCellStateAt(1, 1, 0.999)).not.toBe("hidden");
   });
 
   test("junk glyphs come from the junk set and reshuffle over time", () => {
@@ -318,8 +336,9 @@ describe("typing the ascii word in", () => {
     expect(new Set(later).size).toBeGreaterThan(1);
   });
 
-  test("survives nonsense progress rather than blanking the word", () => {
-    expect(asciiCellStateAt(0.5, NaN)).toBe("settled");
-    expect(asciiCellStateAt(NaN, 0.5)).toBe("settled");
+  test("survives nonsense input rather than blanking the word", () => {
+    expect(asciiCellStateAt(0.5, 0.5, NaN)).toBe("settled");
+    expect(asciiCellStateAt(NaN, 0.5, 0.5)).toBe("settled");
+    expect(asciiCellStateAt(0.5, NaN, 0.5)).toBe("settled");
   });
 });

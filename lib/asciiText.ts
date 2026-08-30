@@ -198,17 +198,35 @@ export const ASCII_TYPE_JUNK = "01<>[]{}/\|=+*#%@$&";
 
 export type AsciiCellState = "hidden" | "churning" | "settled";
 
-// Matrix-style rather than a wipe: each cell has its own moment, scattered by
-// a hash instead of marching across in a line, and shows junk for a beat
-// before it settles. `hash` is any stable 0-1 value for the cell.
-export function asciiCellStateAt(hash: number, progress: number): AsciiCellState {
-  if (!Number.isFinite(progress) || progress >= 1) return "settled";
-  if (!Number.isFinite(hash)) return "settled";
+// Share of the type-in spent staggering when each column starts. The rest is
+// the time a column takes to run from its top row to its bottom one.
+export const ASCII_TYPE_COLUMN_SPREAD = 0.45;
 
-  const at = Math.min(1, Math.max(0, hash));
+// Matrix rain rather than a wipe or a scatter: every column streams downward,
+// and columns start at staggered moments so the word fills raggedly rather
+// than as one front. A cell shows junk for a beat before settling.
+//
+// `columnHash` is a stable 0-1 value for the column (not the cell), and
+// `rowFraction` is how far down the grid the cell sits.
+export function asciiCellStateAt(
+  columnHash: number,
+  rowFraction: number,
+  progress: number
+): AsciiCellState {
+  if (!Number.isFinite(progress) || progress >= 1) return "settled";
+  if (!Number.isFinite(columnHash) || !Number.isFinite(rowFraction)) return "settled";
+
+  const column = Math.min(1, Math.max(0, columnHash));
+  const row = Math.min(1, Math.max(0, rowFraction));
+  // Squeezed so the very last cell still has its full churn window inside the
+  // type-in. Without this it arrived exactly at the end and popped.
+  const arrival =
+    (column * ASCII_TYPE_COLUMN_SPREAD + row * (1 - ASCII_TYPE_COLUMN_SPREAD)) *
+    (1 - TYPE_CHURN);
+
   const t = Math.min(1, Math.max(0, progress));
-  if (t < at) return "hidden";
-  if (t < at + TYPE_CHURN) return "churning";
+  if (t < arrival) return "hidden";
+  if (t < arrival + TYPE_CHURN) return "churning";
   return "settled";
 }
 
