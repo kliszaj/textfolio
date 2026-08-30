@@ -7,7 +7,7 @@ import { ASCII_DEMO_TILT_MS, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG, WARP_DEMO_SWEEP_MS } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
-import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
+import { CORRECTION_INK, DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
 import { ASCIIText } from "./ASCIIText";
@@ -88,6 +88,8 @@ export function Hero({
       ? ASCII_ACCENT_COLOR
       : activeEffect === "warp"
         ? WARP_ACCENT_COLOR
+        : activeEffect === "stroke"
+          ? CORRECTION_INK
         : undefined;
   const stageBackground =
     activeEffect === "ascii"
@@ -124,8 +126,8 @@ export function Hero({
       className="relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center transition-[background-color] duration-500 ease-out"
       style={{
         backgroundColor: stageBackground,
-        // The stroke treatment draws on the page's own ground, so the tagline
-        // and arrow keep the page's ink -- white would leave them invisible.
+        // The stroke treatment draws on the page's own ground, with the
+        // tagline and arrow borrowing the correction pen's red ink.
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
       }}
     >

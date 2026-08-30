@@ -1,6 +1,7 @@
 import { createRef } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
+import { CORRECTION_INK } from "@/lib/strokeText";
 import { Hero } from "./Hero";
 
 test("renders ADRIAN through the WarpText treatment", () => {
@@ -71,10 +72,12 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
-  // The stroke treatment draws on the page's own ground, and keeps its ink so
-  // the tagline and arrow stay visible.
+  // The stroke treatment draws on the page's own ground, with the supporting
+  // text using the same red pen as the correction marks.
   expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
+  expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: CORRECTION_INK });
+  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: CORRECTION_INK });
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
