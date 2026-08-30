@@ -33,17 +33,35 @@ void main() {
 const fragmentShader = `
 varying vec2 vUv;
 uniform sampler2D uTexture;
+uniform float uCrtIntensity;
+
+vec2 crtCurve(vec2 uv) {
+  vec2 centred = uv * 2.0 - 1.0;
+  float curve = dot(centred, centred) * 0.075 * uCrtIntensity;
+  return centred * (1.0 + curve) * 0.5 + 0.5;
+}
+
 void main() {
-  // A fixed chromatic split. It fringes the glyph edges, which is what gives
-  // the depth ramp an edge to colour -- driving it off time instead made the
-  // whole treatment shimmer.
+  // The source texture takes a restrained barrel curve before it is sampled
+  // into ASCII cells. The scanline lives in this render pass too, so it bends
+  // with the text rather than sitting as a flat page overlay.
+  vec2 uv = crtCurve(vUv);
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) discard;
+
+  // A fixed chromatic split fringes the glyph edges; driving it off time made
+  // the whole treatment shimmer.
   vec2 split = vec2(0.006, 0.0);
-  float r = texture2D(uTexture, vUv + split).r;
-  float g = texture2D(uTexture, vUv).g;
-  float b = texture2D(uTexture, vUv - split).b;
-  float a = texture2D(uTexture, vUv).a;
-  gl_FragColor = vec4(r, g, b, a);
+  float r = texture2D(uTexture, uv + split).r;
+  float g = texture2D(uTexture, uv).g;
+  float b = texture2D(uTexture, uv - split).b;
+  float a = texture2D(uTexture, uv).a;
+  float scanline = 1.0 - (0.13 * uCrtIntensity) * (0.5 + 0.5 * sin(uv.y * 940.0));
+  gl_FragColor = vec4(vec3(r, g, b) * scanline, a);
 }`;
+
+// Kept below a retro-game simulation: its job is to give the ASCII source a
+// glass-screen character while leaving the type's silhouette readable.
+const CRT_INTENSITY = 0.68;
 
 const CHARACTERS = " .`^\\\",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 type ASCIITextProps = Partial<ASCIITextConfig> & {
@@ -204,7 +222,12 @@ export function ASCIIText({
           vertexShader,
           fragmentShader,
           transparent: true,
-          uniforms: { uTime: { value: 0 }, uTexture: { value: texture }, uEnableWaves: { value: enableWaves ? 1 : 0 } },
+          uniforms: {
+            uTime: { value: 0 },
+            uTexture: { value: texture },
+            uEnableWaves: { value: enableWaves ? 1 : 0 },
+            uCrtIntensity: { value: CRT_INTENSITY },
+          },
         });
         // Built at unit height and scaled, so matching the font on resize
         // costs a scale write rather than a geometry rebuild.
@@ -350,7 +373,7 @@ export function ASCIIText({
   }, [asciiFontSize, enableWaves, extrudeDepth, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
 
   return (
-    <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" role="img" aria-label={text}>
+    <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" data-crt="curved-scanline" role="img" aria-label={text}>
       <span className={styles.fallback} aria-hidden="true">{text}</span>
     </div>
   );

@@ -42,6 +42,14 @@ stay below the `z-10` headline and arrow, so they cannot create a visible
 headline bounding box or intercept hover input. Keep these surfaces restrained:
 the glyph treatment is the focal point, not the texture.
 
+**ASCII CRT pass (2026-08-30):** `ASCIIText` now applies a restrained barrel
+curve and scanline modulation in its existing Three.js fragment shader before
+the frame is sampled into ASCII cells (`CRT_INTENSITY = 0.68`). This is
+browser-native code, not ShaderGlass or a port of its GPL implementation. The
+page-wide CRT surface is complementary: the shader changes the characters;
+the CSS layer supplies the glass/screen context. Keep the intensity low enough
+that the name's silhouette remains recognisable.
+
 **Mobile interaction (2026-08-30):** coarse-pointer devices mount
 `MobilePortfolio`, not the fixed desktop paper stack. It is a native vertical
 scroll: full hero first, then every case study as a full-width tappable sheet.

@@ -7,6 +7,7 @@ test("keeps an accessible text fallback while WebGL is unavailable", () => {
   const treatment = screen.getByTestId("ascii-text");
   expect(treatment).toHaveAttribute("aria-label", "ADRIAN");
   expect(treatment).toHaveAttribute("data-ready", "false");
+  expect(treatment).toHaveAttribute("data-crt", "curved-scanline");
   expect(screen.getByText("ADRIAN")).toHaveAttribute("aria-hidden", "true");
 });
 
