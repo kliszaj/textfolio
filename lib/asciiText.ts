@@ -114,3 +114,24 @@ export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
   randomizeGlyphColors: true,
   randomizeStageColor: false,
 };
+
+// How long the scripted tilt sweep runs when the treatment first appears.
+export const ASCII_DEMO_TILT_MS = 1500;
+// The lerp toward the target eats some amplitude, so the sweep aims wider than
+// a real cursor would to land at a comparable lean.
+const DEMO_TILT_REACH = 0.85;
+
+// One full left-right pass: centre, over, back through centre, over the other
+// way, centre. Returns null once the sweep is done or was never asked for, so
+// the caller leaves the real pointer target alone.
+export function demoTiltAt(
+  elapsedMs: number,
+  durationMs: number,
+  tiltStrength: number
+): number | null {
+  if (!Number.isFinite(elapsedMs) || durationMs <= 0) return null;
+  if (elapsedMs < 0 || elapsedMs >= durationMs) return null;
+
+  const phase = elapsedMs / durationMs;
+  return Math.sin(phase * Math.PI * 2) * tiltStrength * DEMO_TILT_REACH;
+}

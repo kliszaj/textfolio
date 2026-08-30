@@ -5,6 +5,7 @@ import {
   ASCII_INK_LIME,
   DEFAULT_ASCII_TEXT_CONFIG,
   chipForBrightness,
+  demoTiltAt,
   planeHeightForFontSize,
   visibleWorldHeight,
 } from "./asciiText";
@@ -166,5 +167,40 @@ describe("sprinkling the edges", () => {
         expect(ASCII_DEPTH_RAMP).toContain(chipForBrightness(brightness, jitter));
       }
     }
+  });
+});
+
+describe("the scripted tilt sweep", () => {
+  const DURATION = 1500;
+  const STRENGTH = 0.3;
+
+  test("starts and ends level, so it eases out of and back into rest", () => {
+    expect(demoTiltAt(0, DURATION, STRENGTH)).toBeCloseTo(0, 6);
+    expect(demoTiltAt(DURATION / 2, DURATION, STRENGTH)).toBeCloseTo(0, 6);
+  });
+
+  test("leans one way and then the other", () => {
+    const first = demoTiltAt(DURATION * 0.25, DURATION, STRENGTH)!;
+    const second = demoTiltAt(DURATION * 0.75, DURATION, STRENGTH)!;
+    expect(first).toBeGreaterThan(0);
+    expect(second).toBeLessThan(0);
+    expect(first).toBeCloseTo(-second, 6);
+  });
+
+  test("never leans further than a real cursor could", () => {
+    for (let t = 0; t < DURATION; t += 25) {
+      expect(Math.abs(demoTiltAt(t, DURATION, STRENGTH)!)).toBeLessThanOrEqual(STRENGTH);
+    }
+  });
+
+  test("hands back to the real pointer once it is done", () => {
+    expect(demoTiltAt(DURATION, DURATION, STRENGTH)).toBeNull();
+    expect(demoTiltAt(DURATION + 500, DURATION, STRENGTH)).toBeNull();
+  });
+
+  test("stays out of the way when it was never asked for", () => {
+    expect(demoTiltAt(10, 0, STRENGTH)).toBeNull();
+    expect(demoTiltAt(NaN, DURATION, STRENGTH)).toBeNull();
+    expect(demoTiltAt(-10, DURATION, STRENGTH)).toBeNull();
   });
 });

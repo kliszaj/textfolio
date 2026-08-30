@@ -5,6 +5,7 @@ import {
   ASCII_CAMERA_DISTANCE,
   ASCII_CAMERA_FOV_DEG,
   ASCII_TILT_Y_RATIO,
+  demoTiltAt,
   DEFAULT_ASCII_TEXT_CONFIG,
   chipForBrightness,
   planeHeightForFontSize,
@@ -44,10 +45,9 @@ void main() {
 const CHARACTERS = " .`^\\\",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 type ASCIITextProps = ASCIITextConfig & {
   text: string;
-  // How much of the word has typed in, 0-1. Held in a ref rather than a
-  // dependency: it changes every frame, and rebuilding the WebGL context per
-  // frame would be catastrophic.
-  revealFraction?: number;
+  // Runs a scripted left-right sweep for this long on mount, so the tilt is
+  // visible without the visitor having to find it. 0 disables it.
+  demoTiltMs?: number;
 };
 
 export function ASCIIText({
@@ -58,14 +58,16 @@ export function ASCIIText({
   planeScale = DEFAULT_ASCII_TEXT_CONFIG.planeScale,
   tiltStrength = DEFAULT_ASCII_TEXT_CONFIG.tiltStrength,
   randomizeGlyphColors = DEFAULT_ASCII_TEXT_CONFIG.randomizeGlyphColors,
-  revealFraction = 1,
+  demoTiltMs = 0,
 }: ASCIITextProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const revealRef = useRef(revealFraction);
+  // Held in a ref, not a dependency: rebuilding the WebGL context because a
+  // number changed would be catastrophic.
+  const demoTiltRef = useRef(demoTiltMs);
 
   useEffect(() => {
-    revealRef.current = revealFraction;
-  }, [revealFraction]);
+    demoTiltRef.current = demoTiltMs;
+  }, [demoTiltMs]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -202,16 +204,8 @@ export function ASCIIText({
           const bounds = host.getBoundingClientRect();
           outputContext.clearRect(0, 0, bounds.width, bounds.height);
         }
-        // Typed in column by column, which is how ascii wants to arrive.
-        const revealed = Math.ceil(
-          width * Math.min(1, Math.max(0, revealRef.current))
-        );
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
-            if (x >= revealed) {
-              output += " ";
-              continue;
-            }
             const index = (y * width + x) * 4;
             const alpha = pixels[index + 3];
             if (alpha < 12) {
@@ -239,7 +233,11 @@ export function ASCIIText({
         if (!randomizeGlyphColors) pre.textContent = output;
       };
 
+      let demoStart = performance.now();
+      let pointerTaken = false;
+
       const onPointerMove = (event: PointerEvent) => {
+        pointerTaken = true;
         const bounds = host.getBoundingClientRect();
         pointer.targetX = ((event.clientX - bounds.left) / bounds.width - 0.5) * tiltStrength;
         pointer.targetY =
@@ -248,6 +246,13 @@ export function ASCIIText({
 
       const render = (time: number) => {
         if (disposed || !mesh || !material) return;
+        if (!pointerTaken) {
+          const swept = demoTiltAt(time - demoStart, demoTiltRef.current, tiltStrength);
+          if (swept !== null) {
+            pointer.targetX = swept;
+            pointer.targetY = 0;
+          }
+        }
         pointer.x += (pointer.targetX - pointer.x) * 0.05;
         pointer.y += (pointer.targetY - pointer.y) * 0.05;
         mesh.rotation.x = pointer.y;
@@ -260,6 +265,7 @@ export function ASCIIText({
 
       buildMesh();
       resize();
+      demoStart = performance.now();
       host.addEventListener("pointermove", onPointerMove);
       const observer = new ResizeObserver(resize);
       observer.observe(host);

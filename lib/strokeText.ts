@@ -125,8 +125,13 @@ export const SKETCH_BOIL_SEEDS = [7, 13, 23, 31];
 // on the centre line, so tops align across treatments whatever the metrics are.
 export function inkCentringOffset(
   box: { y: number; height: number } | null,
-  centreY: number
+  centreY: number,
+  liftPx = 0
 ): number {
   if (!box || !Number.isFinite(box.y) || !Number.isFinite(box.height)) return 0;
-  return centreY - (box.y + box.height / 2);
+  return centreY - (box.y + box.height / 2) - liftPx;
 }
+
+// A touch above true centre, which is where the sketch reads best against the
+// other treatments.
+export const STROKE_INK_LIFT_PX = 12;

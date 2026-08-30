@@ -1,5 +1,4 @@
 import {
-  ASCII_TYPE_SHARE,
   HEADLINE_INTRO_DURATION_MS,
   HEADLINE_INTRO_STEPS,
   introStateAt,
@@ -16,41 +15,28 @@ test("hands over to the ascii prototype once the sketch has drawn", () => {
   expect(introStateAt(sketch.durationMs).phase).toBe("ascii");
 });
 
+test("warps into shape after the ascii prototype", () => {
+  expect(introStateAt(sketch.durationMs + ascii.durationMs).phase).toBe("warp");
+});
+
+test("runs all four stages of the story", () => {
+  const seen = new Set<string>();
+  for (let t = 0; t <= HEADLINE_INTRO_DURATION_MS + 100; t += 25) {
+    seen.add(introStateAt(t).phase);
+  }
+  expect([...seen]).toEqual(["sketch", "ascii", "warp", "final"]);
+});
+
 test("settles on the finished treatment and stays there", () => {
-  expect(introStateAt(HEADLINE_INTRO_DURATION_MS)).toEqual({
-    phase: "final",
-    revealFraction: 1,
-    done: true,
-  });
+  expect(introStateAt(HEADLINE_INTRO_DURATION_MS)).toEqual({ phase: "final", done: true });
   expect(introStateAt(HEADLINE_INTRO_DURATION_MS * 10).done).toBe(true);
 });
 
-test("only the ascii step is partly revealed; the others are whole", () => {
-  expect(introStateAt(0).revealFraction).toBe(1);
-  expect(introStateAt(sketch.durationMs).revealFraction).toBe(0);
-  expect(introStateAt(HEADLINE_INTRO_DURATION_MS).revealFraction).toBe(1);
-});
 
-test("the characters type in and then hold, rather than typing to the last moment", () => {
-  const typedBy = sketch.durationMs + ascii.durationMs * ASCII_TYPE_SHARE;
-  expect(introStateAt(typedBy).revealFraction).toBeCloseTo(1, 5);
-  // Still ascii, fully typed, holding before the handover.
-  const holding = introStateAt(typedBy + (ascii.durationMs * (1 - ASCII_TYPE_SHARE)) / 2);
-  expect(holding.phase).toBe("ascii");
-  expect(holding.revealFraction).toBe(1);
-});
 
-test("the reveal only ever grows while typing", () => {
-  let previous = -1;
-  for (let t = sketch.durationMs; t < HEADLINE_INTRO_DURATION_MS; t += 25) {
-    const reveal = introStateAt(t).revealFraction;
-    expect(reveal).toBeGreaterThanOrEqual(previous);
-    previous = reveal;
-  }
-});
 
 test("the phases run forwards only, never back a step", () => {
-  const order = ["sketch", "ascii", "final"];
+  const order = ["sketch", "ascii", "warp", "final"];
   let previous = 0;
   for (let t = 0; t <= HEADLINE_INTRO_DURATION_MS + 500; t += 50) {
     const index = order.indexOf(introStateAt(t).phase);

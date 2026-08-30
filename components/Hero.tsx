@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import { NAME } from "@/data/letterTreatments";
-import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
+import { ASCII_DEMO_TILT_MS, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
@@ -68,7 +68,13 @@ export function Hero({
   const intro = useHeadlineIntro(playIntro);
   // The story owns the headline until it finishes; hover takes over after.
   const introEffect: HeadlineEffect | null =
-    intro.phase === "sketch" ? "stroke" : intro.phase === "ascii" ? "ascii" : null;
+    intro.phase === "sketch"
+      ? "stroke"
+      : intro.phase === "ascii"
+        ? "ascii"
+        : intro.phase === "warp"
+          ? "warp"
+          : null;
   const activeEffect = intro.done ? hoverEffect : introEffect;
   const [asciiStageColor, setAsciiStageColor] = useState(ASCII_BG_COLOR);
   const nextEffectIndexRef = useRef(0);
@@ -133,7 +139,11 @@ export function Hero({
           onPointerLeave={deactivateHeadline}
         >
           {activeEffect === "ascii" ? (
-            <ASCIIText text={NAME} {...asciiConfig} revealFraction={intro.revealFraction} />
+            <ASCIIText
+              text={NAME}
+              {...asciiConfig}
+              demoTiltMs={intro.done ? 0 : ASCII_DEMO_TILT_MS}
+            />
           ) : activeEffect === "stroke" ? (
             <StrokeText
               text={NAME}

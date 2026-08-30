@@ -7,6 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
+  STROKE_INK_LIFT_PX,
   inkCentringOffset,
   sketchColors,
 } from "@/lib/strokeText";
@@ -224,7 +225,7 @@ export function StrokeText({
   const centreY = hostSize ? hostSize.height / 2 : 100;
   // Measured off the untransformed <text>, and applied to the group around it,
   // so correcting the position can never feed back into the measurement.
-  const inkOffset = inkCentringOffset(box, centreY);
+  const inkOffset = inkCentringOffset(box, centreY, STROKE_INK_LIFT_PX);
   return (
     <span
       ref={rootRef}
