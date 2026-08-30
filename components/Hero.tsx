@@ -178,6 +178,7 @@ export function Hero({
             <Image
               key={icon.name}
               className={styles.asciiDesktopIcon}
+              data-icon={icon.name}
               src={icon.src}
               width={150}
               height={139}

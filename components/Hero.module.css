@@ -28,22 +28,31 @@
 
 .asciiDesktopIcons {
   position: absolute;
-  top: 50%;
-  right: calc(60vw + clamp(1.5rem, 3vw, 3rem));
+  inset: 0;
   z-index: 0;
-  display: flex;
-  width: clamp(5rem, 10vw, 9rem);
-  flex-direction: column;
-  gap: clamp(0.35rem, 1vw, 0.9rem);
-  transform: translateY(-50%);
   pointer-events: none;
   user-select: none;
 }
 
 .asciiDesktopIcon {
-  display: block;
-  width: 100%;
+  position: absolute;
+  width: clamp(5rem, 9vw, 8rem);
   height: auto;
+}
+
+.asciiDesktopIcon[data-icon="desktop"] {
+  top: clamp(1.5rem, 4vw, 3.5rem);
+  right: calc(60vw + clamp(1.5rem, 3vw, 3rem));
+}
+
+.asciiDesktopIcon[data-icon="documents"] {
+  top: clamp(8rem, 13vw, 11rem);
+  right: calc(60vw + clamp(1.5rem, 3vw, 3rem));
+}
+
+.asciiDesktopIcon[data-icon="trash"] {
+  right: calc(60vw + clamp(1.5rem, 3vw, 3rem));
+  bottom: clamp(1.5rem, 4vw, 3.5rem);
 }
 
 .visible {

@@ -55,10 +55,10 @@ the ASCII/Warp arrow while retaining the same viewport anchor.
 pointer-inert treatment surfaces rather than putting a backdrop behind the
 headline frame. Stroke fades in a faint dot-grid/fibre paper field, and ASCII
 fades in scanlines, a subtle RGB grille, an inset CRT vignette, and a
-pointer-inert Windows 95 desktop icon column (`desktop`, `documents`, `trash`)
-along the visible right edge. Both layers stay below the `z-10` headline and
-arrow, so they cannot create a visible headline bounding box or intercept hover
-input. Keep these surfaces restrained:
+pointer-inert Windows 95 desktop icons (`desktop` and `documents` near the
+upper-right, `trash` near the lower-right) with comfortable edge padding. Both
+layers stay below the `z-10` headline and arrow, so they cannot create a
+visible headline bounding box or intercept hover input. Keep these surfaces restrained:
 the glyph treatment is the focal point, not the texture.
 
 **Paper shader background (2026-08-30):** The sketch treatment also mounts
