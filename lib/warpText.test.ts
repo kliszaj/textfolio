@@ -44,13 +44,19 @@ describe("the scripted pointer sweep", () => {
     }
   });
 
-  test("stays inside the headline it is sweeping across", () => {
+  test("stays inside the headline while tracing a sine curve", () => {
+    const samples = [] as number[];
     for (let t = 0; t < DURATION; t += 25) {
       const { x, y } = demoPointerAt(t, DURATION)!;
       expect(x).toBeGreaterThan(0);
       expect(x).toBeLessThan(1);
-      expect(y).toBe(0.5);
+      expect(y).toBeGreaterThan(0.3);
+      expect(y).toBeLessThan(0.7);
+      samples.push(y);
     }
+    expect(new Set(samples.map((value) => value.toFixed(3))).size).toBeGreaterThan(3);
+    expect(samples.some((value) => value > 0.6)).toBe(true);
+    expect(samples.some((value) => value < 0.4)).toBe(true);
   });
 
   test("hands back to the real pointer once it is done", () => {

@@ -7,9 +7,21 @@ A designer portfolio built as a stack of paper. The landing page (the name
 cursor travels toward the bottom of the viewport. Clicking one lifts it out of
 the stack and navigates to its own route.
 
-**Status:** everything below is implemented and green — 25 suites / 285 tests,
-`npx tsc --noEmit` clean, `npm run lint` clean, `next build` succeeds. The
-working tree is **clean and committed** on `main`; HEAD is `7aae5d7`.
+**Status:** everything below is implemented and green — 28 suites / 297 tests
+(5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. The current
+checkout is `main` at `cc9e76c`; this continuation adds uncommitted test and
+component changes, so preserve them when you take over.
+
+**Latest continuation (2026-08-30):** added DOM-contract tests for
+`ASCIIText`, `WarpText`, and `StrokeText` covering accessible labels, fallback
+copies, readiness flags, shared typography forwarding, and configurable SVG
+colors. `ASCIIText`'s props are now correctly typed as a partial config because
+the component already supplies defaults for every setting.
+
+The Warp treatment's scripted load demo now moves its simulated pointer
+left-to-right along one restrained sine cycle (`demoPointerAt` varies both x
+and y), rather than following a straight horizontal line. Real pointer input
+still takes over immediately when the visitor moves.
 
 **Latest handoff (2026-08-30):** the headline is now a short story rather than
 a static word. On load it plays four stages — **sketch → ascii → warp →
@@ -401,9 +413,9 @@ components/
   CaseStudyView.tsx     case study page body (coloured header + cream body)
   FanDebugPanel.tsx     live tuning, behind a Settings button, dev-gated
   LineBoil.tsx          SVG turbulence filters cycled at 6fps
-  ASCIIText.tsx         three.js → ASCII cells, coloured by depth      [no tests]
-  WarpText.tsx          ogl/WebGL2 warp shader over a text texture     [no tests]
-  StrokeText.tsx        gsap + SVG pencil sketch with correction marks [no tests]
+  ASCIIText.tsx         three.js → ASCII cells, coloured by depth
+  WarpText.tsx          ogl/WebGL2 warp shader over a text texture
+  StrokeText.tsx        gsap + SVG pencil sketch with correction marks
 
 data/
   caseStudies.ts      5 entries, Post-it colours; first two are Spotify Jam and
@@ -412,10 +424,10 @@ data/
                       position-indexed treatments are dead, see debt
 ```
 
-Every file except the three treatment components has a paired `.test`. The repo
-is TDD-built — **write the failing test first**; the pure functions in `lib/`
-make almost everything testable without a browser, which is exactly why the
-maths for all three treatments lives there and not in the components.
+Every source file now has a paired `.test`, including DOM-contract tests for the
+three treatment components. The repo is TDD-built — **write the failing test
+first**; the pure functions in `lib/` make almost everything testable without a
+browser, while component tests pin fallback markup and readiness contracts.
 
 ## Tuning
 
@@ -511,15 +523,11 @@ filters ride the same beat.
 
 ### Testing debt
 
-14. **The three treatment components are the only untested source files.**
-    `ASCIIText.tsx`, `WarpText.tsx` and `StrokeText.tsx` have no test file;
-    everything else in the repo does. Their *libs* are covered
-    (`asciiText.test.ts`, `warpText.test.ts`, `strokeText.test.ts`,
-    `headlineIntro.test.ts`), which is where the maths deliberately lives.
-    WebGL and canvas do not run under jsdom, so cover the DOM contract —
-    fallback text present, `data-ready` / `data-webgl-ready` flags, aria-label,
-    cleanup on unmount — rather than the render. `app/layout.tsx` is also
-    untested, which is fine.
+14. **Treatment components only have DOM-contract coverage.**
+    `ASCIIText.test.tsx`, `WarpText.test.tsx`, and `StrokeText.test.tsx` pin
+    fallback text, readiness flags, aria-labels, and SVG attributes; WebGL and
+    canvas rendering still need a real-browser smoke test if shader regressions
+    become a concern. `app/layout.tsx` is also untested, which is fine.
 
 ### Design decisions parked
 

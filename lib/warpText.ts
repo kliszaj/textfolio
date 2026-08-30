@@ -24,10 +24,15 @@ export const DEFAULT_WARP_TEXT_CONFIG: WarpTextConfig = {
 export const WARP_DEMO_SWEEP_MS = 2200;
 // How far either side of centre the simulated cursor travels, in uv.
 const WARP_DEMO_REACH = 0.32;
+// A restrained vertical excursion keeps the scripted pointer inside the word
+// while making its path read as a sine curve instead of a ruler-straight pass.
+const WARP_DEMO_VERTICAL_REACH = 0.18;
 
 // A single pass from left to right across the headline, in the 0-1 uv space
-// the shader's pointer uniform expects. Eased at both ends. Returns null once
-// the sweep is done or was never asked for, so the real pointer takes over.
+// the shader's pointer uniform expects. The x travel is eased at both ends;
+// y follows one smooth sine cycle so the scripted cursor traces an arc rather
+// than a straight horizontal line. Returns null once the sweep is done or was
+// never asked for, so the real pointer takes over.
 export function demoPointerAt(
   elapsedMs: number,
   durationMs: number
@@ -37,5 +42,8 @@ export function demoPointerAt(
 
   const phase = elapsedMs / durationMs;
   const eased = phase * phase * (3 - 2 * phase);
-  return { x: 0.5 + (eased * 2 - 1) * WARP_DEMO_REACH, y: 0.5 };
+  return {
+    x: 0.5 + (eased * 2 - 1) * WARP_DEMO_REACH,
+    y: 0.5 + Math.sin(eased * Math.PI * 2) * WARP_DEMO_VERTICAL_REACH,
+  };
 }

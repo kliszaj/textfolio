@@ -46,7 +46,7 @@ void main() {
 }`;
 
 const CHARACTERS = " .`^\\\",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-type ASCIITextProps = ASCIITextConfig & {
+type ASCIITextProps = Partial<ASCIITextConfig> & {
   text: string;
   // Runs a scripted left-right sweep for this long on mount, so the tilt is
   // visible without the visitor having to find it. 0 disables it.
