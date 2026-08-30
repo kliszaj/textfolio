@@ -33,7 +33,9 @@
 .coolS {
   position: absolute;
   top: clamp(1.25rem, 3vw, 3rem);
-  left: clamp(1.25rem, 3vw, 3rem);
+  /* PaperSheet overscans 60vw to either side; counter that inset so this
+     page-level doodle actually lands in the visible viewport corner. */
+  left: calc(60vw + clamp(1.25rem, 3vw, 3rem));
   z-index: 10;
   width: clamp(2.75rem, 5vw, 5.25rem);
   height: auto;
