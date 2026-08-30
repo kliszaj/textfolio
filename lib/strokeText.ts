@@ -40,7 +40,9 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
 
 // Shared across the blue-pencil lettering and its supporting copy. The
 // correction marks deliberately remain red so they read as markup.
-export const SKETCH_INK = "#0057FF";
+// Every blue on the sketch treatment comes from here -- the lettering, the
+// tagline, the arrow, and the cool-S mark. A test pins the svg asset to it.
+export const SKETCH_INK = "#0040C0";
 
 // Hand-drawn look without a drawing library: turbulence displaces the outline
 // so it wanders like a drawn line, and a second, much finer noise eats into

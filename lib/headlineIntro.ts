@@ -56,6 +56,9 @@ export function handoverOpacityAt(elapsedMs: number): number {
 
 export type HeadlineIntroState = {
   phase: HeadlineIntroPhase;
+  // How far through the current stage, 0-1. Lets a treatment schedule its own
+  // entrance against the stage that holds it rather than a second timer.
+  phaseProgress: number;
   // Fades through each handover so treatments swap unseen.
   opacity: number;
   done: boolean;
@@ -63,6 +66,7 @@ export type HeadlineIntroState = {
 
 export const HEADLINE_INTRO_SETTLED: HeadlineIntroState = {
   phase: "final",
+  phaseProgress: 1,
   opacity: 1,
   done: true,
 };
@@ -75,6 +79,7 @@ export function introStateAt(elapsedMs: number): HeadlineIntroState {
     if (remaining < step.durationMs) {
       return {
         phase: step.phase,
+        phaseProgress: remaining / step.durationMs,
         opacity: handoverOpacityAt(remainingFromStart),
         done: false,
       };
@@ -89,6 +94,7 @@ export function introStateAt(elapsedMs: number): HeadlineIntroState {
 
   return {
     phase: "final",
+    phaseProgress: 1,
     opacity: handoverOpacityAt(remainingFromStart),
     done: false,
   };

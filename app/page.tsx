@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useFanProgress } from "@/hooks/useFanProgress";
 import { usePointerType } from "@/hooks/usePointerType";
 import { PaperStack } from "@/components/PaperStack";
-import { MobilePortfolio } from "@/components/MobilePortfolio";
 import { FanDebugPanel } from "@/components/FanDebugPanel";
 import { CaseStudyFocus } from "@/components/CaseStudyFocus";
 import type { FocusOrigin } from "@/components/CaseStudyFocus";
@@ -25,8 +24,10 @@ import type { PaperTextureConfig } from "@/lib/paperTexture";
 
 const DEFAULT_CONFIG: FanSheetConfig = {
   mechanic: "bottom",
-  bandPercents: [4, 4, 4, 4, 4],
-  emphasisBonusPercent: 8,
+  // Fully swept, the bands add up to roughly half the viewport height. At the
+  // old 4/8 they reached about 30% and the stack read as a sliver.
+  bandPercents: [6, 6, 6, 6, 6],
+  emphasisBonusPercent: 16,
   emphasisFalloff: 1.5,
   revealLeadSheets: 1.5,
   tiltStepDegrees: -2,
@@ -60,14 +61,22 @@ export default function HomePage() {
   );
   const pointerType = usePointerType();
   const isMobileLayout = pointerType === "coarse";
-  // Touch layouts use native vertical scrolling rather than keeping the fixed
-  // desktop stack alive underneath the page.
+  // Touch drives the same stack by scrolling rather than getting a different
+  // layout: the reveal is the interaction, so it belongs on every screen.
   const { fanProgress, sweepProgress } = useFanProgress(
     thresholdPx,
     fanSplit,
     smoothingMs,
-    !isMobileLayout
+    true
   );
+  // A phone is tall and narrow, so the revealed stack can afford more of it.
+  const activeConfig = isMobileLayout
+    ? {
+        ...config,
+        bandPercents: config.bandPercents.map((band) => band * 1.5),
+        emphasisBonusPercent: config.emphasisBonusPercent * 1.35,
+      }
+    : config;
 
   // Warm every case study route so the push at the end of the lift is instant
   // and the colour carries straight through.
@@ -90,22 +99,23 @@ export default function HomePage() {
 
   return (
     <>
-      {isMobileLayout ? (
-        <MobilePortfolio onSelectCaseStudy={liftCaseStudy} />
-      ) : (
-        <div className="fixed inset-0 overflow-hidden" onClickCapture={rememberOrigin}>
-          <PaperStack
-            fanProgress={fanProgress}
-            sweepProgress={sweepProgress}
-            config={config}
-            transitionMs={transitionMs}
-            asciiConfig={asciiConfig}
-            warpConfig={warpConfig}
-            strokeConfig={strokeConfig}
-            paperTextureConfig={paperTextureConfig}
-            onSelectCaseStudy={liftCaseStudy}
-          />
-        </div>
+      <div className="fixed inset-0 overflow-hidden" onClickCapture={rememberOrigin}>
+        <PaperStack
+          fanProgress={fanProgress}
+          sweepProgress={sweepProgress}
+          config={activeConfig}
+          transitionMs={transitionMs}
+          asciiConfig={asciiConfig}
+          warpConfig={warpConfig}
+          strokeConfig={strokeConfig}
+          paperTextureConfig={paperTextureConfig}
+          onSelectCaseStudy={liftCaseStudy}
+        />
+      </div>
+      {/* The stack is fixed, so touch needs something to actually scroll
+          against. Its height is what the whole gesture is spread over. */}
+      {isMobileLayout && (
+        <div data-testid="scroll-spacer" style={{ height: "260vh" }} aria-hidden="true" />
       )}
       {lifting && (
         <CaseStudyFocus

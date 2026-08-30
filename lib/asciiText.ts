@@ -189,3 +189,32 @@ export function extrudeLayerShade(layer: number, layers: number): number {
   const depth = Math.min(1, Math.max(0, layer / layers));
   return Math.round(255 * (1 - depth) * 0.9);
 }
+
+// Share of the ascii stage spent typing the word in.
+export const ASCII_TYPE_SHARE = 0.34;
+// How long a cell shows junk before settling on its real character.
+const TYPE_CHURN = 0.16;
+export const ASCII_TYPE_JUNK = "01<>[]{}/\|=+*#%@$&";
+
+export type AsciiCellState = "hidden" | "churning" | "settled";
+
+// Matrix-style rather than a wipe: each cell has its own moment, scattered by
+// a hash instead of marching across in a line, and shows junk for a beat
+// before it settles. `hash` is any stable 0-1 value for the cell.
+export function asciiCellStateAt(hash: number, progress: number): AsciiCellState {
+  if (!Number.isFinite(progress) || progress >= 1) return "settled";
+  if (!Number.isFinite(hash)) return "settled";
+
+  const at = Math.min(1, Math.max(0, hash));
+  const t = Math.min(1, Math.max(0, progress));
+  if (t < at) return "hidden";
+  if (t < at + TYPE_CHURN) return "churning";
+  return "settled";
+}
+
+// A junk glyph for a churning cell, chosen from the same stable hash so it
+// does not reshuffle every frame.
+export function asciiJunkGlyph(hash: number, tick: number): string {
+  const index = Math.abs(Math.floor(hash * 977 + tick)) % ASCII_TYPE_JUNK.length;
+  return ASCII_TYPE_JUNK[index];
+}

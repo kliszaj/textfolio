@@ -43,7 +43,7 @@ describe("useHeadlineIntro", () => {
     act(() => {
       jest.advanceTimersByTime(HEADLINE_INTRO_DURATION_MS + HEADLINE_HANDOVER_MS);
     });
-    expect(result.current).toEqual({ phase: "final", opacity: 1, done: true });
+    expect(result.current).toEqual({ phase: "final", phaseProgress: 1, opacity: 1, done: true });
   });
 
   test("goes straight to the finished treatment when disabled", () => {

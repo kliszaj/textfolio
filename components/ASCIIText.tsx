@@ -5,6 +5,8 @@ import {
   ASCII_CAMERA_DISTANCE,
   ASCII_CAMERA_FOV_DEG,
   ASCII_EXTRUDE_LAYERS,
+  asciiCellStateAt,
+  asciiJunkGlyph,
   ASCII_EXTRUDE_RISE,
   ASCII_TILT_Y_RATIO,
   extrudeLayerShade,
@@ -71,6 +73,8 @@ type ASCIITextProps = Partial<ASCIITextConfig> & {
   // Runs a scripted left-right sweep for this long on mount, so the tilt is
   // visible without the visitor having to find it. 0 disables it.
   demoTiltMs?: number;
+  // 0-1 type-in progress. 1 means fully typed, which is the resting state.
+  typeProgress?: number;
 };
 
 export function ASCIIText({
@@ -84,15 +88,24 @@ export function ASCIIText({
   crtCurvature = DEFAULT_ASCII_TEXT_CONFIG.crtCurvature,
   randomizeGlyphColors = DEFAULT_ASCII_TEXT_CONFIG.randomizeGlyphColors,
   demoTiltMs = 0,
+  typeProgress = 1,
 }: ASCIITextProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   // Held in a ref, not a dependency: rebuilding the WebGL context because a
   // number changed would be catastrophic.
   const demoTiltRef = useRef(demoTiltMs);
 
+  // Both held in refs, not deps: they change every frame as the intro runs,
+  // and rebuilding the WebGL context to read a number would be catastrophic.
+  const typeProgressRef = useRef(typeProgress);
+
   useEffect(() => {
     demoTiltRef.current = demoTiltMs;
   }, [demoTiltMs]);
+
+  useEffect(() => {
+    typeProgressRef.current = typeProgress;
+  }, [typeProgress]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -290,7 +303,22 @@ export function ASCIIText({
               continue;
             }
             const brightness = (pixels[index] * 0.3 + pixels[index + 1] * 0.6 + pixels[index + 2] * 0.1) / 255;
-            const character = CHARACTERS[Math.floor(brightness * (CHARACTERS.length - 1))];
+
+            // Each cell types itself in on its own beat, scattered by a hash
+            // rather than marching across in a line, and shows junk for a
+            // moment before it settles. Seeded apart from the colour hash so
+            // the two do not correlate.
+            const typeNoise = Math.sin(x * 3.7891 + y * 21.317 + 4.113) * 21374.221;
+            const typeHash = typeNoise - Math.floor(typeNoise);
+            const cell = asciiCellStateAt(typeHash, typeProgressRef.current);
+            if (cell === "hidden") {
+              output += " ";
+              continue;
+            }
+            const character =
+              cell === "churning"
+                ? asciiJunkGlyph(typeHash, churnTick)
+                : CHARACTERS[Math.floor(brightness * (CHARACTERS.length - 1))];
             output += character;
             if (randomizeGlyphColors) {
               // Same brightness that chose the glyph also chooses its colour,
@@ -311,6 +339,8 @@ export function ASCIIText({
       };
 
       let demoStart = performance.now();
+      // Advances a few times a second so churning cells reshuffle their junk.
+      let churnTick = 0;
       let pointerTaken = false;
 
       const onPointerMove = (event: PointerEvent) => {
@@ -337,6 +367,7 @@ export function ASCIIText({
         pointer.y += (pointer.targetY - pointer.y) * 0.05;
         mesh.rotation.x = pointer.y;
         mesh.rotation.y = pointer.x;
+        churnTick = Math.floor(time / 55);
         material.uniforms.uTime.value = time * 0.001;
         renderer.render(scene, camera);
         asciify();

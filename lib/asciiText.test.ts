@@ -8,6 +8,9 @@ import {
   DEFAULT_ASCII_TEXT_CONFIG,
   ASCII_MIN_FONT_SIZE,
   asciiFontSizeForHost,
+  ASCII_TYPE_JUNK,
+  asciiCellStateAt,
+  asciiJunkGlyph,
   chipForBrightness,
   demoTiltAt,
   planeHeightForFontSize,
@@ -270,5 +273,53 @@ describe("extruding the letters", () => {
 
   test("survives a degenerate layer count", () => {
     expect(extrudeLayerShade(1, 0)).toBe(0);
+  });
+});
+
+describe("typing the ascii word in", () => {
+  test("nothing is on screen at the start and everything is by the end", () => {
+    for (const hash of [0.01, 0.3, 0.7, 0.99]) {
+      expect(asciiCellStateAt(hash, 0)).toBe("hidden");
+      expect(asciiCellStateAt(hash, 1)).toBe("settled");
+    }
+  });
+
+  test("cells arrive scattered rather than marching across in a line", () => {
+    // A wipe is what this replaced; at any moment mid-type there should be
+    // both settled and unarrived cells.
+    const states = Array.from({ length: 40 }, (_, i) =>
+      asciiCellStateAt(i / 40, 0.5)
+    );
+    expect(states).toContain("settled");
+    expect(states).toContain("hidden");
+  });
+
+  test("a cell churns through junk before it settles", () => {
+    const hash = 0.4;
+    expect(asciiCellStateAt(hash, 0.3)).toBe("hidden");
+    expect(asciiCellStateAt(hash, 0.45)).toBe("churning");
+    expect(asciiCellStateAt(hash, 0.9)).toBe("settled");
+  });
+
+  test("a cell never goes backwards as the type-in runs", () => {
+    const order = { hidden: 0, churning: 1, settled: 2 };
+    let previous = 0;
+    for (let t = 0; t <= 1; t += 0.02) {
+      const rank = order[asciiCellStateAt(0.35, t)];
+      expect(rank).toBeGreaterThanOrEqual(previous);
+      previous = rank;
+    }
+  });
+
+  test("junk glyphs come from the junk set and reshuffle over time", () => {
+    const first = asciiJunkGlyph(0.42, 0);
+    expect(ASCII_TYPE_JUNK).toContain(first);
+    const later = Array.from({ length: 12 }, (_, tick) => asciiJunkGlyph(0.42, tick));
+    expect(new Set(later).size).toBeGreaterThan(1);
+  });
+
+  test("survives nonsense progress rather than blanking the word", () => {
+    expect(asciiCellStateAt(0.5, NaN)).toBe("settled");
+    expect(asciiCellStateAt(NaN, 0.5)).toBe("settled");
   });
 });

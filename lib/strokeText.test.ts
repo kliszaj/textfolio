@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   CORRECTION_CROSS_DELAY_MS,
   CORRECTION_DRAW_MS,
@@ -232,5 +234,34 @@ describe("correction marks", () => {
     expect(CORRECTION_INK).toBe("#FF0000");
     expect(CORRECTION_DRAW_MS).toBeGreaterThan(0);
     expect(CORRECTION_CROSS_DELAY_MS).toBeGreaterThan(0);
+  });
+});
+
+describe("one blue for the whole sketch treatment", () => {
+  test("the cool-S asset is inked in SKETCH_INK", () => {
+    // The svg is served through next/image, so it cannot inherit currentColor
+    // or a CSS variable -- its fill is a literal. This is what stops it
+    // drifting away from the lettering, tagline and arrow.
+    const svg = readFileSync(
+      join(process.cwd(), "public", "assets", "cool-s.svg"),
+      "utf8"
+    );
+    const fills = [...svg.matchAll(/fill="(#[0-9A-Fa-f]{6})"/g)].map((m) => m[1]);
+    expect(fills.length).toBeGreaterThan(0);
+    for (const fill of fills) {
+      expect(fill.toUpperCase()).toBe(SKETCH_INK.toUpperCase());
+    }
+  });
+
+  test("the sketch letters use it for both outline and shading", () => {
+    const { strokeColor, fillColor } = sketchColors("pencil", "#123456", "#654321");
+    expect(strokeColor).toBe(SKETCH_INK);
+    expect(fillColor).toBe(SKETCH_INK);
+  });
+
+  test("it is a darker blue than the old cobalt", () => {
+    const luminance = (hex: string) =>
+      [1, 3, 5].reduce((sum, i) => sum + parseInt(hex.slice(i, i + 2), 16), 0);
+    expect(luminance(SKETCH_INK)).toBeLessThan(luminance("#0057FF"));
   });
 });

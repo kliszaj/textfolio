@@ -36,6 +36,7 @@ test("runs all four stages of the story", () => {
 test("settles on the finished treatment and stays there", () => {
   expect(introStateAt(HEADLINE_INTRO_DURATION_MS + HEADLINE_HANDOVER_MS)).toEqual({
     phase: "final",
+    phaseProgress: 1,
     opacity: 1,
     done: true,
   });
