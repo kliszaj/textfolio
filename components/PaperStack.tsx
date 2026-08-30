@@ -10,6 +10,8 @@ import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
+import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
+import type { PaperTextureConfig } from "@/lib/paperTexture";
 import { Hero } from "./Hero";
 import { PaperSheet } from "./PaperSheet";
 import { CaseStudyPreview } from "./CaseStudyPreview";
@@ -34,6 +36,7 @@ type PaperStackProps = {
   asciiConfig?: ASCIITextConfig;
   warpConfig?: WarpTextConfig;
   strokeConfig?: StrokeTextConfig;
+  paperTextureConfig?: PaperTextureConfig;
   onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
   playIntro?: boolean;
 };
@@ -46,6 +49,7 @@ export function PaperStack({
   asciiConfig = DEFAULT_ASCII_TEXT_CONFIG,
   warpConfig = DEFAULT_WARP_TEXT_CONFIG,
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
+  paperTextureConfig = DEFAULT_PAPER_TEXTURE_CONFIG,
   onSelectCaseStudy,
   playIntro,
 }: PaperStackProps) {
@@ -63,7 +67,7 @@ export function PaperStack({
         transitionMs={transitionMs}
         zIndex={zIndexForDepth(0, sheetCount)}
       >
-        <Hero playIntro={playIntro} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} />
+        <Hero playIntro={playIntro} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} />
       </PaperSheet>
       {caseStudies.map((caseStudy, index) => {
         const depth = index + 1;

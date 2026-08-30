@@ -20,6 +20,8 @@ import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
+import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
+import type { PaperTextureConfig } from "@/lib/paperTexture";
 
 const DEFAULT_CONFIG: FanSheetConfig = {
   mechanic: "bottom",
@@ -53,6 +55,9 @@ export default function HomePage() {
   const [asciiConfig, setAsciiConfig] = useState<ASCIITextConfig>(DEFAULT_ASCII_TEXT_CONFIG);
   const [warpConfig, setWarpConfig] = useState<WarpTextConfig>(DEFAULT_WARP_TEXT_CONFIG);
   const [strokeConfig, setStrokeConfig] = useState<StrokeTextConfig>(DEFAULT_STROKE_TEXT_CONFIG);
+  const [paperTextureConfig, setPaperTextureConfig] = useState<PaperTextureConfig>(
+    DEFAULT_PAPER_TEXTURE_CONFIG
+  );
   const pointerType = usePointerType();
   const isMobileLayout = pointerType === "coarse";
   // Touch layouts use native vertical scrolling rather than keeping the fixed
@@ -97,6 +102,7 @@ export default function HomePage() {
             asciiConfig={asciiConfig}
             warpConfig={warpConfig}
             strokeConfig={strokeConfig}
+            paperTextureConfig={paperTextureConfig}
             onSelectCaseStudy={liftCaseStudy}
           />
         </div>
@@ -127,6 +133,8 @@ export default function HomePage() {
         onWarpConfigChange={setWarpConfig}
         strokeConfig={strokeConfig}
         onStrokeConfigChange={setStrokeConfig}
+        paperTextureConfig={paperTextureConfig}
+        onPaperTextureConfigChange={setPaperTextureConfig}
       />
       )}
     </>

@@ -50,6 +50,14 @@ the CSS dot-grid layer. It is static (`speed={0}`), pointer-inert, capped at
 the dependency into `Hero`: the dynamic component keeps this extra WebGL
 payload out of the resting/ASCII/Warp path.
 
+**Paper Texture settings (2026-08-30):** `lib/paperTexture.ts` is the source
+of truth for the shader config. The dev-only Settings panel has its own `Paper
+Texture` tab, wired through `page` → `PaperStack` → `Hero` →
+`SketchPaperShader`. It exposes both colours, opacity, contrast, roughness,
+fibre and size, crumples and size, folds and count, speckles, fade, scale, and
+seed. `colorBack` also becomes the sketch hero's fallback/background colour,
+so no seam shows around the shader canvas.
+
 **ASCII CRT pass (2026-08-30):** `ASCIIText` now applies a restrained barrel
 curve and scanline modulation in its existing Three.js fragment shader before
 the frame is sampled into ASCII cells (`CRT_INTENSITY = 0.68`). This is

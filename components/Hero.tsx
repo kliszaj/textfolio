@@ -10,6 +10,8 @@ import { DEFAULT_WARP_TEXT_CONFIG, WARP_DEMO_SWEEP_MS } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
 import { CORRECTION_INK, DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
+import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
+import type { PaperTextureConfig } from "@/lib/paperTexture";
 import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
@@ -59,6 +61,7 @@ type HeroProps = {
   asciiConfig?: ASCIITextConfig;
   warpConfig?: WarpTextConfig;
   strokeConfig?: StrokeTextConfig;
+  paperTextureConfig?: PaperTextureConfig;
   // Plays the sketch -> prototype -> finished story once on mount.
   playIntro?: boolean;
 };
@@ -73,6 +76,7 @@ export function Hero({
   asciiConfig = DEFAULT_ASCII_TEXT_CONFIG,
   warpConfig = DEFAULT_WARP_TEXT_CONFIG,
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
+  paperTextureConfig = DEFAULT_PAPER_TEXTURE_CONFIG,
   playIntro = true,
 }: HeroProps) {
   const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
@@ -104,7 +108,7 @@ export function Hero({
     activeEffect === "ascii"
       ? asciiStageColor
       : activeEffect === "stroke"
-        ? DEFAULT_BG_COLOR
+        ? paperTextureConfig.colorBack
         : isHeadlineActive
           ? SELECTED_BG_COLOR
           : DEFAULT_BG_COLOR;
@@ -140,7 +144,7 @@ export function Hero({
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
       }}
     >
-      {activeEffect === "stroke" && <SketchPaperShader />}
+      {activeEffect === "stroke" && <SketchPaperShader config={paperTextureConfig} />}
       <div
         aria-hidden="true"
         data-testid="sketch-paper-surface"

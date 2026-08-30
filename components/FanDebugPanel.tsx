@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import type { WarpTextConfig } from "@/lib/warpText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
+import type { PaperTextureConfig } from "@/lib/paperTexture";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 
 type FanDebugPanelProps = {
@@ -23,6 +24,8 @@ type FanDebugPanelProps = {
   onWarpConfigChange: (config: WarpTextConfig) => void;
   strokeConfig: StrokeTextConfig;
   onStrokeConfigChange: (config: StrokeTextConfig) => void;
+  paperTextureConfig: PaperTextureConfig;
+  onPaperTextureConfigChange: (config: PaperTextureConfig) => void;
 };
 
 const BAND_LABELS = ["Case One", "Case Two", "Case Three", "Case Four", "Case Five"];
@@ -30,6 +33,7 @@ const TREATMENT_LABELS = {
   warp: "Warp Text",
   ascii: "ASCII Text",
   stroke: "Stroke Text",
+  paper: "Paper Texture",
 } as const;
 
 type TreatmentId = keyof typeof TREATMENT_LABELS;
@@ -51,6 +55,8 @@ export function FanDebugPanel({
   onWarpConfigChange,
   strokeConfig,
   onStrokeConfigChange,
+  paperTextureConfig,
+  onPaperTextureConfigChange,
 }: FanDebugPanelProps) {
   const [open, setOpen] = useState(false);
   const [selectedTreatment, setSelectedTreatment] = useState<TreatmentId>("ascii");
@@ -76,6 +82,13 @@ export function FanDebugPanel({
     value: StrokeTextConfig[Key],
   ) {
     onStrokeConfigChange({ ...strokeConfig, [key]: value });
+  }
+
+  function updatePaper<Key extends keyof PaperTextureConfig>(
+    key: Key,
+    value: PaperTextureConfig[Key],
+  ) {
+    onPaperTextureConfigChange({ ...paperTextureConfig, [key]: value });
   }
 
   if (!open) {
@@ -541,6 +554,84 @@ export function FanDebugPanel({
               onChange={(event) => updateWarp("ripple", event.target.checked)}
               className="size-4 accent-white"
             />
+          </label>
+        </div>
+        ) : selectedTreatment === "paper" ? (
+        <div data-testid="paper-texture-settings" className="grid grid-cols-1 gap-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block leading-tight" htmlFor="paper-color-back">
+              Paper base
+              <input
+                id="paper-color-back"
+                type="color"
+                value={paperTextureConfig.colorBack}
+                onChange={(event) => updatePaper("colorBack", event.target.value)}
+                className="mt-1 h-7 w-full cursor-pointer rounded border border-white/30 bg-transparent"
+              />
+            </label>
+            <label className="block leading-tight" htmlFor="paper-color-front">
+              Paper fibre
+              <input
+                id="paper-color-front"
+                type="color"
+                value={paperTextureConfig.colorFront}
+                onChange={(event) => updatePaper("colorFront", event.target.value)}
+                className="mt-1 h-7 w-full cursor-pointer rounded border border-white/30 bg-transparent"
+              />
+            </label>
+          </div>
+
+          <label className="block leading-tight" htmlFor="paper-opacity">
+            Texture opacity: {paperTextureConfig.opacity.toFixed(2)}
+            <input id="paper-opacity" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.opacity} onChange={(event) => updatePaper("opacity", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-contrast">
+            Contrast: {paperTextureConfig.contrast.toFixed(2)}
+            <input id="paper-contrast" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.contrast} onChange={(event) => updatePaper("contrast", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-roughness">
+            Roughness: {paperTextureConfig.roughness.toFixed(2)}
+            <input id="paper-roughness" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.roughness} onChange={(event) => updatePaper("roughness", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-fiber">
+            Fibre: {paperTextureConfig.fiber.toFixed(2)}
+            <input id="paper-fiber" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.fiber} onChange={(event) => updatePaper("fiber", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-fiber-size">
+            Fibre size: {paperTextureConfig.fiberSize.toFixed(2)}
+            <input id="paper-fiber-size" type="range" min={0.01} max={1} step={0.01} value={paperTextureConfig.fiberSize} onChange={(event) => updatePaper("fiberSize", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-crumples">
+            Crumples: {paperTextureConfig.crumples.toFixed(2)}
+            <input id="paper-crumples" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.crumples} onChange={(event) => updatePaper("crumples", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-crumple-size">
+            Crumple size: {paperTextureConfig.crumpleSize.toFixed(2)}
+            <input id="paper-crumple-size" type="range" min={0.01} max={1} step={0.01} value={paperTextureConfig.crumpleSize} onChange={(event) => updatePaper("crumpleSize", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-folds">
+            Folds: {paperTextureConfig.folds.toFixed(2)}
+            <input id="paper-folds" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.folds} onChange={(event) => updatePaper("folds", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-fold-count">
+            Fold count: {paperTextureConfig.foldCount}
+            <input id="paper-fold-count" type="range" min={1} max={15} step={1} value={paperTextureConfig.foldCount} onChange={(event) => updatePaper("foldCount", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-drops">
+            Speckles: {paperTextureConfig.drops.toFixed(2)}
+            <input id="paper-drops" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.drops} onChange={(event) => updatePaper("drops", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-fade">
+            Fade mask: {paperTextureConfig.fade.toFixed(2)}
+            <input id="paper-fade" type="range" min={0} max={1} step={0.01} value={paperTextureConfig.fade} onChange={(event) => updatePaper("fade", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-scale">
+            Texture scale: {paperTextureConfig.scale.toFixed(2)}x
+            <input id="paper-scale" type="range" min={0.1} max={4} step={0.01} value={paperTextureConfig.scale} onChange={(event) => updatePaper("scale", Number(event.target.value))} className="mt-1 w-full" />
+          </label>
+          <label className="block leading-tight" htmlFor="paper-seed">
+            Texture seed: {paperTextureConfig.seed.toFixed(1)}
+            <input id="paper-seed" type="range" min={0} max={1000} step={0.1} value={paperTextureConfig.seed} onChange={(event) => updatePaper("seed", Number(event.target.value))} className="mt-1 w-full" />
           </label>
         </div>
         ) : (

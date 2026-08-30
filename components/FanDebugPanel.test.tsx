@@ -4,6 +4,7 @@ import type { FanSheetConfig } from "@/lib/fanSheet";
 import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
+import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 
 const config: FanSheetConfig = {
   mechanic: "bottom",
@@ -25,6 +26,7 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
   const onAsciiConfigChange = jest.fn();
   const onWarpConfigChange = jest.fn();
   const onStrokeConfigChange = jest.fn();
+  const onPaperTextureConfigChange = jest.fn();
   render(
     <FanDebugPanel
       config={config}
@@ -43,6 +45,8 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
       onWarpConfigChange={onWarpConfigChange}
       strokeConfig={DEFAULT_STROKE_TEXT_CONFIG}
       onStrokeConfigChange={onStrokeConfigChange}
+      paperTextureConfig={DEFAULT_PAPER_TEXTURE_CONFIG}
+      onPaperTextureConfigChange={onPaperTextureConfigChange}
       {...overrides}
     />
   );
@@ -57,6 +61,7 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
     onAsciiConfigChange,
     onWarpConfigChange,
     onStrokeConfigChange,
+    onPaperTextureConfigChange,
   };
 }
 
@@ -79,6 +84,8 @@ function renderClosed() {
       onWarpConfigChange={jest.fn()}
       strokeConfig={DEFAULT_STROKE_TEXT_CONFIG}
       onStrokeConfigChange={jest.fn()}
+      paperTextureConfig={DEFAULT_PAPER_TEXTURE_CONFIG}
+      onPaperTextureConfigChange={jest.fn()}
     />
   );
 }
@@ -190,6 +197,26 @@ test("updates Stroke Text settings independently", () => {
   fireEvent.click(screen.getByRole("tab", { name: "Stroke Text" }));
   fireEvent.change(screen.getByLabelText(/Draw duration/i), { target: { value: "2.4" } });
   expect(onStrokeConfigChange).toHaveBeenCalledWith({ ...DEFAULT_STROKE_TEXT_CONFIG, drawDuration: 2.4 });
+});
+
+test("switches to Paper Texture and exposes the shader controls", () => {
+  renderPanel();
+  fireEvent.click(screen.getByRole("tab", { name: "Paper Texture" }));
+  expect(screen.getByRole("tab", { name: "Paper Texture" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByTestId("paper-texture-settings")).toBeInTheDocument();
+  expect(screen.getByLabelText(/Fibre size/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Fold count/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Texture seed/i)).toBeInTheDocument();
+});
+
+test("updates Paper Texture settings independently", () => {
+  const { onPaperTextureConfigChange } = renderPanel();
+  fireEvent.click(screen.getByRole("tab", { name: "Paper Texture" }));
+  fireEvent.change(screen.getByLabelText(/^Roughness/i), { target: { value: "0.45" } });
+  expect(onPaperTextureConfigChange).toHaveBeenCalledWith({
+    ...DEFAULT_PAPER_TEXTURE_CONFIG,
+    roughness: 0.45,
+  });
 });
 
 test("closes again, leaving only the Settings button", () => {
