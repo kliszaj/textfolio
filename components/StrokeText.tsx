@@ -4,7 +4,8 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import type { CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { getSketchSpec, sketchColors } from "@/lib/strokeText";
+import { SKETCH_BOIL_SEEDS, getSketchSpec, sketchColors } from "@/lib/strokeText";
+import { useLineBoilFrame } from "@/hooks/useLineBoilFrame";
 import type {
   StrokeTextFillMode,
   StrokeTextSketchStyle,
@@ -70,7 +71,15 @@ export function StrokeText({
   const sketchId = `stroke-text-sketch-${safeId}`;
   const sketch = getSketchSpec(sketchStyle);
   const inked = sketchColors(sketchStyle, strokeColor, fillColor);
-  const sketchFilter = sketch.wobbleScale > 0 ? `url(#${sketchId})` : undefined;
+  const hatchId = `stroke-text-hatch-${safeId}`;
+  // Re-seeded turbulence on the shared boil beat, so the drawn line is redrawn
+  // a few times a second instead of holding perfectly still.
+  const boilFrame = useLineBoilFrame(SKETCH_BOIL_SEEDS.length);
+  const sketchFilter =
+    sketch.wobbleScale > 0 ? `url(#${sketchId}-${boilFrame})` : undefined;
+  const hatchGap = Math.max(3, (box?.height ?? 200) * sketch.hatchSpacing);
+  const fillPaint =
+    sketch.fillTexture === "hatch" ? `url(#${hatchId})` : inked.fillColor;
   const characters = useMemo(() => Array.from(text), [text]);
   const dash = box ? Math.max(box.width, box.height) * 4 : 4000;
   const fontStyle = useMemo<CSSProperties>(
@@ -224,63 +233,86 @@ export function StrokeText({
               <rect ref={wipeRectRef} x={box.x} y={box.y} width="0" height={box.height} />
             </clipPath>
           )}
-          {sketchFilter && (
-            <filter
-              id={sketchId}
-              x="-12%"
-              y="-12%"
-              width="124%"
-              height="124%"
-              filterUnits="objectBoundingBox"
-              primitiveUnits="userSpaceOnUse"
-              colorInterpolationFilters="sRGB"
+          {sketchFilter &&
+            SKETCH_BOIL_SEEDS.map((seed, index) => (
+              <filter
+                key={seed}
+                id={`${sketchId}-${index + 1}`}
+                x="-12%"
+                y="-12%"
+                width="124%"
+                height="124%"
+                filterUnits="objectBoundingBox"
+                primitiveUnits="userSpaceOnUse"
+                colorInterpolationFilters="sRGB"
+              >
+                {/* The outline wanders off true, the way a drawn line does. */}
+                <feTurbulence
+                  type="fractalNoise"
+                  baseFrequency={sketch.wobbleFrequency}
+                  numOctaves={sketch.wobbleOctaves}
+                  seed={seed}
+                  result="wander"
+                />
+                <feDisplacementMap
+                  in="SourceGraphic"
+                  in2="wander"
+                  scale={sketch.wobbleScale}
+                  xChannelSelector="R"
+                  yChannelSelector="G"
+                  result="drawn"
+                />
+                {sketch.grainFrequency > 0 ? (
+                  <>
+                    {/* Much finer noise, cut into the alpha so the ink breaks
+                        up across the paper instead of sitting flat. */}
+                    <feTurbulence
+                      type="fractalNoise"
+                      baseFrequency={sketch.grainFrequency}
+                      numOctaves="2"
+                      seed={seed}
+                      result="tooth"
+                    />
+                    <feColorMatrix
+                      in="tooth"
+                      type="matrix"
+                      values={`0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 ${sketch.grainStrength} ${
+                        1 - sketch.grainStrength
+                      }`}
+                      result="graphite"
+                    />
+                    <feComposite in="drawn" in2="graphite" operator="in" />
+                  </>
+                ) : null}
+              </filter>
+            ))}
+          {sketch.fillTexture === "hatch" && (
+            // Shaded in by hand rather than flooded: the fill is drawn strokes,
+            // which the grain above then breaks up like graphite.
+            <pattern
+              id={hatchId}
+              patternUnits="userSpaceOnUse"
+              width={hatchGap}
+              height={hatchGap}
+              patternTransform="rotate(48)"
             >
-              {/* The outline wanders off true, the way a drawn line does. */}
-              <feTurbulence
-                type="fractalNoise"
-                baseFrequency={sketch.wobbleFrequency}
-                numOctaves={sketch.wobbleOctaves}
-                seed="7"
-                result="wander"
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2={hatchGap}
+                stroke={inked.fillColor}
+                strokeWidth={Math.max(0.8, hatchGap * 0.28)}
+                strokeLinecap="round"
               />
-              <feDisplacementMap
-                in="SourceGraphic"
-                in2="wander"
-                scale={sketch.wobbleScale}
-                xChannelSelector="R"
-                yChannelSelector="G"
-                result="drawn"
-              />
-              {sketch.grainFrequency > 0 ? (
-                <>
-                  {/* Much finer noise, cut into the alpha so the ink breaks up
-                      across the paper instead of sitting flat. */}
-                  <feTurbulence
-                    type="fractalNoise"
-                    baseFrequency={sketch.grainFrequency}
-                    numOctaves="2"
-                    seed="11"
-                    result="tooth"
-                  />
-                  <feColorMatrix
-                    in="tooth"
-                    type="matrix"
-                    values={`0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 ${sketch.grainStrength} ${
-                      1 - sketch.grainStrength
-                    }`}
-                    result="graphite"
-                  />
-                  <feComposite in="drawn" in2="graphite" operator="in" />
-                </>
-              ) : null}
-            </filter>
+            </pattern>
           )}
         </defs>
         <g filter={sketchFilter}>
         <text ref={textRef} className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
           {characters.map((character, index) => <tspan data-stroke-char key={`stroke-${index}`}>{character}</tspan>)}
         </text>
-        <text className={styles.fill} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill={inked.fillColor} stroke="none" style={fontStyle} clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}>
+        <text className={styles.fill} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill={fillPaint} stroke="none" style={fontStyle} clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}>
           {characters.map((character, index) => <tspan data-fill-char key={`fill-${index}`}>{character}</tspan>)}
         </text>
         </g>

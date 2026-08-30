@@ -31,6 +31,7 @@ const config: FanSheetConfig = {
 function renderStack(fanProgress: number, sweepProgress: number) {
   return render(
     <PaperStack
+      playIntro={false}
       fanProgress={fanProgress}
       sweepProgress={sweepProgress}
       config={config}
@@ -70,7 +71,7 @@ test("z-indices never change as the sweep advances", () => {
   const { rerender } = renderStack(1, 0);
   const before = DEPTHS.map((d) => screen.getByTestId(`paper-sheet-${d}`).style.zIndex);
   rerender(
-    <PaperStack fanProgress={1} sweepProgress={1} config={config} transitionMs={40} />
+    <PaperStack playIntro={false} fanProgress={1} sweepProgress={1} config={config} transitionMs={40} />
   );
   const after = DEPTHS.map((d) => screen.getByTestId(`paper-sheet-${d}`).style.zIndex);
   expect(after).toEqual(before);
@@ -110,7 +111,7 @@ test("the hero lifts further as the fan opens", () => {
   const { rerender } = renderStack(0, 0);
   expect(parseFloat(screen.getByTestId("paper-sheet-0").style.bottom)).toBe(0);
   rerender(
-    <PaperStack fanProgress={1} sweepProgress={0} config={config} transitionMs={40} />
+    <PaperStack playIntro={false} fanProgress={1} sweepProgress={0} config={config} transitionMs={40} />
   );
   expect(parseFloat(screen.getByTestId("paper-sheet-0").style.bottom)).toBeGreaterThan(0);
 });
@@ -140,7 +141,7 @@ test("rides the name upward as the stack opens beneath it", () => {
   expect(screen.getByTestId("hero-headline")).toHaveStyle({ transform: "translateY(-0vh)" });
 
   rerender(
-    <PaperStack fanProgress={1} sweepProgress={1} config={config} transitionMs={40} />
+    <PaperStack playIntro={false} fanProgress={1} sweepProgress={1} config={config} transitionMs={40} />
   );
   const lifted = screen.getByTestId("hero-headline").style.transform;
   const vh = Math.abs(parseFloat(lifted.replace(/[^-0-9.]/g, "")));

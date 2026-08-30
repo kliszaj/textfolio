@@ -44,6 +44,10 @@ void main() {
 const CHARACTERS = " .`^\\\",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 type ASCIITextProps = ASCIITextConfig & {
   text: string;
+  // How much of the word has typed in, 0-1. Held in a ref rather than a
+  // dependency: it changes every frame, and rebuilding the WebGL context per
+  // frame would be catastrophic.
+  revealFraction?: number;
 };
 
 export function ASCIIText({
@@ -54,8 +58,14 @@ export function ASCIIText({
   planeScale = DEFAULT_ASCII_TEXT_CONFIG.planeScale,
   tiltStrength = DEFAULT_ASCII_TEXT_CONFIG.tiltStrength,
   randomizeGlyphColors = DEFAULT_ASCII_TEXT_CONFIG.randomizeGlyphColors,
+  revealFraction = 1,
 }: ASCIITextProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const revealRef = useRef(revealFraction);
+
+  useEffect(() => {
+    revealRef.current = revealFraction;
+  }, [revealFraction]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -192,8 +202,16 @@ export function ASCIIText({
           const bounds = host.getBoundingClientRect();
           outputContext.clearRect(0, 0, bounds.width, bounds.height);
         }
+        // Typed in column by column, which is how ascii wants to arrive.
+        const revealed = Math.ceil(
+          width * Math.min(1, Math.max(0, revealRef.current))
+        );
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
+            if (x >= revealed) {
+              output += " ";
+              continue;
+            }
             const index = (y * width + x) * 4;
             const alpha = pixels[index + 3];
             if (alpha < 12) {

@@ -24,7 +24,10 @@ beforeEach(() => {
 
 test("renders the hero and all case study sheets", () => {
   render(<HomePage />);
-  expect(screen.getByTestId("warp-text")).toHaveAttribute("aria-label", "ADRIAN");
+  // The headline plays its sketch -> prototype -> finished story on load, so
+  // assert the frame is present rather than one particular treatment.
+  expect(screen.getByTestId("hero-headline")).toBeInTheDocument();
+  expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
   caseStudies.forEach((cs) => {
     expect(screen.getByText(cs.title)).toBeInTheDocument();
   });

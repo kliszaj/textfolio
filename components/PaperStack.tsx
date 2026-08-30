@@ -35,6 +35,7 @@ type PaperStackProps = {
   warpConfig?: WarpTextConfig;
   strokeConfig?: StrokeTextConfig;
   onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
+  playIntro?: boolean;
 };
 
 export function PaperStack({
@@ -46,6 +47,7 @@ export function PaperStack({
   warpConfig = DEFAULT_WARP_TEXT_CONFIG,
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
   onSelectCaseStudy,
+  playIntro,
 }: PaperStackProps) {
   const sheetCount = caseStudies.length;
   const heroInset = computeSheetInset(0, fanProgress, sweepProgress, config, sheetCount);
@@ -61,7 +63,7 @@ export function PaperStack({
         transitionMs={transitionMs}
         zIndex={zIndexForDepth(0, sheetCount)}
       >
-        <Hero fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} />
+        <Hero playIntro={playIntro} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} />
       </PaperSheet>
       {caseStudies.map((caseStudy, index) => {
         const depth = index + 1;

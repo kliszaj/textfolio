@@ -1,4 +1,9 @@
-import { DEFAULT_STROKE_TEXT_CONFIG, getSketchSpec, sketchColors } from "./strokeText";
+import {
+  DEFAULT_STROKE_TEXT_CONFIG,
+  SKETCH_BOIL_SEEDS,
+  getSketchSpec,
+  sketchColors,
+} from "./strokeText";
 import type { StrokeTextFillMode, StrokeTextTrigger } from "./strokeText";
 
 const TRIGGERS: StrokeTextTrigger[] = ["mount", "hover", "scroll", "loop"];
@@ -72,5 +77,29 @@ describe("sketch styles", () => {
       strokeColor: "#123456",
       fillColor: "#654321",
     });
+  });
+});
+
+describe("pencil fill and boil", () => {
+  test("pencil shades its fill with drawn strokes, not flat colour", () => {
+    expect(getSketchSpec("pencil").fillTexture).toBe("hatch");
+  });
+
+  test("clean stays a flat fill", () => {
+    expect(getSketchSpec("clean").fillTexture).toBe("solid");
+  });
+
+  test("hatch spacing is a fraction of the text height, so it scales with it", () => {
+    for (const style of ["pencil", "blueprint"] as const) {
+      const spacing = getSketchSpec(style).hatchSpacing;
+      expect(spacing).toBeGreaterThan(0);
+      expect(spacing).toBeLessThan(0.2);
+    }
+  });
+
+  test("there is one seed per boil frame, and all distinct", () => {
+    // Re-seeding is what redraws the line; a repeated seed would stall it.
+    expect(SKETCH_BOIL_SEEDS.length).toBeGreaterThan(1);
+    expect(new Set(SKETCH_BOIL_SEEDS).size).toBe(SKETCH_BOIL_SEEDS.length);
   });
 });

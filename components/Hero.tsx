@@ -9,20 +9,24 @@ import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
+import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
 
 const DEFAULT_BG_COLOR = "#F5EDE6";
 const SELECTED_BG_COLOR = "#050505";
-// The stroke treatment reads as drawing on paper, so it gets a white ground.
-const STROKE_BG_COLOR = "#FFFFFF";
+const DEFAULT_INK_COLOR = "#1C1C1C";
 const ASCII_BG_COLOR = "#05AEAE";
 const ASCII_STAGE_COLORS = ["#201D24", "#1A3030", "#252018", "#1D2635"];
 
 // Figma: 230px headline / 64px tagline on a 1440 frame. Expressed as vw so the
 // proportion holds at any viewport width rather than only at 1440.
-const HEADLINE_SIZE = "max(3rem, 15.97vw)";
+// 230px on a 1440 frame, per Figma. Capped, because the container stops at
+// 72rem x 20rem: an uncapped size outgrows the box on wide screens, and only
+// WarpText survives that (it shrink-to-fits). The others render at nominal and
+// overflow, which is what made them look oversized next to it.
+const HEADLINE_SIZE = "clamp(3rem, 15.97vw, 14.5rem)";
 // The headline sits in a fixed-height box that is taller than the word itself,
 // which left the tagline stranded well below it. Pull it back up so it sits
 // just under the letters, in the same place for every treatment.
@@ -30,7 +34,7 @@ const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = "#3E18FF";
-const TAGLINE_SIZE = "max(1.1rem, 4.44vw)";
+const TAGLINE_SIZE = "clamp(1.1rem, 4.44vw, 4rem)";
 const HEADLINE_FONT_FAMILY = '"PP Frama", sans-serif';
 const HEADLINE_FONT_WEIGHT = 900;
 
@@ -44,6 +48,8 @@ type HeroProps = {
   asciiConfig?: ASCIITextConfig;
   warpConfig?: WarpTextConfig;
   strokeConfig?: StrokeTextConfig;
+  // Plays the sketch -> prototype -> finished story once on mount.
+  playIntro?: boolean;
 };
 
 type HeadlineEffect = "ascii" | "warp" | "stroke";
@@ -56,8 +62,14 @@ export function Hero({
   asciiConfig = DEFAULT_ASCII_TEXT_CONFIG,
   warpConfig = DEFAULT_WARP_TEXT_CONFIG,
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
+  playIntro = true,
 }: HeroProps) {
-  const [activeEffect, setActiveEffect] = useState<HeadlineEffect | null>(null);
+  const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
+  const intro = useHeadlineIntro(playIntro);
+  // The story owns the headline until it finishes; hover takes over after.
+  const introEffect: HeadlineEffect | null =
+    intro.phase === "sketch" ? "stroke" : intro.phase === "ascii" ? "ascii" : null;
+  const activeEffect = intro.done ? hoverEffect : introEffect;
   const [asciiStageColor, setAsciiStageColor] = useState(ASCII_BG_COLOR);
   const nextEffectIndexRef = useRef(0);
   const isHeadlinePointerInsideRef = useRef(false);
@@ -68,13 +80,14 @@ export function Hero({
     activeEffect === "ascii"
       ? asciiStageColor
       : activeEffect === "stroke"
-        ? STROKE_BG_COLOR
+        ? DEFAULT_BG_COLOR
         : isHeadlineActive
           ? SELECTED_BG_COLOR
           : DEFAULT_BG_COLOR;
   const arrowOpacity = 1 - Math.min(1, fanProgress * 2);
 
   const activateHeadline = () => {
+    if (!intro.done) return;
     if (isHeadlinePointerInsideRef.current) return;
     isHeadlinePointerInsideRef.current = true;
     const effect = HEADLINE_EFFECT_SEQUENCE[nextEffectIndexRef.current];
@@ -84,13 +97,13 @@ export function Hero({
         : ASCII_BG_COLOR;
       setAsciiStageColor(nextStageColor);
     }
-    setActiveEffect(effect);
+    setHoverEffect(effect);
     nextEffectIndexRef.current = (nextEffectIndexRef.current + 1) % HEADLINE_EFFECT_SEQUENCE.length;
   };
 
   const deactivateHeadline = () => {
     isHeadlinePointerInsideRef.current = false;
-    setActiveEffect(null);
+    setHoverEffect(null);
   };
 
   return (
@@ -98,7 +111,9 @@ export function Hero({
       className="relative w-full h-screen flex flex-col items-center justify-center transition-[background-color] duration-500 ease-out"
       style={{
         backgroundColor: stageBackground,
-        color: isHeadlineActive ? "#FFFFFF" : "#1C1C1C",
+        // The stroke treatment draws on the page's own ground, so the tagline
+        // and arrow keep the page's ink -- white would leave them invisible.
+        color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
       }}
     >
       <div
@@ -118,7 +133,7 @@ export function Hero({
           onPointerLeave={deactivateHeadline}
         >
           {activeEffect === "ascii" ? (
-            <ASCIIText text={NAME} {...asciiConfig} />
+            <ASCIIText text={NAME} {...asciiConfig} revealFraction={intro.revealFraction} />
           ) : activeEffect === "stroke" ? (
             <StrokeText
               text={NAME}
@@ -130,7 +145,7 @@ export function Hero({
           ) : (
             <WarpText
               text={NAME}
-              color={isHeadlineActive ? "#FFFFFF" : "#1C1C1C"}
+              color={isHeadlineActive ? "#FFFFFF" : DEFAULT_INK_COLOR}
               {...warpConfig}
               fontSize={HEADLINE_SIZE}
               fontWeight={HEADLINE_FONT_WEIGHT}

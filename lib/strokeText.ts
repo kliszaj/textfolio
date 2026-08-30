@@ -47,6 +47,11 @@ export type SketchSpec = {
   // Ink break-up. 0 leaves the stroke solid.
   grainFrequency: number;
   grainStrength: number;
+  // "hatch" fills with drawn strokes rather than flat colour, so a filled
+  // letter reads as shaded in by hand.
+  fillTexture: "solid" | "hatch";
+  // Spacing between hatch lines, as a fraction of the text's height.
+  hatchSpacing: number;
   // Set when the style has a canonical palette of its own.
   strokeColor?: string;
   fillColor?: string;
@@ -59,6 +64,8 @@ export const SKETCH_SPECS: Record<StrokeTextSketchStyle, SketchSpec> = {
     wobbleScale: 0,
     grainFrequency: 0,
     grainStrength: 0,
+    fillTexture: "solid",
+    hatchSpacing: 0.05,
   },
   pencil: {
     // Low frequency, so the line wanders over a long distance rather than
@@ -68,6 +75,8 @@ export const SKETCH_SPECS: Record<StrokeTextSketchStyle, SketchSpec> = {
     wobbleScale: 2.6,
     grainFrequency: 0.9,
     grainStrength: 0.55,
+    fillTexture: "hatch",
+    hatchSpacing: 0.045,
     strokeColor: "#3B3A38",
     fillColor: "#6F6D69",
   },
@@ -78,6 +87,8 @@ export const SKETCH_SPECS: Record<StrokeTextSketchStyle, SketchSpec> = {
     wobbleScale: 1.4,
     grainFrequency: 0.75,
     grainStrength: 0.22,
+    fillTexture: "hatch",
+    hatchSpacing: 0.06,
     strokeColor: "#EAF3FF",
     fillColor: "#9FC4E8",
   },
@@ -103,3 +114,7 @@ export function sketchColors(
 
 // Blueprint needs its own ground; the others draw on whatever the stage is.
 export const BLUEPRINT_GROUND = "#0B3D91";
+
+// Seeds for the four boil frames. Re-seeding the same turbulence is what makes
+// the drawn line redraw itself rather than slide around.
+export const SKETCH_BOIL_SEEDS = [7, 13, 23, 31];
