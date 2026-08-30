@@ -191,10 +191,10 @@ export function extrudeLayerShade(layer: number, layers: number): number {
   return Math.round(255 * (1 - depth) * 0.9);
 }
 
-// Share of the ascii stage spent typing the word in.
-// The rain fills essentially the whole ascii stage. The remainder is the
-// handover fade, so the finished word is seen for a beat before it goes.
-export const ASCII_TYPE_SHARE = 0.9;
+// Share of the ascii stage spent typing the word in. The rain lands with time
+// to spare rather than still filling in as the stage hands over, which reads
+// as quick and deliberate instead of laboured.
+export const ASCII_TYPE_SHARE = 0.65;
 // How long a cell shows junk before settling on its real character.
 const TYPE_CHURN = 0.16;
 export const ASCII_TYPE_JUNK = "01<>[]{}/\|=+*#%@$&";

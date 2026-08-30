@@ -83,7 +83,7 @@ export function CaseStudyFocus({
     >
       <div className="focus-content absolute inset-0 p-12 flex flex-col justify-end">
         <h1 className="font-display text-5xl md:text-7xl">{caseStudy.title}</h1>
-        <p className="font-script text-2xl mt-4">{caseStudy.blurb}</p>
+        <p className="font-body text-2xl mt-4">{caseStudy.blurb}</p>
       </div>
       {onClose && (
         <button

@@ -67,7 +67,7 @@ export function PaperStack({
         transitionMs={transitionMs}
         zIndex={zIndexForDepth(0, sheetCount)}
       >
-        <Hero playIntro={playIntro} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} />
+        <Hero playIntro={playIntro} onSelectCaseStudy={onSelectCaseStudy} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} />
       </PaperSheet>
       {caseStudies.map((caseStudy, index) => {
         const depth = index + 1;

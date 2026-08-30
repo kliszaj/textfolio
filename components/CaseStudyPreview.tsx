@@ -49,7 +49,7 @@ export function CaseStudyPreview({
         }}
       >
         <span className="font-display text-2xl md:text-4xl block">{caseStudy.title}</span>
-        <span className="font-script text-xl block mt-2" style={{ opacity: blurbOpacity }}>
+        <span className="font-body text-xl block mt-2" style={{ opacity: blurbOpacity }}>
           {caseStudy.blurb}
         </span>
       </div>

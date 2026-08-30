@@ -3,15 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFanProgress } from "@/hooks/useFanProgress";
+import { useStackCollapse } from "@/hooks/useStackCollapse";
 import { usePointerType } from "@/hooks/usePointerType";
 import { PaperStack } from "@/components/PaperStack";
+import { useIntroOnce } from "@/hooks/useIntroOnce";
 import { FanDebugPanel } from "@/components/FanDebugPanel";
 import { CaseStudyFocus } from "@/components/CaseStudyFocus";
 import type { FocusOrigin } from "@/components/CaseStudyFocus";
 import { DEFAULT_FOCUS_VARIANT_ID } from "@/lib/focusVariants";
 import { caseStudies } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
-import { FAN_SMOOTHING_MS, FAN_SPLIT, FAN_THRESHOLD_PX } from "@/lib/fanProgress";
+import { FAN_SMOOTHING_MS, FAN_SPLIT, FAN_THRESHOLD_PX, splitTravel } from "@/lib/fanProgress";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
@@ -44,6 +46,9 @@ const SHOW_DEBUG_PANEL = process.env.NODE_ENV !== "production";
 
 export default function HomePage() {
   const router = useRouter();
+  // The story is a first-arrival thing. Coming back from a case study is a
+  // client-side navigation, so without this the hero would replay it every time.
+  const playIntro = useIntroOnce();
   const [config, setConfig] = useState<FanSheetConfig>(DEFAULT_CONFIG);
   const [lifting, setLifting] = useState<{ caseStudy: CaseStudy; origin: FocusOrigin } | null>(
     null
@@ -63,12 +68,13 @@ export default function HomePage() {
   const isMobileLayout = pointerType === "coarse";
   // Touch drives the same stack by scrolling rather than getting a different
   // layout: the reveal is the interaction, so it belongs on every screen.
-  const { fanProgress, sweepProgress } = useFanProgress(
-    thresholdPx,
-    fanSplit,
-    smoothingMs,
-    true
-  );
+  const pointerFan = useFanProgress(thresholdPx, fanSplit, smoothingMs, true);
+  // Coming back from a case study, the stack starts open where it was left and
+  // folds shut. Run through the same split as a real gesture, so the collapse
+  // is the reveal played backwards rather than a separate animation.
+  const collapseTravel = useStackCollapse();
+  const { fanProgress, sweepProgress } =
+    collapseTravel === null ? pointerFan : splitTravel(collapseTravel, fanSplit);
   // A phone is tall and narrow, so the revealed stack can afford more of it.
   const activeConfig = isMobileLayout
     ? {
@@ -101,6 +107,7 @@ export default function HomePage() {
     <>
       <div className="fixed inset-0 overflow-hidden" onClickCapture={rememberOrigin}>
         <PaperStack
+          playIntro={playIntro}
           fanProgress={fanProgress}
           sweepProgress={sweepProgress}
           config={activeConfig}
@@ -110,6 +117,7 @@ export default function HomePage() {
           strokeConfig={strokeConfig}
           paperTextureConfig={paperTextureConfig}
           onSelectCaseStudy={liftCaseStudy}
+
         />
       </div>
       {/* The stack is fixed, so touch needs something to actually scroll

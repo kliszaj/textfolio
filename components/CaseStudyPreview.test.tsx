@@ -56,3 +56,14 @@ test("hands the click to onSelect instead of navigating when one is given", () =
   expect(onSelect).toHaveBeenCalledWith(caseStudy);
   expect(mockPush).not.toHaveBeenCalled();
 });
+
+test("sets the blurb in the body face, not the handwriting", () => {
+  // The blurb is the sheet's subheading and has to survive being read at a
+  // glance on a half-revealed sheet, so it uses PP Neue Montreal rather than
+  // the Adrian script (which also drops the line-boil filter keyed to
+  // .font-script -- boil suits hand-inked lettering, not a grotesk).
+  render(<CaseStudyPreview caseStudy={caseStudy} emphasis={1} />);
+  const blurb = screen.getByText("A test blurb.");
+  expect(blurb).toHaveClass("font-body");
+  expect(blurb).not.toHaveClass("font-script");
+});

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { caseStudies, getCaseStudyBySlug } from "@/data/caseStudies";
+import { caseStudies, getCaseStudyBySlug, getNextCaseStudy } from "@/data/caseStudies";
 import { CaseStudyView } from "@/components/CaseStudyView";
 
 // The case studies are a fixed list, so every route can be built ahead of
@@ -21,5 +21,5 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
     return null;
   }
 
-  return <CaseStudyView caseStudy={caseStudy} />;
+  return <CaseStudyView caseStudy={caseStudy} next={getNextCaseStudy(slug)} />;
 }

@@ -13,7 +13,7 @@
   /* Same as the ascii treatment: no flash of the plain headline while the
      shader spins up, but still a real fallback if it never does. */
   opacity: 0;
-  transition: opacity 160ms ease-out 500ms;
+  transition: opacity 160ms ease-out;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,12 +30,26 @@
 }
 
 .root[data-webgl-ready="false"] .fallback {
-  opacity: 1;
+  /* A delayed *animation*, not a transition. data-ready is already "false" on
+     the very first render, so a transition never ran: opacity 1 was simply the
+     initial computed value and the plain headline painted at full strength on
+     frame one, every mount. An animation does apply on initial render, and
+     "both" holds the from-state through the delay. */
+  animation: warp-fallback-in 160ms ease-out 500ms both;
 }
 
 .root[data-webgl-ready="true"] .fallback {
+  animation: none;
   opacity: 0;
-  transition-delay: 0ms;
+}
+
+@keyframes warp-fallback-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .root canvas {
@@ -48,7 +62,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .root[data-webgl-ready="true"] .fallback {
+  /* The canvas is hidden here, so the fallback is the treatment: no delay. */
+  .root .fallback {
+    animation: none;
     opacity: 1;
   }
 

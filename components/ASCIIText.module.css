@@ -14,7 +14,7 @@
      never flashes in the moment before WebGL is ready. It still appears, and
      stays, if the renderer never arrives at all. */
   opacity: 0;
-  transition: opacity 160ms ease-out 500ms;
+  transition: opacity 160ms ease-out;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -28,12 +28,26 @@
 }
 
 .root[data-ready="false"] .fallback {
-  opacity: 1;
+  /* A delayed *animation*, not a transition. data-ready is already "false" on
+     the very first render, so a transition never ran: opacity 1 was simply the
+     initial computed value and the plain headline painted at full strength on
+     frame one, every mount. An animation does apply on initial render, and
+     "both" holds the from-state through the delay. */
+  animation: ascii-fallback-in 160ms ease-out 500ms both;
 }
 
 .root[data-ready="true"] .fallback {
+  animation: none;
   opacity: 0;
-  transition-delay: 0ms;
+}
+
+@keyframes ascii-fallback-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .root pre,

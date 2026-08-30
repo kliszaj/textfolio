@@ -90,3 +90,35 @@ describe("the scripted pointer sweep", () => {
     expect(demoPointerAt(-5, DURATION)).toBeNull();
   });
 });
+
+describe("demo sweep easing", () => {
+  const DURATION = 2200;
+  const speedAt = (t: number) => {
+    const a = demoPointerAt(t - 1, DURATION)!;
+    const b = demoPointerAt(t + 1, DURATION)!;
+    return Math.hypot(b.x - a.x, b.y - a.y);
+  };
+
+  test("accelerates into the apex and decelerates back out", () => {
+    const early = speedAt(DURATION * 0.12);
+    const apex = speedAt(DURATION * 0.5);
+    const late = speedAt(DURATION * 0.88);
+
+    expect(apex).toBeGreaterThan(early);
+    expect(apex).toBeGreaterThan(late);
+    // Symmetric: the run-up and the run-down mirror each other.
+    expect(early).toBeCloseTo(late, 6);
+  });
+
+  test("eases hard enough to actually read as acceleration", () => {
+    // Smoothstep peaks at only 1.5x its average speed, which was too gentle to
+    // notice. A cubic ease-in-out roughly doubles that contrast.
+    const span =
+      demoPointerAt(DURATION - 1, DURATION)!.x - demoPointerAt(1, DURATION)!.x;
+    const average = span / DURATION;
+    // speedAt samples across a 2ms window, so halve it to get per-ms speed.
+    const apex = speedAt(DURATION * 0.5) / 2;
+
+    expect(apex / average).toBeGreaterThan(2.5);
+  });
+});

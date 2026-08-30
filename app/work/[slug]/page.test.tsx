@@ -5,13 +5,25 @@ import { caseStudies } from "@/data/caseStudies";
 const mockNotFound = jest.fn();
 jest.mock("next/navigation", () => ({
   notFound: () => mockNotFound(),
+  // CaseStudyView navigates home on the pull-to-exit gesture.
+  useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 
-test("renders the case study title and blurb for a known slug", async () => {
+test("renders the case study title and its overview for a known slug", async () => {
   const jsx = await CaseStudyPage({ params: Promise.resolve({ slug: caseStudies[0].slug }) });
   render(jsx as React.ReactElement);
   expect(screen.getByText(caseStudies[0].title)).toBeInTheDocument();
-  expect(screen.getByText(caseStudies[0].blurb)).toBeInTheDocument();
+  // The rail leads with the overview once one is written; the blurb is the
+  // fallback for a study that has none, and the home stack's subheading.
+  expect(screen.getByText(caseStudies[0].overview!)).toBeInTheDocument();
+});
+
+test("points the header arrow at the next study, in its colour", async () => {
+  const jsx = await CaseStudyPage({ params: Promise.resolve({ slug: caseStudies[0].slug }) });
+  render(jsx as React.ReactElement);
+  const nextLink = screen.getByTestId("case-study-next");
+  expect(nextLink).toHaveAttribute("href", `/work/${caseStudies[1].slug}`);
+  expect(nextLink).toHaveStyle({ backgroundColor: caseStudies[1].thumbnailColor });
 });
 
 test("calls notFound for an unknown slug", async () => {

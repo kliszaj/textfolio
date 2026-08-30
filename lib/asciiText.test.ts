@@ -11,6 +11,7 @@ import {
   ASCII_TYPE_COLUMN_SPREAD,
   ASCII_TYPE_JUNK,
   asciiCellStateAt,
+  ASCII_TYPE_SHARE,
   asciiJunkGlyph,
   chipForBrightness,
   demoTiltAt,
@@ -347,4 +348,11 @@ describe("typing the ascii word in", () => {
     expect(asciiCellStateAt(NaN, 0.5, 0.5)).toBe("settled");
     expect(asciiCellStateAt(0.5, NaN, 0.5)).toBe("settled");
   });
+});
+
+test("finishes the rain well inside the ascii stage so it reads as quick", () => {
+  // The word lands with time to spare rather than still filling in as the
+  // stage hands over.
+  expect(ASCII_TYPE_SHARE).toBeLessThanOrEqual(0.7);
+  expect(asciiCellStateAt(1, 1, 1)).toBe("settled");
 });

@@ -5,6 +5,7 @@
   --color-ink: #1c1c1c;
   --font-display: var(--font-pp-frama);
   --font-script: var(--font-adrian);
+  --font-body: var(--font-pp-neue-montreal);
 }
 
 /* Line boil: the Adrian handwriting is redrawn with a slightly different
@@ -169,7 +170,8 @@ body {
    its own height, so the colour contracts instead of popping. */
 
 :root {
-  --case-study-header-height: 30vh;
+  --case-study-header-height: 22vh;
+  --case-study-header-shrunk-height: 4.5rem;
 }
 
 .case-study-header {
@@ -184,6 +186,48 @@ body {
   to {
     height: var(--case-study-header-height);
   }
+}
+
+/* Once the settle has run, height returns to a plain transitioned property so
+   the sticky header can shrink out of the way as the page scrolls. */
+.case-study-header[data-settled="true"] {
+  animation: none;
+  height: var(--case-study-header-height);
+  transition: height 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.case-study-header[data-settled="true"][data-shrunk="true"] {
+  height: var(--case-study-header-shrunk-height);
+}
+
+/* Rests as a circle around the arrow and opens into a pill naming the next
+   project. max-width rather than width so the label sizes itself to whatever
+   the title happens to be. */
+.case-study-next-label {
+  max-width: 0;
+  opacity: 0;
+  transition:
+    max-width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease-out,
+    padding-left 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  padding-left: 0;
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+}
+
+.case-study-next:hover .case-study-next-label,
+.case-study-next:focus-visible .case-study-next-label {
+  max-width: 22rem;
+  opacity: 1;
+  padding-left: 1.5rem;
+}
+
+.case-study-title {
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  transition: font-size 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.case-study-header[data-shrunk="true"] .case-study-title {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
 }
 
 .case-study-body {
@@ -206,6 +250,12 @@ body {
   .case-study-header,
   .case-study-body {
     animation: none;
+  }
+
+  .case-study-header[data-settled="true"],
+  .case-study-title,
+  .case-study-next-label {
+    transition: none;
   }
 }
 

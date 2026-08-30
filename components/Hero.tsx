@@ -22,6 +22,9 @@ import { HEADLINE_INTRO_DEMO_MS } from "@/lib/headlineIntro";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
+import { PageIndicator } from "./PageIndicator";
+import { caseStudies } from "@/data/caseStudies";
+import type { CaseStudy } from "@/data/caseStudies";
 import styles from "./Hero.module.css";
 
 // The shader package is only needed while the sketch treatment is visible;
@@ -55,7 +58,7 @@ const HEADLINE_SIZE = "clamp(3rem, min(18vw, 18vh), 14.5rem)";
 // The headline sits in a fixed-height box that is taller than the word itself,
 // which left the tagline stranded well below it. Pull it back up so it sits
 // just under the letters, in the same place for every treatment.
-const TAGLINE_OFFSET = "clamp(-5.5rem, -4.5vw, -0.9rem)";
+const TAGLINE_OFFSET = "clamp(-4.25rem, -3.4vw, -0.4rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
@@ -81,6 +84,7 @@ type HeroProps = {
   paperTextureConfig?: PaperTextureConfig;
   // Plays the sketch -> prototype -> finished story once on mount.
   playIntro?: boolean;
+  onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
 };
 
 type HeadlineEffect = "ascii" | "warp" | "stroke";
@@ -90,6 +94,7 @@ export function Hero({
   fanProgress,
   liftPercent = 0,
   subheaderRef,
+  onSelectCaseStudy,
   asciiConfig = DEFAULT_ASCII_TEXT_CONFIG,
   warpConfig = DEFAULT_WARP_TEXT_CONFIG,
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
@@ -132,6 +137,11 @@ export function Hero({
           : DEFAULT_BG_COLOR;
   // The doodle belongs to the sketch treatment only; other treatments keep
   // their own clean visual language.
+  // Which component actually renders. The resting headline already is the
+  // warp treatment, so rest and "warp" share an identity and never remount --
+  // which is why that one transition was always clean.
+  const treatment =
+    activeEffect === "ascii" ? "ascii" : activeEffect === "stroke" ? "stroke" : "warp";
   const showCoolS = activeEffect === "stroke";
   const arrowOpacity = 1 - Math.min(1, fanProgress * 2);
 
@@ -165,6 +175,14 @@ export function Hero({
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
       }}
     >
+      {/* Sits outside the headline block so it stays put while the name and
+          tagline ride up on liftPercent. It fades before the stack opens far
+          enough for the two to overlap. */}
+      <PageIndicator
+        caseStudies={caseStudies}
+        fanProgress={fanProgress}
+        onSelect={onSelectCaseStudy}
+      />
       {activeEffect === "stroke" && <SketchPaperShader config={paperTextureConfig} />}
       <div
         aria-hidden="true"
@@ -209,6 +227,18 @@ export function Hero({
           priority
         />
       )}
+      {showCoolS && (
+        <Image
+          data-testid="doodles"
+          className={`${styles.doodles} boil-line`}
+          src="/assets/doodles.svg"
+          width={285}
+          height={237}
+          alt=""
+          aria-hidden="true"
+          priority
+        />
+      )}
       <div
         data-testid="hero-headline"
         className="relative z-10 flex flex-col items-center"
@@ -234,6 +264,12 @@ export function Hero({
             data-testid="headline-stage"
             className="absolute inset-0"
             style={{ opacity: intro.opacity }}
+          >
+          <div
+            key={treatment}
+            data-testid="treatment-mount"
+            data-treatment={treatment}
+            className={styles.treatmentMount}
           >
           {activeEffect === "ascii" ? (
             <ASCIIText
@@ -272,6 +308,7 @@ export function Hero({
             />
           )}
           </div>
+          </div>
         </div>
         <p
           ref={subheaderRef}
@@ -285,7 +322,7 @@ export function Hero({
             transition: "color 420ms ease",
           }}
         >
-          Designer, tinkerer, product builder
+          Designer, tinkerer, zero-to-one builder
         </p>
       </div>
       <div

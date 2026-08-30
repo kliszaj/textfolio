@@ -3,6 +3,7 @@ import HomePage from "./page";
 import { useFanProgress } from "@/hooks/useFanProgress";
 import { usePointerType } from "@/hooks/usePointerType";
 import { caseStudies } from "@/data/caseStudies";
+import { markReturningHome, resetReturningHomeForTests } from "@/hooks/useStackCollapse";
 
 jest.mock("@/hooks/useFanProgress");
 jest.mock("@/hooks/usePointerType");
@@ -107,4 +108,25 @@ test("plays the sheet lift and then navigates to the case study", () => {
   });
   expect(mockPush).toHaveBeenCalledWith(`/work/${caseStudies[0].slug}`);
   jest.useRealTimers();
+});
+
+test("opens fanned and folds shut when the reader has just come back", () => {
+  // The pointer says the stack is closed; the return says it should start open
+  // and collapse. The return has to win, or the fold is never seen.
+  mockUseFanProgress.mockReturnValue({ fanProgress: 0, sweepProgress: 0 });
+  markReturningHome();
+
+  render(<HomePage />);
+  const sheet = screen.getByTestId("paper-sheet-1");
+
+  expect(sheet.style.bottom).not.toBe("0%");
+  resetReturningHomeForTests();
+});
+
+test("leaves the stack to the pointer on an ordinary visit", () => {
+  resetReturningHomeForTests();
+  mockUseFanProgress.mockReturnValue({ fanProgress: 0, sweepProgress: 0 });
+
+  render(<HomePage />);
+  expect(screen.getByTestId("paper-sheet-1").style.bottom).toBe("0%");
 });

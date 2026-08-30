@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { createRef } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { SKETCH_INK } from "@/lib/strokeText";
+import styles from "./Hero.module.css";
 import { Hero } from "./Hero";
 
 test("renders ADRIAN through the WarpText treatment", () => {
@@ -40,7 +42,9 @@ test("starts the hover cycle with ASCII text", () => {
     />
   );
   const hero = container.firstChild as HTMLElement;
-  const headline = screen.getByTestId("warp-text").parentElement!;
+  // The frame owns the hover handlers and never remounts; the treatment
+  // inside it does, so it is not a stable handle.
+  const headline = screen.getByTestId("headline-frame");
 
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toHaveAttribute("aria-label", "ADRIAN");
@@ -64,7 +68,9 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
     />
   );
   const hero = container.firstChild as HTMLElement;
-  const headline = screen.getByTestId("warp-text").parentElement!;
+  // The frame owns the hover handlers and never remounts; the treatment
+  // inside it does, so it is not a stable handle.
+  const headline = screen.getByTestId("headline-frame");
 
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
@@ -109,7 +115,7 @@ test("the down-arrow hint fades as fanProgress increases", () => {
 test("attaches the given subheaderRef to the tagline paragraph", () => {
   const subheaderRef = createRef<HTMLParagraphElement>();
   render(<Hero playIntro={false} fanProgress={0} subheaderRef={subheaderRef} />);
-  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, product builder"));
+  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, zero-to-one builder"));
 });
 
 test("pulls the tagline up close under the headline", () => {
@@ -156,4 +162,71 @@ test("the resting page inks its tagline and arrow in grey", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: "#878787" });
   expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: "#878787" });
+});
+
+test("fades a freshly mounted treatment in, and does not remount an unchanged one", () => {
+  const { container } = render(
+    <Hero
+      playIntro={false}
+      fanProgress={0}
+      asciiConfig={{ ...DEFAULT_ASCII_TEXT_CONFIG, randomizeStageColor: false }}
+    />
+  );
+
+  const mount = screen.getByTestId("treatment-mount");
+  // Every treatment shows something wrong in its first frames -- an unmeasured
+  // svg, a canvas that has not drawn, a fallback headline -- so the wrapper
+  // fades each one in. The resting headline already IS the warp treatment, so
+  // its identity must stay "warp": a changed key there would remount the one
+  // swap that is currently clean.
+  expect(mount).toHaveClass(styles.treatmentMount);
+  expect(mount).toHaveAttribute("data-treatment", "warp");
+
+  fireEvent.pointerEnter(screen.getByTestId("headline-frame"), { pointerType: "mouse" });
+  expect(screen.getByTestId("treatment-mount")).toHaveAttribute("data-treatment", "ascii");
+
+  expect(container).toBeTruthy();
+});
+
+test("pins the doodles to the sketch treatment, opposite the cool-s", () => {
+  render(
+    <Hero
+      playIntro={false}
+      fanProgress={0}
+      asciiConfig={{ ...DEFAULT_ASCII_TEXT_CONFIG, randomizeStageColor: false }}
+    />
+  );
+  const headline = screen.getByTestId("headline-frame");
+  expect(screen.queryByTestId("doodles")).not.toBeInTheDocument();
+
+  // ascii, then warp, then stroke.
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  fireEvent.pointerLeave(headline);
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  fireEvent.pointerLeave(headline);
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+
+  const doodles = screen.getByTestId("doodles");
+  expect(screen.getByTestId("cool-s")).toBeInTheDocument();
+  // Shivers with the rest of the hand-drawn treatment.
+  expect(doodles).toHaveClass("boil-line");
+  expect(doodles).toHaveClass(styles.doodles);
+});
+
+test("inks the doodles in the cool-s blue and leaves both flat", () => {
+  const inks = ["public/assets/cool-s.svg", "public/assets/doodles.svg"].map((path) => {
+    const svg = readFileSync(path, "utf8");
+    return {
+      path,
+      colours: [...new Set(svg.match(/fill="#[0-9A-Fa-f]{6}"/g) ?? [])],
+      // A shadow would arrive as a filter primitive baked into the asset; the
+      // only filter these may carry is the line boil, applied in CSS.
+      shadowed: /feDropShadow|feGaussianBlur|filter=/.test(svg),
+    };
+  });
+
+  for (const ink of inks) {
+    expect(ink.colours).toEqual(['fill="#0040C0"']);
+    expect(ink.shadowed).toBe(false);
+  }
 });

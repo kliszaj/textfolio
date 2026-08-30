@@ -7,13 +7,12 @@ A designer portfolio built as a stack of paper. The landing page (the name
 cursor travels toward the bottom of the viewport. Clicking one lifts it out of
 the stack and navigates to its own route.
 
-**Status:** everything below is implemented and green — 29 suites / 300 passed
-(5 skipped), `npx tsc --noEmit` clean, `next build` succeeds. `npm run lint`
-still reports one pre-existing `react-hooks/set-state-in-effect` error at
-`hooks/useFanProgress.ts:66`; it is unrelated to the treatment sizing work.
-The current
-checkout is `main`; the latest Cloudflare Workers deployment configuration is
-committed.
+**Status:** everything below is implemented and green — 34 suites / 382 passed
+(5 skipped), `npx tsc --noEmit` clean, `npm run lint` clean, `next build`
+succeeds. The `react-hooks/set-state-in-effect` error at
+`hooks/useFanProgress.ts` is fixed: the rest position is derived on return
+rather than written into state from an effect. The current checkout is `main`;
+the latest Cloudflare Workers deployment configuration is committed.
 
 **Latest continuation (2026-08-30):** added DOM-contract tests for
 `ASCIIText`, `WarpText`, and `StrokeText` covering accessible labels, fallback
@@ -34,7 +33,8 @@ one-by-one with deterministic variation in spacing, angle, length, opacity,
 and weight. Hatching starts from the centre after a short one-second beat,
 giving the letter strokes a head start without turning the fill into a second
 late phase. Its lettering,
-tagline, and arrow share cobalt `#0057FF` ink;
+tagline, and arrow share the sketch ink `SKETCH_INK` (`#0040C0`, exported from
+`lib/strokeText.ts` — every blue in the sketch treatment is this one value);
 the correction circle and X remain red and share the same GSAP timeline as
 the hatching, starting only after both the final outline and final hatch line
 have landed, with a small settling beat;
@@ -46,7 +46,7 @@ SVG/transparent asset; texture alone can only roughen the typed PP Frama
 shape.
 
 The sketch stage mounts the supplied `public/assets/cool-s.svg` blue
-"cool S" mark in the top-left corner uses the shared cobalt `#0057FF` ink. It
+"cool S" mark in the top-left corner uses the shared `SKETCH_INK` `#0040C0`. It
 is pointer-inert and only appears
 while StrokeText is active; it is shown immediately without a draw-in
 animation, rotated 15 degrees clockwise and offset into the visible viewport
@@ -279,7 +279,9 @@ All three render inside the same `clamp(13rem, 25vw, 20rem)` headline frame
 (`data-testid="headline-frame"`) and share the PP Frama / weight-900 baseline
 via `--headline-font-size` / `--headline-font-family` /
 `--headline-font-weight`, so changing treatment never changes the word's form
-factor. The frame is `overflow-hidden` and clips transient overflow.
+factor. The frame deliberately does **not** clip — no `overflow-hidden` — so a
+treatment that draws past its own box (a correction mark, a warp, a tilted
+plane) paints instead of being cut off. A test asserts the class is absent.
 
 ### The intro story
 
@@ -618,15 +620,9 @@ filters ride the same beat.
 10. **`data/letterTreatments.ts` is nearly dead** — only `NAME` is imported.
     The six `letterTreatments` entries (positions, `bgColor`, `label`) are
     wired to nothing since the CSS letter effects were removed.
-11. **The `.letter-effect-*` CSS is dead** — roughly 120 lines of keyframes in
-    `globals.css` under "Letter treatments" (dither, glitch, wave, scramble,
-    smear) whose JS was deleted with `lib/letterEffects.ts` and
-    `hooks/useScrambledText.ts`.
-12. **`app/globals.css` lines 44–210 and 212–378 are byte-identical.** The
-    whole focus-transition + case-study-page block is duplicated. Harmless
-    (later rules simply re-declare the same thing) but confusing, and it
-    doubles the surface for any future edit — fix one copy and the other still
-    disagrees.
+11. ~~The `.letter-effect-*` CSS is dead.~~ **Done** — 117 orphaned lines removed.
+12. ~~`app/globals.css` has a 167-line duplicated block.~~ **Done** — removed;
+    the file went from 519 to 228 lines.
 13. **`lib/focusVariants.ts` carries five variants and only "lift" is
     reachable** now that `/prototypes/focus` is gone. Same for the four unused
     `focus-enter-*` keyframe sets. `CaseStudyFocus`'s `onClose` prop (Close
@@ -677,6 +673,108 @@ responsive sizing changes are tested and build cleanly. Everything is
 committed except any uncommitted work in the current checkout.
 
 ---
+
+## Session: case study pages, page indicator, exit gesture (2026-08-30)
+
+### Treatment transitions no longer flash a box
+
+Two defects, both only visible on a hover swap:
+
+1. **The fallback's 500ms delay never worked.** `data-ready="false"` is
+   hardcoded in `ASCIIText`'s JSX and only flips inside the effect, i.e. after
+   first paint. CSS transitions do not run on an element's *initial* style
+   resolution, so `.root[data-ready="false"] .fallback { opacity: 1 }` was the
+   starting value, not a transition target — the plain headline painted at full
+   opacity on frame one of every mount. Fixed with a delayed
+   `animation … both`, which *does* apply on initial render and holds the
+   from-state through the delay. `WarpText` carried identical dead code.
+2. **Nothing faded a newly-mounted treatment in.** The intro hides its swaps
+   behind `handoverOpacityAt`; hover swaps were instant.
+
+`Hero` now wraps the treatment in a keyed `.treatmentMount` with a 220ms fade.
+**The key is the component identity, not `activeEffect`** — rest and `"warp"`
+both render `WarpText`, so that swap must not remount. That is why
+default→warp was always clean and everything else was not.
+
+### Cool-s had a baked-in drop shadow
+
+`public/assets/cool-s.svg` was a Figma export carrying `filter0_d_328_487`
+(`feOffset dy="4"` + `feGaussianBlur` + black 25%). Stripped. Note you cannot
+fix this class of thing with `filter: none` — `.boil-line` *is* a CSS filter,
+and killing it kills the line boil. `public/assets/doodles.svg` (bottom-right,
+recoloured to `SKETCH_INK`) was clean already.
+
+### Page indicator
+
+`components/PageIndicator.tsx` — left rail of five dots in the sheet colours,
+hover/focus opens a bold title chip, click hands the study to `liftCaseStudy`.
+Because it sits inside `page.tsx`'s `onClickCapture` wrapper, the sheet lift
+originates from the dot you clicked.
+
+**It renders inside a sheet that starts at `left: -60%`.** An inset measured
+from the hero's own edge is 60vw off-screen. It uses
+`calc(${SHEET_OVERSCAN_PERCENT}vw + …)`, derived from the constant rather than
+the literal `60vw` `.coolS` hardcodes. A test asserts the offset accounts for
+the overscan — this bug shipped once already.
+
+### Case study pages
+
+`CaseStudyView` is now: sticky header (home icon, title, next control) over a
+two-column body (overview rail / long read) over a full-width tiled gallery.
+
+- **Next control** wears the *next* project's colour and opens from a circle
+  into a pill naming it. `getNextCaseStudy` wraps past the last study.
+  The label is only visually collapsed (`max-width: 0`), never `aria-hidden`,
+  or the link announces as "Next project:" with no destination.
+- **Header shrink.** The entry animation (`100vh → 22vh`) uses
+  `fill-mode: both`, which **pins `height` and beats any declarative rule**, so
+  the scroll shrink could never fire. The header flips to `data-settled` after
+  620ms and drops to plain transitioned CSS.
+- **Gallery** spans are authored per item (`full` 2×2, `tall` 1×2, `half` 1×1,
+  default `half`). `src` is optional: a tile with no asset holds its cell as a
+  grey block rather than rendering a broken image.
+- **Wide screens** get less padding and wider containers (`100rem` columns,
+  `110rem` media) while prose stays at `max-w-[70ch]`.
+
+### Pull-to-exit, and the collapse home
+
+`lib/scrollExit.ts` (pure) + `hooks/useScrollUpExit.ts`. At `scrollY <= 0`,
+continued upward scrolling accumulates pull; the page follows on a damped,
+asymptotic curve and a progress bar fills across the header. Past
+`EXIT_PULL_THRESHOLD_PX` (160) the page drops away and navigates home.
+Stopping short springs back.
+
+**The home button stays.** The gesture is undiscoverable on its own, collides
+with rubber-banding and pull-to-refresh, and offers no keyboard path out. It is
+an addition, not a replacement.
+
+Arriving home, `useStackCollapse` starts the stack fanned and folds it shut,
+run through the same `splitTravel` as a real gesture so the collapse is the
+reveal played backwards. It returns `null` (not `0`) when done, so a reader
+whose cursor is already low does not get the stack pinned shut under them.
+
+### Intro plays once per page load
+
+`hooks/useIntroOnce.ts` — module-scope flag claimed in a `useState`
+initialiser, so the answer is known at first paint. Home from a case study is a
+client-side navigation and would otherwise replay the whole story. A hard
+refresh is a new bundle and earns the intro again.
+
+### Typography
+
+PP Neue Montreal (`app/fonts/PPNeueMontreal-Book.otf`) is self-hosted as
+`--font-pp-neue-montreal` → `--font-body`. Case study blurbs and body copy use
+`font-body`. Note the line-boil filter is keyed to `.font-script`, so switching
+a element to `font-body` also takes it out of the boil — intended for a grotesk.
+
+### Watch out for
+
+- **Anchor every edit before writing.** A patch that silently matched nothing
+  once shipped as "done" and was caught only by the user looking at the page.
+- **jsdom rAF mocks that re-arm inside the callback spin forever** and OOM V8.
+  Drive frames by hand instead (`hooks/useStackCollapse.test.ts` shows the
+  shape).
+- The working tree is CRLF (`core.autocrlf=true`). Writes must preserve it.
 
 ## History worth knowing
 
