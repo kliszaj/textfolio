@@ -1,6 +1,6 @@
 import { createRef } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
+import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { SKETCH_INK } from "@/lib/strokeText";
 import { Hero } from "./Hero";
 
@@ -124,7 +124,7 @@ test("the tagline sits in the same place whatever treatment is active", () => {
   expect(tagline.style.marginTop).toBe(resting);
 });
 
-test("tagline and arrow take the accent blue under the ASCII treatment", () => {
+test("tagline and arrow take the yellow accent under the ASCII treatment", () => {
   render(<Hero playIntro={false} fanProgress={0} asciiConfig={undefined} />);
   const tagline = screen.getByTestId("hero-tagline");
   const arrow = screen.getByTestId("scroll-hint");
@@ -132,8 +132,8 @@ test("tagline and arrow take the accent blue under the ASCII treatment", () => {
 
   fireEvent.pointerEnter(screen.getByTestId("hero-headline"));
   if (screen.getByTestId("hero-headline").dataset.effect === "ascii") {
-    expect(tagline).toHaveStyle({ color: "#3E18FF" });
-    expect(arrow).toHaveStyle({ color: "#3E18FF" });
+    expect(tagline).toHaveStyle({ color: ASCII_INK_LIME });
+    expect(arrow).toHaveStyle({ color: ASCII_INK_LIME });
   } else {
     expect(tagline.style.color).toBe(restingTagline);
   }

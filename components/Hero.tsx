@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import dynamic from "next/dynamic";
 import { NAME } from "@/data/letterTreatments";
-import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
+import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
@@ -45,7 +45,7 @@ const HEADLINE_SIZE = "clamp(3rem, 15.97vw, 14.5rem)";
 const TAGLINE_OFFSET = "clamp(-3.5rem, -3vw, -0.5rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
-const ASCII_ACCENT_COLOR = "#3E18FF";
+const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
 const TAGLINE_SIZE = "clamp(1.6rem, 6vw, 5.5rem)";
 const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
