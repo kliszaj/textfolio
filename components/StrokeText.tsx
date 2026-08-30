@@ -286,9 +286,8 @@ export function StrokeText({
     const fillDuration = Math.max(0.4, drawDuration * 0.5);
     const staggerConfig = reverse ? { each: stagger, from: "end" as const } : stagger;
     const outlineEnd = letterSequenceSeconds(drawDuration, stagger, strokes.length);
-    // Pencil hatching starts on the same beat as the outlines, so the fill
-    // grows with the letters instead of waiting for the first one to finish.
-    // A configured delay still remains available for deliberate tuning.
+    // Pencil hatching gets a short head start from the outlines instead of
+    // arriving as a separate, late phase. The delay remains configurable.
     const fillStart = useHatchFill
       ? Math.max(0, fillDelay)
       : outlineEnd + fillDelay;

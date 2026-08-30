@@ -24,9 +24,9 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
   fillColor: "#FFFFFF",
   strokeWidth: 2.6,
   drawDuration: 2.8,
-  // The pencil shade begins while the later letter outlines are still
-  // drawing, so the sketch reads as one uninterrupted hand movement.
-  fillDelay: 0,
+  // Give the letter strokes a short head start before the pencil shade joins
+  // them, so the two actions read as one motion without starting together.
+  fillDelay: 1,
   stagger: 0.12,
   ease: "power1.inOut",
   trigger: "mount",

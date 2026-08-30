@@ -28,9 +28,9 @@ a fallback font from being captured during a deployed visitor's first paint.
 draws all six outlines in sequence (2.8s each, 120ms stagger) before any
 shading starts. Its default fill is clipped SVG hatching whose lines draw
 one-by-one with deterministic variation in spacing, angle, length, opacity,
-and weight. Hatching starts from the centre on the same beat as the first
-outline (the configured beat is `0ms`), so the fill grows alongside the
-letter strokes instead of arriving as a second phase. Its lettering,
+and weight. Hatching starts from the centre after a short one-second beat,
+giving the letter strokes a head start without turning the fill into a second
+late phase. Its lettering,
 tagline, and arrow share cobalt `#0057FF` ink;
 the correction circle and X remain red and share the same GSAP timeline as
 the hatching, starting only after both the final outline and final hatch line
