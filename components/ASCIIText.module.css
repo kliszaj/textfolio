@@ -1,0 +1,58 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  font-family: var(--headline-font-family, "PP Frama", sans-serif);
+  font-size: var(--headline-font-size, max(3rem, 15.97vw));
+  font-weight: var(--headline-font-weight, 900);
+  line-height: 1;
+}
+
+.root[data-ready="true"] .fallback {
+  opacity: 0;
+}
+
+.root pre,
+.renderer,
+.output {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.root pre {
+  overflow: hidden;
+  z-index: 1;
+  background: radial-gradient(circle at 30% 20%, #ff6188 0%, #fc9867 48%, #ffd866 100%);
+  background-attachment: fixed;
+  color: transparent;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  line-height: 1;
+  white-space: pre;
+  -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  mix-blend-mode: difference;
+}
+
+.renderer {
+  display: block;
+  opacity: 0;
+}
+
+.output {
+  display: block;
+  z-index: 1;
+}

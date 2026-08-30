@@ -1,53 +1,60 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { computeFocusedInset, computeSheetInset } from "@/lib/fanSheet";
+import {
+  SHEET_OVERSCAN_PERCENT,
+  computeSheetInset,
+  sheetViewportLeftPercent,
+} from "@/lib/fanSheet";
+
+// Each sheet drops a shadow onto the one behind it, so the fanned bands read
+// as separate pieces of paper rather than flat colour blocks.
+const SHEET_SHADOW = "0 10px 30px rgba(0, 0, 0, 0.28)";
+const SHEET_CORNER_RADIUS_PX = 16;
 import type { FanSheetConfig } from "@/lib/fanSheet";
 
 type PaperSheetProps = {
   depth: number;
   fanProgress: number;
+  sweepProgress: number;
+  sheetCount: number;
   config: FanSheetConfig;
   transitionMs: number;
   zIndex: number;
-  focused?: boolean;
-  focusedZIndex?: number;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
   children: ReactNode;
 };
 
 export function PaperSheet({
   depth,
   fanProgress,
+  sweepProgress,
+  sheetCount,
   config,
   transitionMs,
   zIndex,
-  focused = false,
-  focusedZIndex,
-  onMouseEnter,
-  onMouseLeave,
   children,
 }: PaperSheetProps) {
-  const inset = focused
-    ? computeFocusedInset(config)
-    : computeSheetInset(depth, fanProgress, config);
-  const effectiveZIndex = focused && focusedZIndex !== undefined ? focusedZIndex : zIndex;
+  const inset = computeSheetInset(depth, fanProgress, sweepProgress, config, sheetCount);
+  const pivotXPercent = sheetViewportLeftPercent(inset.right);
 
   return (
     <div
       data-testid={`paper-sheet-${depth}`}
-      className="absolute top-0 left-0 overflow-hidden"
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      className="absolute top-0 overflow-hidden"
       style={{
         bottom: `${inset.bottom}%`,
-        right: `${inset.right}%`,
-        zIndex: effectiveZIndex,
+        left: `-${SHEET_OVERSCAN_PERCENT}%`,
+        right: `${inset.right - SHEET_OVERSCAN_PERCENT}%`,
+        zIndex,
         filter: `brightness(${inset.brightness})`,
         transform: `rotate(${inset.rotate}deg)`,
-        transformOrigin: "bottom center",
-        transition: `bottom ${transitionMs}ms cubic-bezier(0.22, 1, 0.36, 1), right ${transitionMs}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${transitionMs}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${transitionMs}ms ease`,
+        // Pivoting at a corner keeps the whole sheet swinging up and to the
+        // left in one direction. A centre pivot would drop one half as the
+        // other rose, which reads as a see-saw.
+        transformOrigin: `${pivotXPercent}% 100%`,
+        boxShadow: SHEET_SHADOW,
+        borderRadius: `${SHEET_CORNER_RADIUS_PX}px`,
+        transition: `bottom ${transitionMs}ms linear, right ${transitionMs}ms linear, transform ${transitionMs}ms linear, filter ${transitionMs}ms linear`,
       }}
     >
       {children}

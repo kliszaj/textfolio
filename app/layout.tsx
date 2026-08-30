@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { Archivo_Black, Caveat } from "next/font/google";
+import localFont from "next/font/local";
+import { LineBoil } from "@/components/LineBoil";
 import "./globals.css";
 
-const displayFont = Archivo_Black({
-  weight: "400",
-  subsets: ["latin"],
+const displayFont = localFont({
+  src: "./fonts/PPFrama-Black.otf",
   variable: "--font-display",
+  display: "swap",
 });
 
-const scriptFont = Caveat({
-  weight: "500",
-  subsets: ["latin"],
+const scriptFont = localFont({
+  src: "./fonts/Adrian-Regular.otf",
   variable: "--font-script",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${displayFont.variable} ${scriptFont.variable}`}>
+        <LineBoil />
         {children}
       </body>
     </html>

@@ -13,6 +13,21 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Jest's config is CommonJS by design; next/jest is a CJS export.
+    files: ["jest.config.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
+    // Underscore-prefixed args are deliberately unused (interface stubs).
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

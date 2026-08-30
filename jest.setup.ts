@@ -15,3 +15,22 @@ class IntersectionObserverMock implements IntersectionObserver {
 }
 
 global.IntersectionObserver = IntersectionObserverMock;
+
+// jsdom ships no matchMedia. Several components ask it about pointer type and
+// reduced-motion; default them all to "no match" so tests opt in explicitly.
+if (!window.matchMedia) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }),
+  });
+}

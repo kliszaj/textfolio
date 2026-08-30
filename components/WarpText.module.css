@@ -1,0 +1,48 @@
+.root {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--warp-text-color);
+  font-family: var(--warp-text-font-family);
+  font-size: var(--warp-text-font-size);
+  font-weight: var(--warp-text-font-weight);
+  letter-spacing: var(--warp-text-letter-spacing);
+  line-height: var(--warp-text-line-height);
+  text-align: center;
+  transition: opacity 120ms ease-out;
+}
+
+.root[data-webgl-ready="true"] .fallback {
+  opacity: 0;
+}
+
+.root canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-webgl-ready="true"] .fallback {
+    opacity: 1;
+  }
+
+  .root canvas {
+    display: none;
+  }
+}

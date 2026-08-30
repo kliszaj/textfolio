@@ -1,35 +1,81 @@
-import { computeCursorFanProgress, computeScrollFanProgress, FAN_THRESHOLD_PX } from "./fanProgress";
+import {
+  computeCursorTravel,
+  computeScrollTravel,
+  splitTravel,
+  FAN_THRESHOLD_PX,
+} from "./fanProgress";
 
-describe("computeCursorFanProgress", () => {
+describe("computeCursorTravel", () => {
   test("returns 0 when far from the bottom edge", () => {
-    expect(computeCursorFanProgress(0, 800)).toBe(0);
+    expect(computeCursorTravel(0, 800)).toBe(0);
   });
 
   test("returns 1 when the cursor is at the very bottom", () => {
-    expect(computeCursorFanProgress(800, 800)).toBe(1);
+    expect(computeCursorTravel(800, 800)).toBe(1);
   });
 
   test("returns a mid value within the threshold band", () => {
     const mouseY = 800 - FAN_THRESHOLD_PX / 2;
-    expect(computeCursorFanProgress(mouseY, 800)).toBeCloseTo(0.5);
+    expect(computeCursorTravel(mouseY, 800)).toBeCloseTo(0.5);
   });
 
   test("honors a custom threshold override", () => {
-    expect(computeCursorFanProgress(800, 800, 100)).toBe(1);
-    expect(computeCursorFanProgress(750, 800, 100)).toBeCloseTo(0.5);
+    expect(computeCursorTravel(800, 800, 100)).toBe(1);
+    expect(computeCursorTravel(750, 800, 100)).toBeCloseTo(0.5);
   });
 });
 
-describe("computeScrollFanProgress", () => {
+describe("computeScrollTravel", () => {
   test("returns 0 at scrollY 0", () => {
-    expect(computeScrollFanProgress(0, 800)).toBe(0);
+    expect(computeScrollTravel(0, 800)).toBe(0);
   });
 
   test("returns 1 at max scroll", () => {
-    expect(computeScrollFanProgress(800, 800)).toBe(1);
+    expect(computeScrollTravel(800, 800)).toBe(1);
   });
 
   test("returns 0 when scrollableHeight is 0 (no scroll possible)", () => {
-    expect(computeScrollFanProgress(0, 0)).toBe(0);
+    expect(computeScrollTravel(0, 0)).toBe(0);
+  });
+});
+
+describe("splitTravel", () => {
+  test("the fan phase owns the travel below the split", () => {
+    expect(splitTravel(0, 0.45)).toEqual({ fanProgress: 0, sweepProgress: 0 });
+    const half = splitTravel(0.225, 0.45);
+    expect(half.fanProgress).toBeCloseTo(0.5);
+    expect(half.sweepProgress).toBe(0);
+  });
+
+  test("at the split the fan is fully open and the sweep has not started", () => {
+    const atSplit = splitTravel(0.45, 0.45);
+    expect(atSplit.fanProgress).toBe(1);
+    expect(atSplit.sweepProgress).toBe(0);
+  });
+
+  test("the sweep phase owns the travel above the split, fan staying open", () => {
+    const mid = splitTravel(0.725, 0.45);
+    expect(mid.fanProgress).toBe(1);
+    expect(mid.sweepProgress).toBeCloseTo(0.5);
+  });
+
+  test("both phases are complete at the end of the travel", () => {
+    expect(splitTravel(1, 0.45)).toEqual({ fanProgress: 1, sweepProgress: 1 });
+  });
+
+  test("clamps travel outside 0-1 at both ends", () => {
+    expect(splitTravel(-0.5, 0.45)).toEqual({ fanProgress: 0, sweepProgress: 0 });
+    expect(splitTravel(2, 0.45)).toEqual({ fanProgress: 1, sweepProgress: 1 });
+  });
+
+  test("a split of 0 skips the fan phase entirely", () => {
+    expect(splitTravel(0, 0)).toEqual({ fanProgress: 1, sweepProgress: 0 });
+    expect(splitTravel(0.5, 0)).toEqual({ fanProgress: 1, sweepProgress: 0.5 });
+  });
+
+  test("a split of 1 leaves no room for the sweep", () => {
+    const atEnd = splitTravel(1, 1);
+    expect(atEnd.fanProgress).toBe(1);
+    expect(atEnd.sweepProgress).toBe(0);
   });
 });
