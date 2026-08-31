@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  CORRECTION_LETTER_DELAY_MS,
   CORRECTION_CROSS_DELAY_MS,
+  CORRECTION_CROSS_MS,
+  CORRECTION_LETTER_VIEWBOX,
+  correctionSequenceMs,
+  boxMoved,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
   DEFAULT_STROKE_TEXT_CONFIG,
@@ -33,8 +38,10 @@ test("the draw actually takes time and the stroke is visible", () => {
   expect(DEFAULT_STROKE_TEXT_CONFIG.strokeWidth).toBeGreaterThan(0);
 });
 
-test("the fill follows the outlines after a short one-second beat", () => {
-  expect(DEFAULT_STROKE_TEXT_CONFIG.fillDelay).toBe(1);
+test("the fill follows the outlines after a short beat", () => {
+  expect(DEFAULT_STROKE_TEXT_CONFIG.fillDelay).toBeGreaterThan(0);
+  // Starts while the outlines are still drawing, so the hatching is a head
+  // start rather than a second, late phase.
   expect(DEFAULT_STROKE_TEXT_CONFIG.fillDelay).toBeLessThan(
     DEFAULT_STROKE_TEXT_CONFIG.drawDuration
   );
@@ -137,49 +144,6 @@ describe("correction marks", () => {
   const box = { x: 100, y: 50, width: 60, height: 80 };
   const bounds = { width: 400, height: 300 };
 
-  test("the mark is a circle, not an ellipse", () => {
-    // A glyph is roughly square; an ellipse round it read as a mistake.
-    const { circle } = correctionMarks(box);
-    expect(circle.r).toBeGreaterThan(0);
-    expect(circle.cx).toBeCloseTo(box.x + box.width / 2);
-    expect(circle.cy).toBeCloseTo(box.y + box.height / 2);
-  });
-
-  test("the circle is drawn snug to the glyph, not looped loosely round it", () => {
-    const { circle } = correctionMarks(box);
-    const longest = Math.max(box.width, box.height);
-    expect(circle.r * 2).toBeGreaterThan(longest * 0.5);
-    expect(circle.r * 2).toBeLessThan(longest);
-  });
-
-  test("it is pulled inside the frame rather than running off the edge", () => {
-    // A glyph hard against the right edge is where the mark looked clipped.
-    const edge = { x: 380, y: 40, width: 60, height: 80 };
-    const { circle } = correctionMarks(edge, bounds);
-    expect(circle.cx - circle.r).toBeGreaterThanOrEqual(0);
-    expect(circle.cx + circle.r).toBeLessThanOrEqual(bounds.width);
-    expect(circle.cy - circle.r).toBeGreaterThanOrEqual(0);
-    expect(circle.cy + circle.r).toBeLessThanOrEqual(bounds.height);
-  });
-
-  test("a frame smaller than the mark shrinks it rather than overflowing", () => {
-    const { circle } = correctionMarks(box, { width: 40, height: 40 });
-    expect(circle.r).toBeLessThanOrEqual(20);
-    expect(circle.r).toBeGreaterThan(0);
-  });
-
-  test("without a frame it sits on the glyph, unclamped", () => {
-    const { circle } = correctionMarks(box);
-    expect(circle.cx).toBe(box.x + box.width / 2);
-  });
-
-  test("the loop does not close cleanly, the way a real one does not", () => {
-    const { loop } = correctionMarks(box);
-    const start = loop.match(/^M (-?\d+\.?\d*) (-?\d+\.?\d*)/)!.slice(1).map(Number);
-    const end = loop.trim().split(" ").slice(-2).map(Number);
-    expect(Math.hypot(end[0] - start[0], end[1] - start[1])).toBeGreaterThan(0);
-  });
-
   test("the X is centred on the glyph and struck across most of it", () => {
     const { crossA, crossB } = correctionMarks(box);
     for (const stroke of [crossA, crossB]) {
@@ -205,14 +169,14 @@ describe("correction marks", () => {
   });
 
   test("every drawn pixel stays inside the frame, pen width included", () => {
-    // The wobble draws wider than the nominal radius, and the pen is drawn
-    // centred on the path -- both have to be inside, not just the geometry.
+    // The pen is drawn centred on the path, so the geometry alone being
+    // inside the frame is not enough.
     const pen = 8;
     const edge = { x: 380, y: 250, width: 60, height: 80 };
-    const { circle, loop, crossA, crossB } = correctionMarks(edge, bounds, pen / 2);
-    expect(circle.cx + circle.r * 1.05 + pen / 2).toBeLessThanOrEqual(bounds.width);
-    expect(circle.cy + circle.r * 1.05 + pen / 2).toBeLessThanOrEqual(bounds.height);
-    for (const d of [loop, crossA, crossB]) {
+    const { crossA, crossB, letter } = correctionMarks(edge, bounds, pen / 2);
+    expect(letter.y).toBeGreaterThanOrEqual(0);
+    expect(letter.y + letter.height).toBeLessThanOrEqual(bounds.height);
+    for (const d of [crossA, crossB]) {
       const nums = d.match(/-?\d+\.?\d*/g)!.map(Number);
       const xs = nums.filter((_: number, i: number) => i % 2 === 0);
       const ys = nums.filter((_: number, i: number) => i % 2 === 1);
@@ -264,4 +228,107 @@ describe("one blue for the whole sketch treatment", () => {
       [1, 3, 5].reduce((sum, i) => sum + parseInt(hex.slice(i, i + 2), 16), 0);
     expect(luminance(SKETCH_INK)).toBeLessThan(luminance("#0057FF"));
   });
+});
+
+describe("boxMoved", () => {
+  const box = { x: 10, y: 20, width: 300, height: 80 };
+
+  test("treats a first measurement as a move", () => {
+    expect(boxMoved(null, box)).toBe(true);
+  });
+
+  test("ignores sub-pixel jitter, so measuring on every frame is free", () => {
+    expect(boxMoved(box, { ...box, x: 10.2, width: 300.3 })).toBe(false);
+  });
+
+  test("notices the box growing taller", () => {
+    // The old guard compared x, y and width only. A face landing after the
+    // fallback changes the height too, and missing it left the hatching and
+    // the correction mark drawn to the fallback's metrics.
+    expect(boxMoved(box, { ...box, height: 96 })).toBe(true);
+  });
+
+  test("notices a shift in either direction", () => {
+    expect(boxMoved(box, { ...box, x: 24 })).toBe(true);
+    expect(boxMoved(box, { ...box, y: 34 })).toBe(true);
+    expect(boxMoved(box, { ...box, width: 360 })).toBe(true);
+  });
+});
+
+describe("the correction is an X, then a hand-written N", () => {
+  const box = { x: 100, y: 40, width: 60, height: 80 };
+
+  test("no longer circles the glyph", () => {
+    const marks = correctionMarks(box);
+    // The loop read as ringing the letter rather than correcting it.
+    expect("loop" in marks).toBe(false);
+    expect("circle" in marks).toBe(false);
+    expect(marks.crossA).toMatch(/^M /);
+    expect(marks.crossB).toMatch(/^M /);
+  });
+
+  test("writes the replacement letter above the glyph it corrects", () => {
+    const { letter } = correctionMarks(box);
+    expect(letter.d).toMatch(/^M/);
+    // Sits clear of the glyph's top edge, the way a hand writes above a
+    // crossing-out.
+    expect(letter.y + letter.height).toBeLessThanOrEqual(box.y);
+  });
+
+  test("centres the letter on the glyph", () => {
+    const { letter } = correctionMarks(box);
+    expect(letter.x + letter.width / 2).toBeCloseTo(box.x + box.width / 2, 5);
+  });
+
+  test("keeps the letter's proportions", () => {
+    const { letter } = correctionMarks(box);
+    expect(letter.width / letter.height).toBeCloseTo(
+      CORRECTION_LETTER_VIEWBOX.width / CORRECTION_LETTER_VIEWBOX.height,
+      5
+    );
+  });
+
+  test("scales the letter with the glyph it corrects", () => {
+    const small = correctionMarks(box).letter;
+    const large = correctionMarks({ ...box, height: 160 }).letter;
+    expect(large.height).toBeCloseTo(small.height * 2, 5);
+  });
+
+  test("holds the letter inside the frame when it would ride off the top", () => {
+    const highUp = { x: 100, y: 4, width: 60, height: 80 };
+    const { letter } = correctionMarks(highUp, { width: 600, height: 200 }, 2, 0);
+    expect(letter.y).toBeGreaterThanOrEqual(0);
+  });
+
+  test("thins the pen by the same amount it scales the letter", () => {
+    // The path is drawn under a transform, so its own stroke width has to be
+    // divided back out or the mark would be far heavier than the X.
+    const { letter } = correctionMarks(box);
+    const scale = letter.height / CORRECTION_LETTER_VIEWBOX.height;
+    expect(letter.transform).toContain(`scale(${scale}`);
+  });
+});
+
+test("the correction sequence leaves room for the letter after the X", () => {
+  const withLetter = correctionSequenceMs(1, 0, 1);
+  expect(withLetter).toBeGreaterThan(
+    1000 + CORRECTION_CROSS_DELAY_MS + CORRECTION_CROSS_MS
+  );
+});
+
+test("writes the N straight after the X, and quickly", () => {
+  // It should read as one continuous correction, not two separate marks.
+  expect(CORRECTION_LETTER_DELAY_MS).toBeLessThan(CORRECTION_CROSS_MS / 2);
+  expect(CORRECTION_DRAW_MS).toBeLessThan(CORRECTION_CROSS_MS * 1.5);
+});
+
+test("strikes the X across the glyph without swallowing it", () => {
+  const box = { x: 100, y: 50, width: 60, height: 80 };
+  const { crossA } = correctionMarks(box);
+  const nums = crossA.match(/-?\d+\.?\d*/g)!.map(Number);
+  const xs = nums.filter((_: number, i: number) => i % 2 === 0);
+  const spanX = Math.max(...xs) - Math.min(...xs);
+  // Overshoots the glyph the way a crossing-out does, but not by much.
+  expect(spanX).toBeGreaterThan(box.width * 0.8);
+  expect(spanX).toBeLessThan(box.width * 1.1);
 });

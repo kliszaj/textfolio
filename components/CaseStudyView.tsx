@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { pullOffset, pullProgress } from "@/lib/scrollExit";
+import { HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { useScrollUpExit } from "@/hooks/useScrollUpExit";
 import { markReturningHome } from "@/hooks/useStackCollapse";
 import type { CaseStudy, CaseStudyMedia } from "@/data/caseStudies";
@@ -14,8 +15,9 @@ type CaseStudyViewProps = {
   next?: CaseStudy;
 };
 
-// How far down the page the header collapses to its compact bar.
-const SHRINK_AT_PX = 120;
+// Matched to the homepage's own arrow, a step down so it sits inside the
+// header rather than filling it.
+const HOME_LABEL_SIZE = "clamp(1.05rem, 1.5vw, 1.5rem)";
 
 // The drop back onto the stack. The inverse of the sheet lift that opened it.
 const EXIT_ANIMATION_MS = 420;
@@ -43,10 +45,35 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  const shrunkRef = useRef(false);
+
   useEffect(() => {
-    const onScroll = () => setShrunk(window.scrollY > SHRINK_AT_PX);
+    let previousY = window.scrollY;
+    let changedAt = -Infinity;
+
+    const settle = (next: boolean) => {
+      if (next === shrunkRef.current) return;
+      shrunkRef.current = next;
+      changedAt = performance.now();
+      setShrunk(next);
+    };
+
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      settle(
+        nextHeaderShrunk({
+          shrunk: shrunkRef.current,
+          previousY,
+          currentY,
+          sinceChangeMs: performance.now() - changedAt,
+        })
+      );
+      previousY = currentY;
+    };
+
+    // A reload partway down the page has no gesture to read, so go on position.
+    settle(window.scrollY > HEADER_SHRINK_AT_PX);
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -89,24 +116,37 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
           className="case-study-header sticky top-0 z-30 flex flex-col justify-end px-6 pb-5 md:px-10 md:pb-7 2xl:px-14"
           style={{ backgroundColor: caseStudy.thumbnailColor }}
         >
+          {/* The inverse of the homepage's down arrow, and it leaves the same
+              way the pull gesture does. A real link, so the browser's own
+              open-in-a-new-tab still works; only a plain click is intercepted. */}
           <Link
             data-testid="case-study-home"
             href="/"
-            aria-label="Home"
-            // Same arrival either way: the stack folds shut rather than being
-            // found already closed.
-            onClick={markReturningHome}
-            className="absolute top-5 left-6 md:left-10 2xl:left-14 transition-opacity hover:opacity-60"
+
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) {
+                return;
+              }
+              event.preventDefault();
+              leave();
+            }}
+            className="case-study-home absolute top-4 left-6 md:left-10 2xl:left-14 hover:opacity-60"
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M3 11.5 12 4l9 7.5M6 10v9h12v-9"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {/* .font-script carries the line boil on its own, so the word is
+                drawn in the same hand as the homepage tagline. */}
+            <span
+              data-testid="case-study-home-label"
+              className="font-script block leading-none"
+              style={{ fontSize: HOME_LABEL_SIZE }}
+            >
+              BACK
+            </span>
           </Link>
 
           {/* How close the pull is to committing, so the gesture is never a
@@ -119,7 +159,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
             style={{ transform: `scaleX(${pullProgress(pull)})` }}
           />
 
-          <div className="flex items-end justify-between gap-6">
+          <div className="case-study-header-row flex items-end justify-between gap-6">
             <h1
               data-testid="case-study-title"
               className="case-study-title font-display leading-none"
@@ -143,7 +183,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                 >
                   {next.title}
                 </span>
-                <span className="grid place-items-center size-14 md:size-16 shrink-0">
+                <span className="case-study-next-arrow grid place-items-center size-14 md:size-16 shrink-0">
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path
                       d="M4 12h15m0 0-6-6m6 6-6 6"
@@ -196,15 +236,18 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
             {/* The page is wide, prose is not: the measure stays readable even
                 when the gallery below runs the full width. */}
             <div data-testid="case-study-detail" className="font-body max-w-[70ch]">
+              {/* Plain paragraphs. At one or two of them the headings were
+                  louder than the copy they introduced; the section headings in
+                  the data are kept for ordering and for the writer's benefit,
+                  but they are not rendered. */}
               {sections.length > 0 ? (
                 sections.map((section) => (
-                  <section key={section.heading} className="mb-12 last:mb-0">
-                    <h2 className="font-display text-2xl md:text-3xl">{section.heading}</h2>
-                    <p className="mt-4 text-lg leading-relaxed">{section.body}</p>
-                  </section>
+                  <p key={section.heading} className="case-study-copy mb-8 last:mb-0">
+                    {section.body}
+                  </p>
                 ))
               ) : (
-                <p className="text-lg leading-relaxed">
+                <p className="case-study-copy">
                   Placeholder body copy for {caseStudy.title}. The real write-up goes
                   here: process, decisions, and the work itself.
                 </p>

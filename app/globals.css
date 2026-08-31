@@ -171,7 +171,7 @@ body {
 
 :root {
   --case-study-header-height: 22vh;
-  --case-study-header-shrunk-height: 4.5rem;
+  --case-study-header-shrunk-height: 5.25rem;
 }
 
 .case-study-header {
@@ -200,6 +200,45 @@ body {
   height: var(--case-study-header-shrunk-height);
 }
 
+/* Collapsed, the header is shorter than the controls it holds. Bottom-aligning
+   them there pushed the next button out through the top of the bar, so the
+   collapsed bar centres its row instead and drops the padding that caused it. */
+.case-study-header[data-shrunk="true"] {
+  justify-content: center;
+  padding-bottom: 0;
+}
+
+.case-study-header[data-shrunk="true"] .case-study-header-row {
+  align-items: center;
+}
+
+/* The control shrinks with the bar, so it sits inside it rather than filling
+   it edge to edge. */
+.case-study-header[data-shrunk="true"] .case-study-next {
+  height: 3.25rem;
+}
+
+.case-study-header[data-shrunk="true"] .case-study-next-arrow {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.case-study-next,
+.case-study-next-arrow,
+.case-study-home {
+  transition:
+    height 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease-out;
+}
+
+/* Home has no room in the collapsed bar, and it was overlapping the title.
+   Scrolling back to the top brings it back. */
+.case-study-header[data-shrunk="true"] .case-study-home {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Rests as a circle around the arrow and opens into a pill naming the next
    project. max-width rather than width so the label sizes itself to whatever
    the title happens to be. */
@@ -219,6 +258,37 @@ body {
   max-width: 22rem;
   opacity: 1;
   padding-left: 1.5rem;
+}
+
+/* The long read is the page's voice, so it is set a step up from the
+   overview rail beside it rather than matching it. */
+/* The arrow drifts down and back, so it reads as an invitation to scroll
+   rather than a static mark. Measured in em, so it keeps its proportion across
+   the treatments, whose arrows are different sizes. */
+@keyframes scroll-hint-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(0.14em);
+  }
+}
+
+.scroll-hint-bob {
+  /* Slow, and eased at both ends, so it breathes rather than bounces. */
+  animation: scroll-hint-bob 2.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hint-bob {
+    animation: none;
+  }
+}
+
+.case-study-copy {
+  font-size: clamp(1.25rem, 1.5vw, 1.6rem);
+  line-height: 1.55;
 }
 
 .case-study-title {
@@ -254,9 +324,13 @@ body {
 
   .case-study-header[data-settled="true"],
   .case-study-title,
-  .case-study-next-label {
+  .case-study-next-label,
+  .case-study-next,
+  .case-study-next-arrow,
+  .case-study-home {
     transition: none;
   }
+
 }
 
 /* Red pen drawing itself in after the sketch. pathLength="1" on each path

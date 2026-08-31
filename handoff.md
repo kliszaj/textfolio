@@ -7,7 +7,7 @@ A designer portfolio built as a stack of paper. The landing page (the name
 cursor travels toward the bottom of the viewport. Clicking one lifts it out of
 the stack and navigates to its own route.
 
-**Status:** everything below is implemented and green — 34 suites / 385 passed
+**Status:** everything below is implemented and green — 37 suites / 431 passed
 (5 skipped), `npx tsc --noEmit` clean, `npm run lint` clean, `next build`
 succeeds. The `react-hooks/set-state-in-effect` error at
 `hooks/useFanProgress.ts` is fixed: the rest position is derived on return
@@ -798,6 +798,87 @@ a element to `font-body` also takes it out of the boil — intended for a grotes
   tests. When adding a regression test after a fix, reintroduce the bug and
   watch the test fail before trusting it.
 - The working tree is CRLF (`core.autocrlf=true`). Writes must preserve it.
+
+## Later work: mobile sizing, the correction mark, and the sticky header
+
+### ASCII was not scaling with the headline on small screens
+
+`planeHeightForFontSize` returns `ASCII_FALLBACK_PLANE_HEIGHT` (13 **world
+units**) whenever the headline's font size cannot be measured — a value that
+ignores the viewport entirely. On a 378px-wide phone that renders about 504px
+and runs off both edges; on desktop it happens to land near the right size,
+which is why it only ever showed on mobile. Fonts and layout settle later on a
+phone, so `applyPlaneScale` kept hitting that path.
+
+It now **bails and keeps the last good scale** rather than applying the fixed
+fallback, the plane is clamped to `ASCII_MAX_WIDTH_SHARE` of the frame (which
+does not clip, so an oversized plane simply spills), and `fonts.ready` re-runs
+the whole `resize()` because the face landing changes the word's width.
+
+### The sketch's hatching and correction sat where the letters used to be
+
+Two measurement guards compared the wrong things: the text box checked `x`,
+`y`, `width` but **not `height`**, and the mark box only `x` and `width`. A web
+font landing after the fallback changes the height, so those updates were
+discarded and the hatch clip and correction were drawn to the *fallback's*
+metrics. Now `boxMoved` in `lib/strokeText.ts` compares all four edges.
+
+`document.fonts.ready` is **not** sufficient on its own — it only covers
+requests made before it was read, so a late face lands after it resolves. There
+is a `loadingdone` listener plus a bounded re-measure over the first ~36
+frames; `boxMoved` discards anything unchanged, so it is free.
+
+### The correction is an X, then a written N
+
+The circle is gone, along with `WOBBLE` / `LOOP_WOBBLE_MAX` and
+`CORRECTION_CROSS_LEAD_MS` (which only meant "start the X before the loop
+closes"). `CORRECTION_LETTER_PATH` is a traced single open stroke, so it draws
+in with the same `pathLength={1}` dash trick. It is drawn under a `scale()`
+transform and therefore carries **its own** `strokeWidth`, divided back out, or
+the scale would multiply the pen.
+
+**A round cap on a fully offset dash still paints.** The pen tip showed as a red
+dot on the page for the whole sketch before the N drew. Every mark now starts
+at `opacity: 0` and is revealed by a `timeline.set` at the instant it starts.
+
+### Every intro stage is three seconds
+
+Shrinking the window was not enough: `correctionSequenceMs` ran to exactly
+3000ms, so the stage would have handed over with the pen still moving. There is
+an invariant test for that, and it caught it. The drawing compressed with the
+window — outline draw, stagger, `fillDelay` (at 1s it would have started *after*
+the outlines finished, losing the head start it exists to give them), and the
+correction beats.
+
+### The sticky header fluttered
+
+The header's height is in the page flow, so every shrink moves the content
+under the reader; the browser reports that as a scroll, which crosses the
+threshold the other way, which resizes again. `lib/stickyHeader.ts` replaces the
+single threshold: committing to scroll up shows the full header wherever you
+are, shrinking needs both downward movement and being past 140px, movement
+under 10px is jitter, and **anything arriving during the 360ms resize is
+ignored** so the resize cannot answer itself.
+
+### Hover belongs to the letters, not the frame
+
+The frame is page-wide so it can size the treatments, so hovering the empty
+space either side used to change treatment. It cannot be solved by shrinking
+the frame, nor by overlaying a hit target — that would swallow the
+`pointermove` ASCII needs for its tilt. Instead the frame carries an invisible
+copy of the word at the headline font, and `lib/headlineHit.ts` hit-tests
+against its measured box. Padding is a share of the word's *height*, so it
+scales with the headline. An unmeasured word returns `true`: a dead headline is
+worse than an eager one.
+
+### Watch out for
+
+- **jsdom cannot parse arithmetic inside `clamp()`** — browsers can. Assert on
+  the exported constant, not on `element.style`.
+- **jsdom has no `getBBox`**, so correction marks never render in tests and
+  assertions about them pass vacuously. Stub it (see `StrokeText.test.tsx`).
+- The PowerShell here-string form `@'...'@` is a parse error in the Bash tool;
+  use a heredoc.
 
 ## History worth knowing
 

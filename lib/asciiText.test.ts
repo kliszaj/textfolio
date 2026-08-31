@@ -356,3 +356,60 @@ test("finishes the rain well inside the ascii stage so it reads as quick", () =>
   expect(ASCII_TYPE_SHARE).toBeLessThanOrEqual(0.7);
   expect(asciiCellStateAt(1, 1, 1)).toBe("settled");
 });
+
+describe("the plane never outgrows its frame", () => {
+  // A phone: a narrow host, and a texture holding a word far wider than it.
+  const onAPhone = {
+    textureCanvasWidthPx: 1560,
+    textureCanvasHeightPx: 285,
+    hostWidthPx: 378,
+    hostHeightPx: 176,
+    targetFontSizePx: 72,
+    textureFontSizePx: 340,
+  };
+
+  // How wide the plane ends up on screen, in host pixels.
+  const renderedWidth = (input: typeof onAPhone) => {
+    const height = planeHeightForFontSize(input);
+    const aspect = input.textureCanvasWidthPx / input.textureCanvasHeightPx;
+    return height * aspect * (input.hostHeightPx / visibleWorldHeight());
+  };
+
+  test("fits the frame even when the headline cannot be measured yet", () => {
+    // A target of 0 is the unmeasured path. It used to return a fixed world
+    // height that ignored the viewport: on a phone that rendered the word
+    // wider than the screen, and the frame does not clip.
+    const unmeasured = { ...onAPhone, targetFontSizePx: 0 };
+    expect(renderedWidth(unmeasured)).toBeLessThanOrEqual(onAPhone.hostWidthPx);
+    expect(planeHeightForFontSize(unmeasured)).toBeLessThan(ASCII_FALLBACK_PLANE_HEIGHT);
+  });
+
+  test("fits the frame when the headline clamp asks for more than fits", () => {
+    const huge = { ...onAPhone, targetFontSizePx: 260 };
+    expect(renderedWidth(huge)).toBeLessThanOrEqual(onAPhone.hostWidthPx);
+  });
+
+  test("still matches the headline exactly when there is room", () => {
+    const roomy = {
+      ...onAPhone,
+      hostWidthPx: 1100,
+      hostHeightPx: 320,
+      targetFontSizePx: 230,
+    };
+    const expected =
+      (roomy.textureCanvasHeightPx * visibleWorldHeight() * roomy.targetFontSizePx) /
+      (roomy.hostHeightPx * roomy.textureFontSizePx);
+    expect(planeHeightForFontSize(roomy)).toBeCloseTo(expected, 5);
+  });
+
+  test("keeps the texture's proportions while fitting", () => {
+    const wide = planeHeightForFontSize({ ...onAPhone, targetFontSizePx: 260 });
+    const half = planeHeightForFontSize({
+      ...onAPhone,
+      targetFontSizePx: 260,
+      textureCanvasWidthPx: 780,
+    });
+    // Half the word, so twice the height fits across the same frame.
+    expect(half).toBeCloseTo(wide * 2, 5);
+  });
+});

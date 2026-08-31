@@ -122,3 +122,19 @@ describe("demo sweep easing", () => {
     expect(apex / average).toBeGreaterThan(2.5);
   });
 });
+
+test("is already moving the moment the sweep starts", () => {
+  const DURATION = 2200;
+  const speedAt = (t: number) => {
+    const a = demoPointerAt(t - 1, DURATION)!;
+    const b = demoPointerAt(t + 1, DURATION)!;
+    return Math.hypot(b.x - a.x, b.y - a.y) / 2;
+  };
+  const span =
+    demoPointerAt(DURATION - 1, DURATION)!.x - demoPointerAt(1, DURATION)!.x;
+  const average = span / DURATION;
+
+  // A pure ease-in crept for the opening moments: nothing read as motion until
+  // the sweep was already a good way across.
+  expect(speedAt(DURATION * 0.02) / average).toBeGreaterThan(0.15);
+});

@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { SKETCH_INK } from "@/lib/strokeText";
 import styles from "./Hero.module.css";
-import { Hero } from "./Hero";
+import { Hero, TAGLINE_OFFSET } from "./Hero";
 
 test("renders ADRIAN through the WarpText treatment", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
@@ -14,7 +14,10 @@ test("renders ADRIAN through the WarpText treatment", () => {
 
 test("keeps a readable headline fallback when WebGL is unavailable", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
-  expect(screen.getByText("ADRIAN")).toBeInTheDocument();
+  // One copy of the word is the invisible metrics span that sizes the hover
+  // target; the readable fallback is the other.
+  const copies = screen.getAllByText("ADRIAN");
+  expect(copies.some((el) => el.dataset.testid !== "headline-word-metrics")).toBe(true);
   expect(screen.queryByTestId("text-explosion")).not.toBeInTheDocument();
 });
 
@@ -97,7 +100,7 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: SKETCH_INK });
   expect(screen.getByTestId("scroll-hint")).toHaveStyle({
     color: SKETCH_INK,
-    fontSize: "clamp(3rem, 5vw, 6.5rem)",
+    fontSize: "clamp(2.5rem, 4.2vw, 5.4rem)",
   });
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
@@ -119,11 +122,12 @@ test("attaches the given subheaderRef to the tagline paragraph", () => {
 });
 
 test("pulls the tagline up close under the headline", () => {
-  render(<Hero playIntro={false} fanProgress={0} />);
-  const tagline = screen.getByTestId("hero-tagline");
-  // A negative offset: the headline box is taller than the word inside it.
-  // jsdom does not resolve clamp(), so assert the expression is negative.
-  expect(tagline.style.marginTop).toMatch(/^clamp\(-/);
+  // Asserted on the constant rather than the DOM: jsdom mangles arithmetic
+  // inside clamp() beyond recognition, though browsers parse it fine.
+  expect(TAGLINE_OFFSET).toMatch(/^clamp\(/);
+  const pullUps = TAGLINE_OFFSET.match(/-[\d.]+rem/g) ?? [];
+  // Every bound is negative: the headline box is taller than the word.
+  expect(pullUps.length).toBeGreaterThanOrEqual(2);
 });
 
 test("scales the tagline up toward the headline while keeping a readable floor", () => {
@@ -131,7 +135,7 @@ test("scales the tagline up toward the headline while keeping a readable floor",
   // the height term keeps wide ones where they were.
   render(<Hero playIntro={false} fanProgress={0} />);
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({
-    fontSize: "clamp(1.6rem, min(8.5vw, 7.5vh), 5.5rem)",
+    fontSize: "clamp(1.35rem, min(7vw, 6.2vh), 4.5rem)",
   });
 });
 
@@ -229,4 +233,20 @@ test("inks the doodles in the cool-s blue and leaves both flat", () => {
     expect(ink.colours).toEqual(['fill="#0040C0"']);
     expect(ink.shadowed).toBe(false);
   }
+});
+
+test("keeps the tagline tucked under the headline on narrow screens too", () => {
+  const offset = TAGLINE_OFFSET;
+
+  // A purely viewport-width offset shrinks toward zero as the screen narrows,
+  // which is exactly where the headline frame's minimum height leaves the most
+  // dead space under the word -- so the tagline drifted furthest away on the
+  // smallest screens. A constant rem term holds the pull-up there.
+  expect(offset).toMatch(/-[\d.]+rem/);
+  expect(offset).toMatch(/vw/);
+});
+
+test("nudges the scroll arrow so it reads as an invitation, not a mark", () => {
+  render(<Hero playIntro={false} fanProgress={0} />);
+  expect(screen.getByTestId("scroll-hint")).toHaveClass("scroll-hint-bob");
 });

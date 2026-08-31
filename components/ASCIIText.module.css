@@ -6,6 +6,14 @@
      here. Its canvas is bounded by its own element, so this only frees
      anything drawn outside it. */
   overflow: visible;
+}
+
+/* Isolation exists only to contain the gradient pre's difference blend, and
+   that pre is display:none in the default colour mode. Forcing an isolation
+   group anyway made the browser build a fresh compositing target the moment
+   the treatment mounted, which is the sort of thing that paints white for a
+   frame before it has anything to rasterise. */
+.root[data-glyph-colors="gradient"] {
   isolation: isolate;
 }
 

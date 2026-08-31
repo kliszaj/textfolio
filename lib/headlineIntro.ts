@@ -10,7 +10,7 @@ export const HEADLINE_HANDOVER_MS = 600;
 
 // Keep each treatment brisk enough for a refresh: the sketch's outlines,
 // pencil fill, and correction mark all finish inside this shared window.
-export const SKETCH_INTRO_DURATION_MS = 4000;
+export const SKETCH_INTRO_DURATION_MS = 3000;
 
 // The sketch establishes the cadence. ASCII and Warp deliberately inherit
 // this value, so if the sketch sequence needs more time later their refresh
@@ -19,12 +19,18 @@ export const HEADLINE_TREATMENT_DURATION_MS = SKETCH_INTRO_DURATION_MS;
 export const HEADLINE_INTRO_DEMO_MS =
   HEADLINE_TREATMENT_DURATION_MS - HEADLINE_HANDOVER_MS / 2;
 
+// ASCII keeps its own constant so its stage can be lengthened again without
+// touching the others, but for now every treatment shares the three-second
+// beat.
+export const ASCII_INTRO_DURATION_MS = HEADLINE_TREATMENT_DURATION_MS;
+export const ASCII_INTRO_DEMO_MS =
+  ASCII_INTRO_DURATION_MS - HEADLINE_HANDOVER_MS / 2;
+
 export const HEADLINE_INTRO_STEPS: { phase: HeadlineIntroPhase; durationMs: number }[] = [
-  // Every treatment receives the same screen time. The sketch is the source
-  // of truth because its drawn lines and correction have the longest natural
-  // sequence; the other effects use the shared demo duration above.
+  // The sketch is the source of truth because its drawn lines and correction
+  // have the longest natural sequence; the others inherit it.
   { phase: "sketch", durationMs: HEADLINE_TREATMENT_DURATION_MS },
-  { phase: "ascii", durationMs: HEADLINE_TREATMENT_DURATION_MS },
+  { phase: "ascii", durationMs: ASCII_INTRO_DURATION_MS },
   { phase: "warp", durationMs: HEADLINE_TREATMENT_DURATION_MS },
 ];
 

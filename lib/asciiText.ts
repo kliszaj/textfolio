@@ -101,6 +101,8 @@ export function asciiFontSizeForHost(
 
 // Used only if the host cannot be measured yet.
 export const ASCII_FALLBACK_PLANE_HEIGHT = 13;
+// The share of the frame's width the word may occupy.
+export const ASCII_MAX_WIDTH_SHARE = 0.98;
 // The vertical lean is slightly shallower than the horizontal one, which is
 // what stops the tilt reading as a wobble.
 export const ASCII_TILT_Y_RATIO = 0.78;
@@ -121,22 +123,44 @@ export function visibleWorldHeight(
 // for the plane height cancels the text's own height out entirely -- only the
 // canvas height, the font sizes and the host height matter.
 export function planeHeightForFontSize({
+  textureCanvasWidthPx = 0,
   textureCanvasHeightPx,
+  hostWidthPx = 0,
   hostHeightPx,
   targetFontSizePx,
   textureFontSizePx,
 }: {
+  textureCanvasWidthPx?: number;
   textureCanvasHeightPx: number;
+  hostWidthPx?: number;
   hostHeightPx: number;
   targetFontSizePx: number;
   textureFontSizePx: number;
 }): number {
+  // The frame deliberately does not clip, so a plane wider than the frame does
+  // not get cut off -- it runs off both edges of the screen. On a phone the
+  // headline is a third of its desktop size while the word keeps its
+  // proportions, so this is the binding constraint, not the font match.
+  const fitFrame = (height: number) => {
+    if (textureCanvasWidthPx <= 0 || textureCanvasHeightPx <= 0 || hostWidthPx <= 0) {
+      return height;
+    }
+    const aspect = textureCanvasWidthPx / textureCanvasHeightPx;
+    const perWorldUnit = hostHeightPx / visibleWorldHeight();
+    const widest = (hostWidthPx * ASCII_MAX_WIDTH_SHARE) / (aspect * perWorldUnit);
+    return Math.min(height, widest);
+  };
+
   if (hostHeightPx <= 0 || textureFontSizePx <= 0 || targetFontSizePx <= 0) {
-    return ASCII_FALLBACK_PLANE_HEIGHT;
+    // Last resort only. A fixed world height ignores the viewport entirely,
+    // which is precisely how the ascii stopped tracking the headline on small
+    // screens, so even this is held inside the frame.
+    return fitFrame(ASCII_FALLBACK_PLANE_HEIGHT);
   }
-  return (
+
+  return fitFrame(
     (textureCanvasHeightPx * visibleWorldHeight() * targetFontSizePx) /
-    (hostHeightPx * textureFontSizePx)
+      (hostHeightPx * textureFontSizePx)
   );
 }
 

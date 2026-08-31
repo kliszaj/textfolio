@@ -27,6 +27,10 @@ const WARP_DEMO_REACH = 0.32;
 // A restrained vertical excursion keeps the scripted pointer inside the word
 // while making its path read as a sine curve instead of a ruler-straight pass.
 const WARP_DEMO_VERTICAL_REACH = 0.18;
+// How much of the sweep is eased. The remainder is linear, so the pointer is
+// already moving on the first frame: a pure ease-in crept for the opening
+// moments and the sweep looked like it started late.
+const WARP_DEMO_EASE_SHARE = 0.8;
 
 // A single pass from left to right across the headline, in the 0-1 uv space
 // the shader's pointer uniform expects. The x travel eases in and out, fastest
@@ -46,10 +50,13 @@ export function demoPointerAt(
   // Cubic ease-in-out. Smoothstep was the same shape but peaked at only 1.5x
   // its average speed, too gentle to read as acceleration; this peaks at 3x,
   // so the pointer visibly gathers pace into the apex and settles out of it.
-  const eased =
+  const curve =
     phase < 0.5
       ? 4 * phase * phase * phase
       : 1 - Math.pow(2 - 2 * phase, 3) / 2;
+  // Blended with a straight pass, which leaves the acceleration into the apex
+  // intact while giving the sweep a speed to start from.
+  const eased = curve * WARP_DEMO_EASE_SHARE + phase * (1 - WARP_DEMO_EASE_SHARE);
   return {
     x: 0.5 + (eased * 2 - 1) * WARP_DEMO_REACH,
     y: 0.5 + Math.sin(eased * Math.PI) * WARP_DEMO_VERTICAL_REACH,

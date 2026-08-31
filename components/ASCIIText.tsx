@@ -188,10 +188,18 @@ export function ASCIIText({
       const applyPlaneScale = () => {
         if (!mesh) return;
         const size = host.getBoundingClientRect();
+        const targetFontSize = measureTargetFontSize();
+        // Nothing measurable yet -- mid-layout, or before the face has loaded.
+        // Keep whatever scale is already on the mesh rather than dropping to a
+        // fixed world height: on a phone that is how the word ended up larger
+        // than the headline it is meant to be.
+        if (!size.width || !size.height || !targetFontSize) return;
         const height = planeHeightForFontSize({
+          textureCanvasWidthPx: textCanvas.width,
           textureCanvasHeightPx: textCanvas.height,
+          hostWidthPx: size.width,
           hostHeightPx: size.height,
-          targetFontSizePx: measureTargetFontSize(),
+          targetFontSizePx: targetFontSize,
           textureFontSizePx: textFontSize,
         });
         const scale = height * planeScale;
@@ -382,8 +390,13 @@ export function ASCIIText({
       // Canvas text is rasterised at draw time. Redraw after Next's bundled
       // PP Frama face is ready so a fast fallback never gets baked into the
       // ASCII texture on a first visit.
+      // Re-measure through resize rather than refreshing the texture alone:
+      // the face landing changes the word's width, and the plane has to be
+      // re-fitted to the frame with it.
       document.fonts?.ready.then(() => {
-        if (!disposed) refreshTextTexture();
+        if (disposed) return;
+        refreshTextTexture();
+        resize();
       }).catch(() => {});
       demoStart = performance.now();
       host.addEventListener("pointermove", onPointerMove);
@@ -414,7 +427,7 @@ export function ASCIIText({
   }, [asciiFontSize, crtCurvature, enableWaves, extrudeDepth, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
 
   return (
-    <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" data-crt="curved-scanline" role="img" aria-label={text}>
+    <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" data-crt="curved-scanline" data-glyph-colors={randomizeGlyphColors ? "random" : "gradient"} role="img" aria-label={text}>
       <span className={styles.fallback} aria-hidden="true">{text}</span>
     </div>
   );

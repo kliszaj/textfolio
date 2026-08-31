@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
 const push = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -126,11 +126,14 @@ test("lists the at-a-glance facts in the overview column", () => {
 test("puts every written section in the in-depth column", () => {
   render(<CaseStudyView caseStudy={written} />);
   const detail = screen.getByTestId("case-study-detail");
-  expect(detail).toContainElement(screen.getByText("The problem"));
+  // Section headings order the copy for whoever writes it; only the bodies
+  // reach the page.
   expect(detail).toContainElement(
     screen.getByText("Inconsistent line work across applications.")
   );
-  expect(detail).toContainElement(screen.getByText("The turn"));
+  expect(detail).toContainElement(
+    screen.getByText("One crest, redrawn at every scale it ships at.")
+  );
 });
 
 test("collects all media below both columns, never between them", () => {
@@ -294,4 +297,78 @@ test("names the next project in the pill that opens out of the arrow", () => {
   // Collapsed at rest; CSS opens it on hover and keyboard focus.
   expect(label).toHaveClass("case-study-next-label", "overflow-hidden");
   expect(screen.getByTestId("case-study-next")).toHaveClass("case-study-next");
+});
+
+test("runs the long read as plain paragraphs, with no headings of its own", () => {
+  render(<CaseStudyView caseStudy={written} next={nextStudy} />);
+  const detail = screen.getByTestId("case-study-detail");
+
+  // One or two paragraphs do not need signposting; the headings were louder
+  // than the copy they introduced.
+  expect(detail.querySelectorAll("h2")).toHaveLength(0);
+  expect(screen.queryByText("The problem")).not.toBeInTheDocument();
+  expect(
+    screen.getByText("Inconsistent line work across applications.")
+  ).toBeInTheDocument();
+  expect(screen.getByText("One crest, redrawn at every scale it ships at.")).toBeInTheDocument();
+});
+
+test("sets the long read larger than the overview rail", () => {
+  render(<CaseStudyView caseStudy={written} next={nextStudy} />);
+  const body = screen.getByText("Inconsistent line work across applications.");
+  expect(body).toHaveClass("case-study-copy");
+});
+
+test("centres the collapsed bar's controls instead of letting them overflow it", () => {
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  const header = screen.getByTestId("case-study-header");
+
+  // Bottom-aligning a row taller than the collapsed bar pushed the next button
+  // out through the top of it. The CSS keys off these hooks.
+  expect(header.querySelector(".case-study-header-row")).toBeInTheDocument();
+  expect(header.querySelector(".case-study-next-arrow")).toBeInTheDocument();
+  expect(screen.getByTestId("case-study-home")).toHaveClass("case-study-home");
+});
+
+test("offers a written BACK home, ranged left with the title", () => {
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  const home = screen.getByTestId("case-study-home");
+
+  // The inverse of the homepage's down arrow: same idea, pointing back up.
+  expect(home).toHaveAttribute("href", "/");
+  // Shares the header's own padding, so it lines up with the title beneath.
+  expect(home.className).toMatch(/left-6/);
+  expect(home.className).not.toMatch(/-translate-x-1\/2/);
+  const label = screen.getByTestId("case-study-home-label");
+  expect(home).toContainElement(label);
+  // Written in the same hand as the homepage tagline; .font-script is what
+  // carries the line boil, so it draws rather than prints.
+  expect(label).toHaveClass("font-script");
+  expect(label).toHaveTextContent("BACK");
+  // The word is the link's accessible name now, so no aria-label overrides it.
+  expect(home).toHaveAccessibleName("BACK");
+});
+
+test("drops the page home on the arrow, rather than cutting to it", () => {
+  jest.useFakeTimers();
+  try {
+    render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+    fireEvent.click(screen.getByTestId("case-study-home"), { button: 0 });
+
+    // Same departure the pull gesture uses, not a bare navigation.
+    expect(screen.getByTestId("case-study-view")).toHaveAttribute("data-exiting", "true");
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(push).toHaveBeenCalledWith("/");
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("leaves modified clicks to the browser", () => {
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  // Opening home in a new tab should not start an animation in this one.
+  fireEvent.click(screen.getByTestId("case-study-home"), { button: 0, metaKey: true });
+  expect(screen.getByTestId("case-study-view")).toHaveAttribute("data-exiting", "false");
 });

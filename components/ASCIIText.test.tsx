@@ -28,3 +28,16 @@ test("accepts the configurable ASCII treatment without changing its DOM contract
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
   expect(screen.getByText("ADRIAN")).toBeInTheDocument();
 });
+
+test("does not force an isolation group in the default colour mode", () => {
+  // The gradient pre is the only thing that needs isolating, and it is
+  // display:none here. A compositing target built at mount for nothing is what
+  // flashes before it has anything to rasterise.
+  render(<ASCIIText text="ADRIAN" randomizeGlyphColors />);
+  expect(screen.getByTestId("ascii-text")).toHaveAttribute("data-glyph-colors", "random");
+});
+
+test("isolates when the gradient pre is the one drawing", () => {
+  render(<ASCIIText text="ADRIAN" randomizeGlyphColors={false} />);
+  expect(screen.getByTestId("ascii-text")).toHaveAttribute("data-glyph-colors", "gradient");
+});

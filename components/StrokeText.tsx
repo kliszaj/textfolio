@@ -6,15 +6,16 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   CORRECTION_CROSS_DELAY_MS,
-  CORRECTION_CROSS_LEAD_MS,
   CORRECTION_CROSS_MS,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
+  CORRECTION_LETTER_DELAY_MS,
   letterSequenceSeconds,
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
   STROKE_INK_LIFT_PX,
   correctionMarks,
+  boxMoved,
   inkCentringOffset,
   mirrorAboutBox,
   sketchColors,
@@ -109,7 +110,7 @@ function hatchStrokesForBox(box: MeasuredBox | null, gap: number): HatchStroke[]
       y1: box.y + box.height + overscan - lowerLift,
       x2: x + rise + endJitter,
       y2: box.y - overscan + upperDrop,
-      opacity: 0.42 + graphiteNoise(index, 6) * 0.34,
+      opacity: 0.68 + graphiteNoise(index, 6) * 0.27,
       strokeWidth: Math.max(0.55, gap * (0.09 + graphiteNoise(index, 7) * 0.11)),
     });
     x += spacing;
@@ -117,6 +118,10 @@ function hatchStrokesForBox(box: MeasuredBox | null, gap: number): HatchStroke[]
   }
   return strokes;
 }
+
+// About half a second of frames: long enough for a late web font to land, and
+// free because boxMoved discards every measurement that has not changed.
+const MEASURE_SETTLE_FRAMES = 36;
 
 export function StrokeText({
   text,
@@ -199,11 +204,7 @@ export function StrokeText({
           width: bounds.width + padding * 2,
           height: bounds.height + padding * 2,
         };
-        setBox((previous) => (
-          previous && Math.abs(previous.x - next.x) < 0.5 && Math.abs(previous.y - next.y) < 0.5 && Math.abs(previous.width - next.width) < 0.5
-            ? previous
-            : next
-        ));
+        setBox((previous) => (boxMoved(previous, next) ? next : previous));
       } catch {
         // SVG measurements are unavailable in a few non-browser renderers.
       }
@@ -217,23 +218,43 @@ export function StrokeText({
       try {
         const bounds = glyph.getBBox();
         if (!bounds.width) return;
-        setMarkBox((previous) =>
-          previous && Math.abs(previous.x - bounds.x) < 0.5 && Math.abs(previous.width - bounds.width) < 0.5
-            ? previous
-            : { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
-        );
+        const next = {
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+        };
+        setMarkBox((previous) => (boxMoved(previous, next) ? next : previous));
       } catch {
         // No SVG measurement outside a browser; the mark simply does not draw.
       }
     };
 
-    measure();
-    measureMark();
-    document.fonts?.ready.then(() => {
+    const settle = () => {
       measure();
       measureMark();
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    };
+
+    settle();
+    document.fonts?.ready.then(settle).catch(() => {});
+    // fonts.ready only covers requests already made when it was read, so the
+    // headline face can land after it has resolved -- reliably so on a phone.
+    // A stale box puts the hatching and the correction mark where the letters
+    // used to be, which is exactly what it looked like. Re-measuring over the
+    // opening moments costs nothing: boxMoved discards anything unchanged.
+    document.fonts?.addEventListener?.("loadingdone", settle);
+    let settled = 0;
+    let frame = requestAnimationFrame(function step() {
+      settle();
+      settled += 1;
+      if (settled < MEASURE_SETTLE_FRAMES) frame = requestAnimationFrame(step);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      document.fonts?.removeEventListener?.("loadingdone", settle);
+    };
   }, [characters, fontSize, fontWeight, letterSpacing, strokeWidth, hostSize, correctionIndex]);
 
   useLayoutEffect(() => {
@@ -276,11 +297,11 @@ export function StrokeText({
       .map((fill, index) => (index === correctionIndex && correctionFill ? correctionFill : fill))
       .filter((fill) => fill.getAttribute("fill") !== "none");
     const hatchLines = Array.from(root.querySelectorAll<SVGLineElement>("[data-hatch-stroke]"));
-    const correctionLoop = root.querySelector<SVGPathElement>("[data-correction-loop]");
     const correctionCrosses = Array.from(
       root.querySelectorAll<SVGPathElement>("[data-correction-cross]")
     );
-    const correctionPaths = [correctionLoop, ...correctionCrosses].filter(
+    const correctionLetter = root.querySelector<SVGPathElement>("[data-correction-letter]");
+    const correctionPaths = [...correctionCrosses, correctionLetter].filter(
       (path): path is SVGPathElement => path !== null
     );
     const wipe = wipeRectRef.current;
@@ -303,7 +324,7 @@ export function StrokeText({
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: dash });
       gsap.set(fills, { opacity: useWipe ? 1 : 0 });
       gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 1 });
-      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 1 });
+      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 1, opacity: 0 });
       if (wipe) gsap.set(wipe, { attr: { width: 0 } });
     };
     const setEnd = () => {
@@ -311,7 +332,7 @@ export function StrokeText({
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: 0 });
       gsap.set(fills, { opacity: fillEnabled ? 1 : 0 });
       gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 0 });
-      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 0 });
+      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 0, opacity: 1 });
       if (wipe) gsap.set(wipe, { attr: { width: fillEnabled ? box.width : 0 } });
     };
     if (!animate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
@@ -362,18 +383,14 @@ export function StrokeText({
       // starts at t=0 it can finish before the last outline has landed.
       const correctionStart =
         Math.max(outlineEnd, fillEnd) + (fillEnabled ? HATCH_SETTLE_SECONDS : 0);
-      if (correctionLoop) {
-        timeline.to(
-          correctionLoop,
-          {
-            strokeDashoffset: 0,
-            duration: CORRECTION_DRAW_MS / 1000,
-            ease: "power1.out",
-          },
-          correctionStart
-        );
-      }
+      // The X strikes the glyph out first, then the replacement letter is
+      // written in above it -- the order a hand corrects a word in.
       correctionCrosses.forEach((cross, index) => {
+        timeline.set(
+          cross,
+          { opacity: 1 },
+          correctionStart + (CORRECTION_CROSS_DELAY_MS / 1000) * index
+        );
         timeline.to(
           cross,
           {
@@ -381,11 +398,28 @@ export function StrokeText({
             duration: CORRECTION_CROSS_MS / 1000,
             ease: "power1.out",
           },
-          correctionStart +
-            CORRECTION_CROSS_LEAD_MS / 1000 +
-            (CORRECTION_CROSS_DELAY_MS / 1000) * index
+          correctionStart + (CORRECTION_CROSS_DELAY_MS / 1000) * index
         );
       });
+      if (correctionLetter) {
+        const letterStart =
+          correctionStart +
+          (CORRECTION_CROSS_DELAY_MS / 1000) * (correctionCrosses.length - 1) +
+          CORRECTION_CROSS_MS / 1000 +
+          CORRECTION_LETTER_DELAY_MS / 1000;
+        // Hidden until its own moment: the round pen tip was showing as a red
+        // dot on the page for the whole of the sketch before it.
+        timeline.set(correctionLetter, { opacity: 1 }, letterStart);
+        timeline.to(
+          correctionLetter,
+          {
+            strokeDashoffset: 0,
+            duration: CORRECTION_DRAW_MS / 1000,
+            ease: "power1.out",
+          },
+          letterStart
+        );
+      }
       return timeline;
     };
 
@@ -655,15 +689,6 @@ export function StrokeText({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path
-                    data-correction-loop
-                    d={marks.loop}
-                    pathLength={1}
-                    style={{
-                      strokeDasharray: 1,
-                      strokeDashoffset: 1,
-                    }}
-                  />
                   {[marks.crossA, marks.crossB].map((stroke, index) => (
                     <path
                       key={index}
@@ -673,9 +698,25 @@ export function StrokeText({
                       style={{
                         strokeDasharray: 1,
                         strokeDashoffset: 1,
+                        opacity: animate ? 0 : 1,
                       }}
                     />
                   ))}
+                  {/* The replacement letter, written in above the crossing-out.
+                      It carries its own pen width because it is drawn under a
+                      scaling transform. */}
+                  <path
+                    data-correction-letter
+                    d={marks.letter.d}
+                    transform={marks.letter.transform}
+                    strokeWidth={marks.letter.strokeWidth}
+                    pathLength={1}
+                    style={{
+                      strokeDasharray: 1,
+                      strokeDashoffset: 1,
+                      opacity: animate ? 0 : 1,
+                    }}
+                  />
                 </g>
               )}
             </g>

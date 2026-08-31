@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { CSSProperties, RefObject } from "react";
+import type { CSSProperties, PointerEvent, RefObject } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { NAME } from "@/data/letterTreatments";
@@ -18,11 +18,12 @@ import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
-import { HEADLINE_INTRO_DEMO_MS } from "@/lib/headlineIntro";
+import { ASCII_INTRO_DEMO_MS, HEADLINE_INTRO_DEMO_MS } from "@/lib/headlineIntro";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
 import { PageIndicator } from "./PageIndicator";
+import { isOverHeadline } from "@/lib/headlineHit";
 import { caseStudies } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
 import styles from "./Hero.module.css";
@@ -58,16 +59,19 @@ const HEADLINE_SIZE = "clamp(3rem, min(18vw, 18vh), 14.5rem)";
 // The headline sits in a fixed-height box that is taller than the word itself,
 // which left the tagline stranded well below it. Pull it back up so it sits
 // just under the letters, in the same place for every treatment.
-const TAGLINE_OFFSET = "clamp(-4.25rem, -3.4vw, -0.4rem)";
+// The frame keeps a minimum height, so on a narrow screen there is far more
+// empty box under the word than the word itself. A pull-up measured only in vw
+// shrank away exactly where it was needed most; the rem term holds it there.
+export const TAGLINE_OFFSET = "clamp(-6rem, -2.6rem - 1.4vw, -2.6rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
 // The page at rest, before any treatment has been hovered.
 const RESTING_ACCENT_COLOR = "#878787";
-const TAGLINE_SIZE = "clamp(1.6rem, min(8.5vw, 7.5vh), 5.5rem)";
-const ARROW_SIZE = "clamp(2.5rem, 4.5vw, 5.5rem)";
-const SKETCH_ARROW_SIZE = "clamp(3rem, 5vw, 6.5rem)";
+const TAGLINE_SIZE = "clamp(1.35rem, min(7vw, 6.2vh), 4.5rem)";
+const ARROW_SIZE = "clamp(2.1rem, 3.8vw, 4.6rem)";
+const SKETCH_ARROW_SIZE = "clamp(2.5rem, 4.2vw, 5.4rem)";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;
 
@@ -116,6 +120,9 @@ export function Hero({
   const [asciiStageColor, setAsciiStageColor] = useState(ASCII_BG_COLOR);
   const nextEffectIndexRef = useRef(0);
   const isHeadlinePointerInsideRef = useRef(false);
+  // An invisible copy of the word, laid out at the headline's own size, so the
+  // hit area follows the real glyph metrics at every viewport.
+  const wordRef = useRef<HTMLSpanElement>(null);
   const isHeadlineActive = activeEffect !== null;
   // Each treatment inks the tagline and arrow; the resting page has its own
   // grey rather than falling through to the hero's full-strength ink.
@@ -161,8 +168,24 @@ export function Hero({
   };
 
   const deactivateHeadline = () => {
+    if (!isHeadlinePointerInsideRef.current) return;
     isHeadlinePointerInsideRef.current = false;
     setHoverEffect(null);
+  };
+
+  // The frame is as wide as the page so it can size the treatments; the word
+  // is not. Only the letters, and a little air around them, answer to the
+  // cursor -- hovering the empty frame either side used to change treatment.
+  const handleHeadlinePointer = (event: PointerEvent<HTMLDivElement>) => {
+    const word = wordRef.current?.getBoundingClientRect();
+    const over =
+      !word ||
+      isOverHeadline(
+        { x: event.clientX, y: event.clientY },
+        { left: word.left, right: word.right, top: word.top, bottom: word.bottom }
+      );
+    if (over) activateHeadline();
+    else deactivateHeadline();
   };
 
   return (
@@ -257,9 +280,24 @@ export function Hero({
             "--headline-font-family": HEADLINE_FONT_FAMILY,
             "--headline-font-weight": String(HEADLINE_FONT_WEIGHT),
           } as CSSProperties}
-          onPointerEnter={activateHeadline}
+          onPointerEnter={handleHeadlinePointer}
+          onPointerMove={handleHeadlinePointer}
           onPointerLeave={deactivateHeadline}
         >
+          <span
+            ref={wordRef}
+            data-testid="headline-word-metrics"
+            aria-hidden="true"
+            className="pointer-events-none invisible absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap"
+            style={{
+              fontFamily: HEADLINE_FONT_FAMILY,
+              fontSize: HEADLINE_SIZE,
+              fontWeight: HEADLINE_FONT_WEIGHT,
+              lineHeight: 1,
+            }}
+          >
+            {NAME}
+          </span>
           <div
             data-testid="headline-stage"
             className="absolute inset-0"
@@ -275,7 +313,7 @@ export function Hero({
             <ASCIIText
               text={NAME}
               {...asciiConfig}
-              demoTiltMs={intro.phase === "ascii" ? HEADLINE_INTRO_DEMO_MS : 0}
+              demoTiltMs={intro.phase === "ascii" ? ASCII_INTRO_DEMO_MS : 0}
               typeProgress={
                 intro.phase === "ascii"
                   ? Math.min(1, intro.phaseProgress / ASCII_TYPE_SHARE)
@@ -327,7 +365,7 @@ export function Hero({
       </div>
       <div
         data-testid="scroll-hint"
-        className="boil-line absolute z-10 bottom-8 leading-none transition-opacity duration-300"
+        className="boil-line scroll-hint-bob absolute z-10 bottom-8 leading-none transition-opacity duration-300"
         style={{
           opacity: arrowOpacity,
           color: accentColor,

@@ -1,5 +1,7 @@
 import { DEFAULT_STROKE_TEXT_CONFIG, correctionSequenceMs } from "./strokeText";
 import {
+  ASCII_INTRO_DEMO_MS,
+  ASCII_INTRO_DURATION_MS,
   HEADLINE_HANDOVER_MS,
   HEADLINE_INTRO_DEMO_MS,
   HEADLINE_INTRO_BOUNDARIES_MS,
@@ -65,10 +67,11 @@ describe("the refresh treatments share a cadence", () => {
   const stage = (phase: string) =>
     HEADLINE_INTRO_STEPS.find((step) => step.phase === phase)!.durationMs;
 
-  test("each treatment gets the sketch's full screen-time", () => {
+  test("every treatment gets the same screen time", () => {
     expect(stage("sketch")).toBe(HEADLINE_TREATMENT_DURATION_MS);
-    expect(stage("ascii")).toBe(HEADLINE_TREATMENT_DURATION_MS);
     expect(stage("warp")).toBe(HEADLINE_TREATMENT_DURATION_MS);
+    expect(stage("ascii")).toBe(ASCII_INTRO_DURATION_MS);
+    expect(ASCII_INTRO_DURATION_MS).toBe(HEADLINE_TREATMENT_DURATION_MS);
   });
 
   test("the ASCII and warp demos extend to the handover, whatever sketch needs", () => {
@@ -125,5 +128,37 @@ describe("the sketch stage holds its correction", () => {
     );
     expect(correction).toBeLessThan(sketch.durationMs);
     expect(sketch.durationMs - correction).toBeGreaterThanOrEqual(300);
+  });
+});
+
+describe("every stage fits inside three seconds", () => {
+  const stage = (phase: string) =>
+    HEADLINE_INTRO_STEPS.find((step) => step.phase === phase)!.durationMs;
+
+  test("holds each treatment to a three-second beat", () => {
+    expect(stage("sketch")).toBe(3000);
+    expect(stage("ascii")).toBe(3000);
+    expect(stage("warp")).toBe(3000);
+  });
+
+  test("compresses the sketch's own pen so the correction still lands", () => {
+    // The stage window shrinking is not enough on its own: the drawing has to
+    // shrink with it, or the pen is still moving when the stage hands over.
+    const correction = correctionSequenceMs(
+      DEFAULT_STROKE_TEXT_CONFIG.drawDuration,
+      DEFAULT_STROKE_TEXT_CONFIG.stagger,
+      6
+    );
+    expect(correction).toBeLessThan(stage("sketch"));
+    expect(stage("sketch") - correction).toBeGreaterThanOrEqual(300);
+  });
+
+  test("keeps every demo motion inside its own stage", () => {
+    expect(HEADLINE_INTRO_DEMO_MS).toBeLessThan(stage("warp"));
+    expect(ASCII_INTRO_DEMO_MS).toBeLessThan(stage("ascii"));
+  });
+
+  test("runs the whole story in nine seconds", () => {
+    expect(HEADLINE_INTRO_DURATION_MS).toBe(9000);
   });
 });
