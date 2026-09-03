@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
-import { demoPointerAt } from "@/lib/warpText";
+import { centeredRunLayout, demoCircleAt, demoPointerAt } from "@/lib/warpText";
 import styles from "./WarpText.module.css";
 
 const vertex = `#version 300 es
@@ -37,6 +37,10 @@ type WarpTextProps = {
   // Runs a scripted sweep for this long on mount, so the warp shows itself
   // off without the visitor having to find it. 0 disables it.
   demoSweepMs?: number;
+  // Which scripted motion demoSweepMs plays. The name predates this option --
+  // "sweep" crosses the whole headline, "circle" holds a gentle loop at the
+  // centre for a demo whose only job is proving the warp reacts to a pointer.
+  demoMode?: "sweep" | "circle";
   pointerStrength?: number;
   refraction?: number;
   ripple?: boolean;
@@ -50,7 +54,9 @@ type WarpTextProps = {
   style?: CSSProperties;
 };
 
-type DrawProps = Required<Omit<WarpTextProps, "className" | "style" | "onActiveChange" | "demoSweepMs">>;
+type DrawProps = Required<
+  Omit<WarpTextProps, "className" | "style" | "onActiveChange" | "demoSweepMs" | "demoMode">
+>;
 
 const fontValue = (value: string | number) => (typeof value === "number" ? `${value}px` : value);
 
@@ -95,12 +101,26 @@ function drawTextCanvas(container: HTMLDivElement, props: DrawProps) {
   setFont();
   context.setTransform(dpr, 0, 0, dpr, 0, 0);
   context.fillStyle = props.color;
-  context.textBaseline = "middle";
-  let cursor = rect.width / 2 - measure() / 2;
-  for (const [index, character] of Array.from(props.text).entries()) {
-    context.fillText(character, cursor, rect.height / 2);
-    cursor += context.measureText(character).width + (index === props.text.length - 1 ? 0 : letterSpacing);
-  }
+  // "alphabetic" rather than "middle": the baseline itself is placed below,
+  // from the run's own measured ink, rather than the font's ascent/descent
+  // metrics -- see centeredRunLayout for why that distinction is the whole
+  // point here.
+  context.textBaseline = "alphabetic";
+  const characters = Array.from(props.text);
+  const charMetrics = characters.map((character) => {
+    const metrics = context.measureText(character);
+    return {
+      advance: metrics.width,
+      boundingBoxLeft: metrics.actualBoundingBoxLeft,
+      boundingBoxRight: metrics.actualBoundingBoxRight,
+      boundingBoxAscent: metrics.actualBoundingBoxAscent,
+      boundingBoxDescent: metrics.actualBoundingBoxDescent,
+    };
+  });
+  const layout = centeredRunLayout(charMetrics, letterSpacing, rect.width, rect.height);
+  characters.forEach((character, index) => {
+    context.fillText(character, layout.charX[index], layout.baselineY);
+  });
   return canvas;
 }
 
@@ -112,6 +132,7 @@ export function WarpText({
   speed = 0.55,
   pointerInfluence = 0.42,
   demoSweepMs = 0,
+  demoMode = "sweep",
   pointerStrength = 0.38,
   refraction = 0.018,
   ripple = true,
@@ -126,10 +147,35 @@ export function WarpText({
 }: WarpTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const demoSweepRef = useRef(demoSweepMs);
+  // Read in the same rAF loop as demoSweepRef, for the same reason: Hero
+  // changes which motion plays as the intro advances, and putting it in the
+  // effect's dependency array would rebuild the WebGL context to read a
+  // string.
+  const demoModeRef = useRef(demoMode);
+  // Warp stays mounted behind the other treatments to avoid a WebGL flash.
+  // Its demo therefore cannot use the component's mount time: the scripted
+  // sweep is only enabled several seconds later in the page-load sequence.
+  const demoSweepStartedAtRef = useRef<number | null>(null);
+  // Bumped whenever demoSweepMs drops back to 0 while a demo was running, so
+  // the render loop can force the pointer back to centre and to zero
+  // strength exactly once. This can't be left to the loop noticing the demo
+  // has "timed out" on its own: this same effect also nulls
+  // demoSweepStartedAtRef the instant the prop changes, which usually beats
+  // the loop to the punch (both clocks are aiming for the same duration) and
+  // leaves the recentre unreached -- the resting headline was left holding
+  // whatever pointer strength the demo last eased toward, i.e. still warped.
+  const demoEndRequestRef = useRef(0);
 
   useEffect(() => {
+    const wasActive = demoSweepRef.current > 0;
     demoSweepRef.current = demoSweepMs;
+    demoSweepStartedAtRef.current = demoSweepMs > 0 ? performance.now() : null;
+    if (wasActive && demoSweepMs === 0) demoEndRequestRef.current += 1;
   }, [demoSweepMs]);
+
+  useEffect(() => {
+    demoModeRef.current = demoMode;
+  }, [demoMode]);
 
   const contextRef = useRef<{ setTextColor: (nextColor: string) => void } | null>(null);
   const colorRef = useRef(color);
@@ -184,17 +230,36 @@ export function WarpText({
         pointer.targetStrength = 1;
       };
       const onPointerLeave = () => { pointer.targetStrength = 0; };
+      let handledEndRequest = demoEndRequestRef.current;
       const loop = (now: number) => {
         if (disposed) return;
         if (!pointerTaken) {
-          const swept = demoPointerAt(now - startedAt, demoSweepRef.current);
+          const demoStartedAt = demoSweepStartedAtRef.current;
+          const swept =
+            demoStartedAt === null
+              ? null
+              : demoModeRef.current === "circle"
+                ? demoCircleAt(now - demoStartedAt, demoSweepRef.current)
+                : demoPointerAt(now - demoStartedAt, demoSweepRef.current);
           if (swept) {
             pointer.targetX = swept.x;
             pointer.targetY = swept.y;
             pointer.targetStrength = 1;
-          } else if (demoSweepRef.current > 0) {
-            // The pass ends at the right, so recentre as the warp lets go.
+          } else if (demoStartedAt !== null && demoSweepRef.current > 0) {
+            // Only reached if the demo outlasts its own prop -- Hero always
+            // clears demoSweepMs itself, so demoEndRequestRef below is what
+            // actually fires in practice. Kept for any other caller that
+            // lets a demo run to its natural end instead.
             pointer.targetX = 0.5;
+            pointer.targetStrength = 0;
+          }
+          if (demoEndRequestRef.current !== handledEndRequest) {
+            // Forces the resting headline back to undistorted -- see
+            // demoEndRequestRef's own comment for why the branch above can't
+            // be relied on to catch this.
+            handledEndRequest = demoEndRequestRef.current;
+            pointer.targetX = 0.5;
+            pointer.targetY = 0.5;
             pointer.targetStrength = 0;
           }
         }

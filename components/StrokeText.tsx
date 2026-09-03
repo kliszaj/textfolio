@@ -17,6 +17,7 @@ import {
   correctionMarks,
   boxMoved,
   inkCentringOffset,
+  inkCentringOffsetX,
   mirrorAboutBox,
   sketchColors,
 } from "@/lib/strokeText";
@@ -73,6 +74,30 @@ type HatchStroke = {
 const HATCH_LINE_DRAW_SECONDS = 0.16;
 const HATCH_LINE_STAGGER_SECONDS = 0.006;
 const HATCH_SETTLE_SECONDS = 0.14;
+
+// A stand-in dash length for the moment before mount, when nothing has been
+// measured yet: long enough against a hatch line or a correction mark's real
+// length (tens of units) that it reads as fully undrawn.
+const UNMEASURED_DASH_LENGTH = 1000;
+
+// GSAP writes strokeDasharray/strokeDashoffset as an inline style, and that is
+// exactly the case Firefox does not rescale against a path's pathLength
+// attribute -- the dash renders in the path's real units instead of the
+// author-normalised ones. Against pathLength={1}, a dasharray/dashoffset of 1
+// is imperceptible next to a path dozens of units long, so the mark read as
+// already drawn the instant its opacity turned on, instead of drawing in.
+// getTotalLength() sidesteps the ambiguity entirely -- it's one of the
+// oldest, most consistently implemented pieces of SVG geometry there is.
+function realPathLength(el: SVGGeometryElement | null | undefined): number {
+  if (!el || typeof el.getTotalLength !== "function") return UNMEASURED_DASH_LENGTH;
+  try {
+    const length = el.getTotalLength();
+    return Number.isFinite(length) && length > 0 ? length : UNMEASURED_DASH_LENGTH;
+  } catch {
+    // No SVG geometry outside a browser.
+    return UNMEASURED_DASH_LENGTH;
+  }
+}
 
 function hatchSequenceSeconds(lineCount: number): number {
   if (lineCount <= 0) return 0;
@@ -147,6 +172,29 @@ export function StrokeText({
   const rootRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<SVGTextElement>(null);
   const wipeRectRef = useRef<SVGRectElement>(null);
+  // A second, independent reveal for the outline: stroke-dasharray/-dashoffset
+  // set through an inline style is not consistently animated on SVG text
+  // across engines (Firefox does not draw it in at all -- the letters simply
+  // show, fully stroked, from the first frame). A clip-path sweep can only
+  // ever crop rendered output, so it reveals the word left to right
+  // regardless of whether the dash animation underneath it is doing
+  // anything -- a correct, universal fallback rather than a text-specific one.
+  const outlineWipeRectRef = useRef<SVGRectElement>(null);
+  // The clip-path fallback above is only a fallback: on every engine where the
+  // per-character dash animation already draws correctly, running both at
+  // once fights the per-letter stagger -- the clip's own left-to-right sweep
+  // reveals each letter in one movement regardless of how far its own stroke
+  // has drawn, so letters (the last one especially) stopped looking staggered
+  // and read as arriving together instead. Firefox is the only engine known
+  // not to animate stroke-dasharray/-dashoffset on text at all, so the clip
+  // is scoped to it specifically rather than left running everywhere "just in
+  // case". Read after mount, not during render, so server and client agree on
+  // the first paint (the same reason `prefers-reduced-motion` is read in an
+  // effect rather than synchronously).
+  const [isFirefox, setIsFirefox] = useState(false);
+  useEffect(() => {
+    setIsFirefox(typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent));
+  }, []);
   const [box, setBox] = useState<MeasuredBox | null>(null);
   // The svg's user units are kept equal to css pixels, so the text renders at
   // exactly the size the headline font would. Letting preserveAspectRatio
@@ -157,6 +205,7 @@ export function StrokeText({
   const rawId = useId();
   const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "");
   const wipeId = `stroke-text-wipe-${safeId}`;
+  const outlineWipeId = `stroke-text-outline-wipe-${safeId}`;
   const sketchId = `stroke-text-sketch-${safeId}`;
   const sketch = getSketchSpec(sketchStyle);
   const inked = sketchColors(sketchStyle, strokeColor, fillColor);
@@ -211,9 +260,39 @@ export function StrokeText({
     };
     const measureMark = () => {
       if (cancelled || correctionIndex === undefined || !rootRef.current) return;
-      const glyph = rootRef.current.querySelectorAll<SVGTSpanElement>("[data-stroke-char]")[
-        correctionIndex
-      ];
+
+      // getExtentOfChar measures one character's real rendered extent
+      // directly off the text run, so it can't fall back to a sibling's or
+      // the whole word's box the way a bare tspan.getBBox() can on engines
+      // that don't give an unpositioned tspan its own bounding box (observed
+      // on WebKit/iOS: the correction ends up sized and centred on the whole
+      // word instead of the one glyph it's meant to replace).
+      const textEl = textRef.current;
+      if (textEl && typeof textEl.getExtentOfChar === "function") {
+        try {
+          const extent = textEl.getExtentOfChar(correctionIndex);
+          if (extent && extent.width) {
+            const next = {
+              x: extent.x,
+              y: extent.y,
+              width: extent.width,
+              height: extent.height,
+            };
+            setMarkBox((previous) => (boxMoved(previous, next) ? next : previous));
+            return;
+          }
+        } catch {
+          // Falls through to the tspan measurement below.
+        }
+      }
+
+      // Fallback for engines without getExtentOfChar (and for jsdom, which
+      // has neither). Scoped to the main stroke layer specifically: once the
+      // correction itself has rendered once, its own mirrored glyph also
+      // carries data-stroke-char, and an unscoped query would count it too.
+      const glyph = rootRef.current.querySelectorAll<SVGTSpanElement>(
+        "[data-stroke-layer] [data-stroke-char]"
+      )[correctionIndex];
       if (!glyph) return;
       try {
         const bounds = glyph.getBBox();
@@ -305,6 +384,7 @@ export function StrokeText({
       (path): path is SVGPathElement => path !== null
     );
     const wipe = wipeRectRef.current;
+    const outlineWipe = outlineWipeRectRef.current;
     if (!strokes.length) return;
     const fillEnabled = fillMode !== "none";
     const useWipe = fillEnabled && fillMode === "wipe";
@@ -317,23 +397,41 @@ export function StrokeText({
     const fillStart = useHatchFill
       ? Math.max(0, fillDelay)
       : outlineEnd + fillDelay;
-    const targets = [...strokes, ...fills, ...hatchLines, ...correctionPaths, wipe].filter(Boolean);
+    const targets = [...strokes, ...fills, ...hatchLines, ...correctionPaths, wipe, outlineWipe].filter(
+      Boolean
+    );
 
     const setStart = () => {
       gsap.killTweensOf(targets);
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: dash });
       gsap.set(fills, { opacity: useWipe ? 1 : 0 });
-      gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 1 });
-      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 1, opacity: 0 });
+      gsap.set(hatchLines, {
+        strokeDasharray: (_i, target: SVGLineElement) => realPathLength(target),
+        strokeDashoffset: (_i, target: SVGLineElement) => realPathLength(target),
+      });
+      gsap.set(correctionPaths, {
+        strokeDasharray: (_i, target: SVGPathElement) => realPathLength(target),
+        strokeDashoffset: (_i, target: SVGPathElement) => realPathLength(target),
+        opacity: 0,
+      });
       if (wipe) gsap.set(wipe, { attr: { width: 0 } });
+      if (outlineWipe) gsap.set(outlineWipe, { attr: { width: 0 } });
     };
     const setEnd = () => {
       gsap.killTweensOf(targets);
       gsap.set(strokes, { strokeDasharray: dash, strokeDashoffset: 0 });
       gsap.set(fills, { opacity: fillEnabled ? 1 : 0 });
-      gsap.set(hatchLines, { strokeDasharray: 1, strokeDashoffset: 0 });
-      gsap.set(correctionPaths, { strokeDasharray: 1, strokeDashoffset: 0, opacity: 1 });
+      gsap.set(hatchLines, {
+        strokeDasharray: (_i, target: SVGLineElement) => realPathLength(target),
+        strokeDashoffset: 0,
+      });
+      gsap.set(correctionPaths, {
+        strokeDasharray: (_i, target: SVGPathElement) => realPathLength(target),
+        strokeDashoffset: 0,
+        opacity: 1,
+      });
       if (wipe) gsap.set(wipe, { attr: { width: fillEnabled ? box.width : 0 } });
+      if (outlineWipe) gsap.set(outlineWipe, { attr: { width: box.width } });
     };
     if (!animate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setEnd();
@@ -349,6 +447,9 @@ export function StrokeText({
         defaults: { overwrite: "auto" },
       });
       timeline.to(strokes, { strokeDashoffset: 0, duration: drawDuration, ease, stagger: staggerConfig }, 0);
+      if (outlineWipe) {
+        timeline.to(outlineWipe, { attr: { width: box.width }, duration: outlineEnd, ease }, 0);
+      }
       if (useHatchFill && hatchLines.length) {
         // A pencil shade is not a mask appearing all at once. Each loose
         // graphite stroke travels across the letter after its outline lands.
@@ -457,6 +558,7 @@ export function StrokeText({
     fillDelay,
     fillMode,
     hatchStrokes.length,
+    isFirefox,
     markBox,
     reverse,
     sketch.fillTexture,
@@ -470,6 +572,11 @@ export function StrokeText({
   // Measured off the untransformed <text>, and applied to the group around it,
   // so correcting the position can never feed back into the measurement.
   const inkOffset = inkCentringOffset(box, centreY, STROKE_INK_LIFT_PX);
+  // text-anchor="middle" centres the <text> on its advance width, not its
+  // ink -- the same mismatch as the vertical case, just uncorrected until
+  // now because it took warp's own fix (centeredRunLayout) to notice the
+  // "default" treatment it's meant to match wasn't ink-centred either.
+  const inkOffsetX = inkCentringOffsetX(box, centreX);
   // Bounded by the host, so a mark is pulled inside the frame rather than
   // running off the edge and reading as clipped.
   const correctionPen = strokeWidth * 1.6;
@@ -497,6 +604,20 @@ export function StrokeText({
           {fillMode === "wipe" && box && (
             <clipPath id={wipeId} clipPathUnits="userSpaceOnUse">
               <rect ref={wipeRectRef} x={box.x} y={box.y} width="0" height={box.height} />
+            </clipPath>
+          )}
+          {/* Firefox-only fallback -- see isFirefox above for why this isn't
+              applied everywhere. */}
+          {box && isFirefox && (
+            <clipPath id={outlineWipeId} clipPathUnits="userSpaceOnUse">
+              <rect
+                ref={outlineWipeRectRef}
+                data-testid="stroke-text-outline-wipe"
+                x={box.x}
+                y={box.y}
+                width="0"
+                height={box.height}
+              />
             </clipPath>
           )}
           {useHatchFill && (
@@ -590,13 +711,13 @@ export function StrokeText({
         </defs>
         <g
           filter={sketchFilter}
-          transform={`translate(0, ${inkOffset})`}
+          transform={`translate(${inkOffsetX}, ${inkOffset})`}
           // Until the host is measured the viewBox is a placeholder, which
           // would render the letters at the wrong scale for a frame. Hold them
           // back rather than show that flash.
           style={{ opacity: hostSize ? 1 : 0, transition: "opacity 120ms ease-out" }}
         >
-        <text ref={textRef} data-stroke-layer className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle}>
+        <text ref={textRef} data-stroke-layer className={styles.stroke} x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" fill="none" stroke={inked.strokeColor} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" style={fontStyle} clipPath={box && isFirefox ? `url(#${outlineWipeId})` : undefined}>
           {characters.map((character, index) => (
             <tspan
               data-stroke-char
@@ -629,13 +750,12 @@ export function StrokeText({
                   y1={stroke.y1}
                   x2={stroke.x2}
                   y2={stroke.y2}
-                  pathLength={1}
                   stroke={inked.fillColor}
                   strokeWidth={stroke.strokeWidth}
                   strokeLinecap="round"
                   opacity={stroke.opacity}
-                  strokeDasharray={1}
-                  strokeDashoffset={1}
+                  strokeDasharray={UNMEASURED_DASH_LENGTH}
+                  strokeDashoffset={UNMEASURED_DASH_LENGTH}
                 />
               ))}
             </g>
@@ -672,14 +792,16 @@ export function StrokeText({
                   strokeLinejoin="round"
                   strokeLinecap="round"
                   style={fontStyle}
+                  clipPath={box && isFirefox ? `url(#${outlineWipeId})` : undefined}
                 >
                   {characters[correctionIndex]}
                 </text>
               </g>
 
               {/* Red pen, drawn on after the letters have been sketched.
-                  pathLength normalises each path to 1, so the dash animation
-                  draws it stroke-by-stroke without needing its real length. */}
+                  Dasharray/dashoffset here are only the pre-mount fallback --
+                  the mount effect replaces them with each path's own measured
+                  length once it can call getTotalLength(). */}
               {marks && (
                 <g
                   className="boil-line"
@@ -694,10 +816,9 @@ export function StrokeText({
                       key={index}
                       data-correction-cross
                       d={stroke}
-                      pathLength={1}
                       style={{
-                        strokeDasharray: 1,
-                        strokeDashoffset: 1,
+                        strokeDasharray: UNMEASURED_DASH_LENGTH,
+                        strokeDashoffset: UNMEASURED_DASH_LENGTH,
                         opacity: animate ? 0 : 1,
                       }}
                     />
@@ -710,10 +831,9 @@ export function StrokeText({
                     d={marks.letter.d}
                     transform={marks.letter.transform}
                     strokeWidth={marks.letter.strokeWidth}
-                    pathLength={1}
                     style={{
-                      strokeDasharray: 1,
-                      strokeDashoffset: 1,
+                      strokeDasharray: UNMEASURED_DASH_LENGTH,
+                      strokeDashoffset: UNMEASURED_DASH_LENGTH,
                       opacity: animate ? 0 : 1,
                     }}
                   />

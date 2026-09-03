@@ -1,4 +1,6 @@
 import {
+  ASCII_CAMERA_DISTANCE,
+  ASCII_CAMERA_FOV_DEG,
   ASCII_FALLBACK_PLANE_HEIGHT,
   ASCII_DEPTH_RAMP,
   ASCII_EXTRUDE_LAYERS,
@@ -16,6 +18,7 @@ import {
   chipForBrightness,
   demoTiltAt,
   planeHeightForFontSize,
+  textTextureLayout,
   visibleWorldHeight,
 } from "./asciiText";
 
@@ -133,6 +136,28 @@ describe("matching the original font size", () => {
     expect(visibleWorldHeight(45, 60)).toBeCloseTo(49.706, 2);
   });
 
+  test("the camera moved much farther away without changing what it sees", () => {
+    // The FOV was narrowed to match, specifically so every plane-height
+    // formula below -- all built on visibleWorldHeight() -- lands on exactly
+    // the same on-screen size it always did. Only the camera's sensitivity
+    // to the plane's own tilt should have changed.
+    expect(ASCII_CAMERA_DISTANCE).toBeGreaterThan(100);
+    expect(visibleWorldHeight(ASCII_CAMERA_FOV_DEG, ASCII_CAMERA_DISTANCE)).toBeCloseTo(
+      visibleWorldHeight(45, 30),
+      6
+    );
+  });
+
+  test("a plane as wide as the word now sits well inside the camera's distance", () => {
+    // At the old 30-unit distance the plane's own half-width (comparable to
+    // the whole distance) meant a rotated plane's near and far edges sat at
+    // meaningfully different depths -- real keystoning, not just a lean. The
+    // camera needs to be far enough past the plane's size that this stops
+    // being true.
+    const approximateHalfWidth = 32;
+    expect(ASCII_CAMERA_DISTANCE).toBeGreaterThan(approximateHalfWidth * 5);
+  });
+
   test("matching a 230px headline needs a bigger plane than the old default", () => {
     const height = planeHeightForFontSize(at1440);
     expect(height).toBeCloseTo(14.97, 1);
@@ -208,7 +233,7 @@ describe("the scripted tilt sweep", () => {
   test("starts level and leans a single way", () => {
     // Crossing level midway read as two separate moves.
     expect(demoTiltAt(0, DURATION, STRENGTH)).toBeCloseTo(0, 6);
-    expect(demoTiltAt(DURATION * 0.99, DURATION, STRENGTH)!).toBeGreaterThan(0);
+    expect(demoTiltAt(DURATION * 0.5, DURATION, STRENGTH)!).toBeGreaterThan(0);
   });
 
   test("never leans back the other way", () => {
@@ -217,13 +242,25 @@ describe("the scripted tilt sweep", () => {
     }
   });
 
-  test("only ever travels one way, never doubling back", () => {
+  test("eases back to level by its own end, not held at the extreme", () => {
+    // A held lean relied on the handover fade to hide it disappearing
+    // mid-tilt. Now that a handover can be a hard cut with no fade at all
+    // (HEADLINE_HANDOVER_MS can be 0), the motion has to land back at level
+    // under its own steam before its duration is up, or a hard cut catches
+    // the plane mid-lean -- which a perspective camera reads as shifted and
+    // shrunk, not just angled.
+    expect(demoTiltAt(DURATION * 0.99, DURATION, STRENGTH)!).toBeCloseTo(0, 1);
+  });
+
+  test("rises to a peak partway through, then relaxes back -- one motion, not held", () => {
     let previous = -Infinity;
+    let sawDecrease = false;
     for (let t = 0; t < DURATION; t += 25) {
       const lean = demoTiltAt(t, DURATION, STRENGTH)!;
-      expect(lean).toBeGreaterThanOrEqual(previous);
+      if (lean < previous) sawDecrease = true;
       previous = lean;
     }
+    expect(sawDecrease).toBe(true);
   });
 
   test("never leans further than a real cursor could", () => {
@@ -281,6 +318,50 @@ describe("extruding the letters", () => {
 
   test("survives a degenerate layer count", () => {
     expect(extrudeLayerShade(1, 0)).toBe(0);
+  });
+
+  describe("laying the face out on its own texture canvas", () => {
+    // Deliberately asymmetric left/right, the way a real bold display face's
+    // side bearings are: a test built on equal bearings couldn't tell "centred
+    // on the ink" apart from "centred on the advance box", which is exactly
+    // the bug this layout used to have.
+    const INK_LEFT = 3.2;
+    const INK_RIGHT = 1379.24;
+    const layout = textTextureLayout({
+      inkLeftPx: INK_LEFT,
+      inkRightPx: INK_RIGHT,
+      ascentPx: 265.625,
+      descentPx: 0,
+      extrudeXPx: 20.4,
+      extrudeYPx: 12.648,
+    });
+
+    test("gives the face equal margin left and right", () => {
+      // The extruded body only ever trails down-and-right, so a margin sized
+      // to fit just that trailing edge left more empty canvas on the right
+      // than the left -- and since the whole canvas (not just the face) is
+      // what a centred plane centres on screen, that is what put the ASCII
+      // word visibly left of the other treatments' shared centre.
+      const leftMargin = layout.baseX - INK_LEFT;
+      const rightMargin = layout.canvasWidth - (layout.baseX + INK_RIGHT);
+      // Within a pixel: canvasWidth is rounded up to a whole pixel, so the
+      // trailing margin can be a fraction of a pixel wider than the leading
+      // one, but never a whole extra margin's worth.
+      expect(Math.abs(rightMargin - leftMargin)).toBeLessThan(1);
+    });
+
+    test("gives the face equal margin top and bottom", () => {
+      const topMargin = layout.baseY - 265.625;
+      const bottomMargin = layout.canvasHeight - (layout.baseY + 0);
+      expect(Math.abs(bottomMargin - topMargin)).toBeLessThan(1);
+    });
+
+    test("still keeps the extruded body's trailing edge inside the canvas", () => {
+      const rightReach = layout.baseX + 20.4 + INK_RIGHT;
+      const bottomReach = layout.baseY + 12.648 + 0;
+      expect(rightReach).toBeLessThan(layout.canvasWidth);
+      expect(bottomReach).toBeLessThan(layout.canvasHeight);
+    });
   });
 });
 

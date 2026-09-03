@@ -26,9 +26,9 @@ describe("useHeadlineIntro", () => {
   });
   afterEach(() => jest.useRealTimers());
 
-  test("starts on the sketch", () => {
+  test("starts on the plain resting treatment, briefly, before the flip-through", () => {
     const { result } = renderHook(() => useHeadlineIntro(true));
-    expect(result.current.phase).toBe("sketch");
+    expect(result.current.phase).toBe("default");
     expect(result.current.done).toBe(false);
   });
 
@@ -36,7 +36,9 @@ describe("useHeadlineIntro", () => {
     const { result } = renderHook(() => useHeadlineIntro(true));
 
     act(() => {
-      jest.advanceTimersByTime(HEADLINE_INTRO_STEPS[0].durationMs + 50);
+      jest.advanceTimersByTime(
+        HEADLINE_INTRO_STEPS[0].durationMs + HEADLINE_INTRO_STEPS[1].durationMs + 50
+      );
     });
     expect(result.current.phase).toBe("ascii");
 

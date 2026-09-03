@@ -15,6 +15,7 @@ import {
   correctionMarks,
   getSketchSpec,
   inkCentringOffset,
+  inkCentringOffsetX,
   mirrorAboutBox,
   sketchColors,
 } from "./strokeText";
@@ -137,6 +138,35 @@ describe("centring the ink", () => {
   test("ignores unmeasurable boxes rather than shifting by NaN", () => {
     expect(inkCentringOffset({ y: NaN, height: 40 }, 100)).toBe(0);
     expect(inkCentringOffset({ y: 10, height: NaN }, 100)).toBe(0);
+  });
+});
+
+describe("centring the ink horizontally", () => {
+  // SVG's own text-anchor="middle" centres on the text's advance width, not
+  // its measured ink -- the same metrics-box-vs-ink-box mismatch already
+  // fixed vertically here (inkCentringOffset, above) and on the ascii
+  // treatment's texture layout. A bold display face's left/right side
+  // bearings are rarely equal, so text-anchor alone can leave the actual
+  // ink a few pixels off the frame's true horizontal centre.
+  test("pulls left text whose measured ink sits right of centre", () => {
+    expect(inkCentringOffsetX({ x: 110, width: 40 }, 100)).toBe(-30);
+  });
+
+  test("pushes right text whose ink sits left of centre", () => {
+    expect(inkCentringOffsetX({ x: 40, width: 40 }, 100)).toBe(40);
+  });
+
+  test("leaves already-centred ink alone", () => {
+    expect(inkCentringOffsetX({ x: 80, width: 40 }, 100)).toBe(0);
+  });
+
+  test("does nothing before the ink has been measured", () => {
+    expect(inkCentringOffsetX(null, 100)).toBe(0);
+  });
+
+  test("ignores unmeasurable boxes rather than shifting by NaN", () => {
+    expect(inkCentringOffsetX({ x: NaN, width: 40 }, 100)).toBe(0);
+    expect(inkCentringOffsetX({ x: 10, width: NaN }, 100)).toBe(0);
   });
 });
 

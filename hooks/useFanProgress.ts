@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePointerType } from "./usePointerType";
 import {
-  FAN_POINTER_TAKEOVER_PX,
   FAN_SMOOTHING_MS,
   FAN_SPLIT,
   FAN_THRESHOLD_PX,
   computeCursorTravel,
   computeScrollTravel,
   splitTravel,
-  // travelAfterWheel,
 } from "@/lib/fanProgress";
 import { smoothTowards } from "@/lib/smoothing";
 import type { FanPhases } from "@/lib/fanProgress";
@@ -29,10 +27,18 @@ export function useFanProgress(
   const frameRef = useRef(0);
   const lastFrameRef = useRef(0);
   const smoothingRef = useRef(smoothingMs);
-  // Where the pointer was when the wheel last took the gesture, so the cursor
-  // has to genuinely move before it takes it back.
-  const wheelAnchorRef = useRef<{ x: number; y: number } | null>(null);
-  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  // A wheel notch gives the cursor a floor to stand on rather than a value
+  // that competes with it: cursor position still drives everything (moving
+  // down opens further, moving up closes -- unchanged), but the very next
+  // mousemove after a wheel kick is almost always incidental, not the visitor
+  // actually reaching for the mouse, and would otherwise read the cursor's
+  // real (unrelated) position and snap the reveal straight back to 0. The
+  // floor absorbs exactly that, and only that: a genuine upward move -- the
+  // whole point of "cursor up closes it" -- clears it immediately, and a
+  // genuine downward move past it clears it too, once the cursor has simply
+  // caught up to where the wheel already put things.
+  const wheelFloorRef = useRef<number | null>(null);
+  const lastMouseYRef = useRef<number | null>(null);
   const [travel, setTravel] = useState(0);
 
   useEffect(() => {
@@ -65,7 +71,8 @@ export function useFanProgress(
       // body triggers a cascading render, and it is unnecessary: the rest
       // position is derived below instead of stored.
       targetRef.current = 0;
-      wheelAnchorRef.current = null;
+      wheelFloorRef.current = null;
+      lastMouseYRef.current = null;
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
       return;
@@ -78,40 +85,46 @@ export function useFanProgress(
 
     if (pointerType === "fine") {
       const handleMouseMove = (e: MouseEvent) => {
-        pointerRef.current = { x: e.clientX, y: e.clientY };
-
-        const anchor = wheelAnchorRef.current;
-        if (anchor) {
-          const moved = Math.hypot(e.clientX - anchor.x, e.clientY - anchor.y);
-          // Still within a jog of where the scroll left off: the cursor has not
-          // meant anything by it yet, so leave the scrolled position alone.
-          if (moved <= FAN_POINTER_TAKEOVER_PX) return;
-          wheelAnchorRef.current = null;
+        const rawTravel = computeCursorTravel(e.clientY, window.innerHeight, thresholdPx);
+        const floor = wheelFloorRef.current;
+        if (floor === null) {
+          aim(rawTravel);
+        } else {
+          const lastY = lastMouseYRef.current;
+          const movingUp = lastY !== null && e.clientY < lastY;
+          if (movingUp) {
+            wheelFloorRef.current = null;
+            aim(rawTravel);
+          } else {
+            if (rawTravel >= floor) wheelFloorRef.current = null;
+            aim(Math.max(floor, rawTravel));
+          }
         }
-
-        aim(computeCursorTravel(e.clientY, window.innerHeight, thresholdPx));
+        lastMouseYRef.current = e.clientY;
       };
 
-      // Wheel input is parked for now. Uncomment this handler, its listener
-      // and its teardown below, plus the travelAfterWheel import, to bring the
-      // scroll gesture back. The pointer-takeover guard it relies on is still
-      // in handleMouseMove and is inert while no wheel event ever fires.
-      // const handleWheel = (e: WheelEvent) => {
-      //   wheelAnchorRef.current = pointerRef.current ?? { x: 0, y: 0 };
-      //   aim(travelAfterWheel(targetRef.current, e.deltaY));
-      // };
+      const handleWheel = (event: WheelEvent) => {
+        // Only a deliberate scroll down kicks the stack; scrolling up is left
+        // alone entirely, and there's nothing to kick once the cursor has
+        // already opened past where the first card lands.
+        if (!Number.isFinite(event.deltaY) || event.deltaY <= 0) return;
+        if (targetRef.current >= fanSplit) return;
+        event.preventDefault();
+        wheelFloorRef.current = fanSplit;
+        aim(fanSplit);
+      };
 
       const handleMouseLeave = () => {
-        wheelAnchorRef.current = null;
+        wheelFloorRef.current = null;
         aim(0);
       };
 
       window.addEventListener("mousemove", handleMouseMove);
-      // window.addEventListener("wheel", handleWheel, { passive: true });
+      window.addEventListener("wheel", handleWheel, { passive: false });
       document.documentElement.addEventListener("mouseleave", handleMouseLeave);
       return () => {
         window.removeEventListener("mousemove", handleMouseMove);
-        // window.removeEventListener("wheel", handleWheel);
+        window.removeEventListener("wheel", handleWheel);
         document.documentElement.removeEventListener("mouseleave", handleMouseLeave);
       };
     }
@@ -123,7 +136,7 @@ export function useFanProgress(
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [enabled, pointerType, thresholdPx, startAnimating]);
+  }, [enabled, pointerType, thresholdPx, fanSplit, startAnimating]);
 
   useEffect(() => {
     const frame = frameRef;

@@ -1,18 +1,30 @@
 # Textfolio — Handoff
 
-Last updated: 2026-08-30
+Last updated: 2026-09-02
 
 A designer portfolio built as a stack of paper. The landing page (the name
 "ADRIAN") is the top sheet; case studies sit beneath it and fan out as the
 cursor travels toward the bottom of the viewport. Clicking one lifts it out of
 the stack and navigates to its own route.
 
-**Status:** everything below is implemented and green — 37 suites / 431 passed
-(5 skipped), `npx tsc --noEmit` clean, `npm run lint` clean, `next build`
-succeeds. The `react-hooks/set-state-in-effect` error at
-`hooks/useFanProgress.ts` is fixed: the rest position is derived on return
-rather than written into state from an effect. The current checkout is `main`;
-the latest Cloudflare Workers deployment configuration is committed.
+**DO NOT COMMIT OR PUSH TO GITHUB without explicit sign-off.** The case
+studies now contain real content about real employers (Spotify, North,
+Christie Digital) and the user has explicitly said they do not want this
+published online yet. `main` on GitHub is the live Cloudflare deployment, so a
+push there is a publish. This holds regardless of how clean the working tree
+is or how many verification passes succeeded — a green build is not
+permission to ship. Wait for an explicit "commit this" / "push this" from the
+user before running `git commit` or `git push`, every time, even if a lot of
+work has piled up uncommitted. See "Case study content" below for what's
+currently sitting in the working tree.
+
+**Status:** everything below is implemented and green — 37 suites / 458 passed,
+`npx tsc --noEmit` clean, `npm run lint` clean. The
+`react-hooks/set-state-in-effect` error at `hooks/useFanProgress.ts` is fixed:
+the rest position is derived on return rather than written into state from an
+effect. The current checkout is `main`, **uncommitted** — see the session log
+at the bottom for what's pending, including two real, unresolved cross-browser
+bugs (Brave, ASCII sizing) that need the user's own testing to close out.
 
 **Latest continuation (2026-08-30):** added DOM-contract tests for
 `ASCIIText`, `WarpText`, and `StrokeText` covering accessible labels, fallback
@@ -172,6 +184,11 @@ every edit shows as a whole-file diff.
 
 ## Deployment
 
+**Do not push to `main` without explicit sign-off** — see the callout at the
+top of this file. `main` is what Cloudflare deploys, so a push is a publish,
+and the case studies contain real employer content the user has said should
+not go live yet.
+
 `next build` emits a plain static site into `./out`. In Cloudflare Workers Builds,
 use build command `npm run build`, production deploy command `npx wrangler deploy`,
 version command `npx wrangler versions upload`, and root directory `/`.
@@ -202,16 +219,14 @@ share it:
 
 - **The cursor is absolute.** `computeCursorTravel` maps its distance from the
   bottom edge straight onto `travel`.
-- **The wheel is relative.** `travelAfterWheel` *nudges* the travel already
-  held by `deltaY / FAN_WHEEL_RANGE_PX` (700px covers the whole gesture, so a
-  scroll opens the stack at roughly the rate walking the cursor down would).
+- **The wheel is discrete.** Its first tick captures the desktop stack and
+  each 80px wheel unit advances or retreats one of the five sheets. While
+  captured, cursor movement is recorded but cannot change the reveal.
 - Leaving the document (`mouseleave` on `<html>`) aims back at 0.
 
-The two would fight: the wheel sets a position the cursor never agreed to, and
-the next `mousemove` would snap it straight back. So a wheel event records a
-**takeover anchor** at the cursor's last known point, and `mousemove` ignores
-itself until it has travelled more than `FAN_POINTER_TAKEOVER_PX` (12px) from
-it. See invariant 17.
+Clicking anywhere releases the wheel capture and immediately returns control to
+the last known cursor position. This keeps the stack legible as a five-step
+navigation interaction instead of letting wheel and cursor fight over it.
 
 ### Bands, not recedes
 
@@ -411,6 +426,8 @@ them; the ones that only a browser can catch are marked.
 12. **Measurement must never feed back into what it measures.**
     - `StrokeText` measures the *untransformed* `<text>` with `getBBox()` and
       applies `inkCentringOffset` as a `translate` on the enclosing `<g>`.
+      Do not add a sketch-only lift after centring: that puts the sketch
+      headline visibly above the warp and ASCII treatments.
       Applying the correction to the measured element would make each frame's
       measurement a function of the last one's correction, and the letters
       would walk.
@@ -443,18 +460,13 @@ them; the ones that only a browser can catch are marked.
 
 ### From the wheel input
 
-17. **The cursor must not instantly reclaim the gesture from the wheel.** The
-    cursor is an absolute input and the wheel is a relative one, aiming at the
-    same `travel`. Without the `FAN_POINTER_TAKEOVER_PX` anchor in
-    `useFanProgress`, the tiniest jog of the mouse — or the mousemove the
-    browser synthesises under a scrolling wheel — snaps the stack back to
-    wherever the cursor happens to be, and scrolling appears not to work at
-    all. The anchor is cleared the moment the pointer genuinely moves, and on
-    `mouseleave`.
-18. **The wheel handler nudges `targetRef`, not `travel`.** It reads the target
-    the loop is already easing toward, so a fast scroll accumulates instead of
-    each event racing the eased value. Reading the rendered `travel` there
-    would make the gesture's speed depend on the frame rate.
+17. **The cursor must not reclaim the stack while wheel capture is active.**
+    Wheel input deliberately owns the five-step home navigation until a click
+    releases it. Recording pointer movement while captured makes that handoff
+    land at the current cursor position rather than a stale one.
+18. **The wheel handler updates `targetRef`, not rendered `travel`.** It keeps
+    fast consecutive wheel ticks additive while the rAF loop applies the visual
+    smoothing, so the interaction stays independent of frame rate.
 
 ---
 
@@ -491,7 +503,7 @@ page load.
 lib/
   fanProgress.ts    travel from cursor/wheel/scroll, split into the two phases
                     FAN_THRESHOLD_PX 450 · FAN_SPLIT 0.45 · FAN_SMOOTHING_MS 90
-                    FAN_WHEEL_RANGE_PX 700 · FAN_POINTER_TAKEOVER_PX 12
+                    FAN_WHEEL_STEP_DELTA_PX 80 · FAN_WHEEL_STEP_COUNT 5
   fanSheet.ts       FanSheetConfig + all sheet geometry (emphasis, reveal,
                     bands, insets, tilt). SHEET_OVERSCAN_PERCENT 60
   smoothing.ts      smoothTowards() — frame-rate independent ease
@@ -736,17 +748,11 @@ two-column body (overview rail / long read) over a full-width tiled gallery.
 - **Wide screens** get less padding and wider containers (`100rem` columns,
   `110rem` media) while prose stays at `max-w-[70ch]`.
 
-### Pull-to-exit, and the collapse home
+### Home exit and the collapse home
 
-`lib/scrollExit.ts` (pure) + `hooks/useScrollUpExit.ts`. At `scrollY <= 0`,
-continued upward scrolling accumulates pull; the page follows on a damped,
-asymptotic curve and a progress bar fills across the header. Past
-`EXIT_PULL_THRESHOLD_PX` (160) the page drops away and navigates home.
-Stopping short springs back.
-
-**The home button stays.** The gesture is undiscoverable on its own, collides
-with rubber-banding and pull-to-refresh, and offers no keyboard path out. It is
-an addition, not a replacement.
+Case studies now leave only through the explicit home button. The old upward
+pull gesture and its progress bar were removed because they collided with
+normal reading scroll and had no discoverable keyboard equivalent.
 
 Arriving home, `useStackCollapse` starts the stack fanned and folds it shut,
 run through the same `splitTravel` as a real gesture so the collapse is the
@@ -854,11 +860,11 @@ correction beats.
 
 The header's height is in the page flow, so every shrink moves the content
 under the reader; the browser reports that as a scroll, which crosses the
-threshold the other way, which resizes again. `lib/stickyHeader.ts` replaces the
-single threshold: committing to scroll up shows the full header wherever you
-are, shrinking needs both downward movement and being past 140px, movement
-under 10px is jitter, and **anything arriving during the 360ms resize is
-ignored** so the resize cannot answer itself.
+threshold the other way, which resizes again. `lib/stickyHeader.ts` uses a
+commit threshold and settle window: it can shrink after a real downward scroll,
+then remains compact throughout mid-article upward reading. The full header
+only returns at the top, so its large in-flow height can no longer land over the
+reader's copy.
 
 ### Hover belongs to the letters, not the frame
 
@@ -871,6 +877,32 @@ against its measured box. Padding is a share of the word's *height*, so it
 scales with the headline. An unmeasured word returns `true`: a dead headline is
 worse than an eager one.
 
+### The white box was `isolation: isolate`
+
+Measured off a screenshot: the flashing rectangle was 1154px wide in a 1389px
+viewport, which is exactly `72rem` -- the headline frame's `w-[min(94vw,72rem)]`.
+Not something painting *inside* the frame; the frame itself.
+
+`isolation: isolate` makes the browser build a render surface the size of the
+element, and a **fresh surface paints white before it has been rasterised**.
+Three of them existed and none was needed:
+
+- `headline-frame` -- unexplained; the comment beside it is about clipping.
+- `WarpText .root` -- and warp is the *resting* treatment, so its surface was
+  the one torn down every time another treatment mounted.
+- `Hero.module.css .treatmentMount` -- not isolation, but an opacity animation,
+  which promotes the same frame-sized layer with the same failure mode. It had
+  been added to *hide* this flash, and was quietly causing a second one.
+
+All three are gone. **Do not reintroduce `isolate`, `mix-blend-mode`,
+`will-change`, `opacity` animation, or a transform on the frame or on any
+treatment root** without checking for this. The only surviving isolation is
+`ASCIIText .root[data-glyph-colors="gradient"]`, which contains the gradient
+pre's difference blend and is inert in the default colour mode.
+
+Why warp always looked clean: it never remounts, so its surface was never
+re-created -- not because warp was doing anything differently.
+
 ### Watch out for
 
 - **jsdom cannot parse arithmetic inside `clamp()`** — browsers can. Assert on
@@ -879,6 +911,215 @@ worse than an eager one.
   assertions about them pass vacuously. Stub it (see `StrokeText.test.tsx`).
 - The PowerShell here-string form `@'...'@` is a parse error in the Bash tool;
   use a heredoc.
+
+## Session: real case study content, then a large checklist worked on in parallel (2026-08-31 → 2026-09-01)
+
+**Do not push. See the callout at the top of this file.** The case studies
+below contain real content about real employers; the user has explicitly said
+not to publish this yet.
+
+**Important: this repo was being edited by more than one agent session at
+once during this window.** Partway through, a large batch of file changes
+showed up on disk that this session had not made — `git status` and the
+"changed on disk" notes are the way to notice this happening again. Do not
+assume you have the full picture of the working tree from your own edit
+history alone; check the actual files before reasoning about what state
+something is in, and re-check after any gap in the conversation.
+
+### The 7-item checklist — status as actually verified on disk, not as planned
+
+The user handed over seven items in one message. Some were built by this
+session, most turned out to already be done by the parallel one by the time it
+was checked:
+
+- [x] Default arrow black instead of grey — `arrowColor` in `Hero.tsx` now
+  reads `activeEffect === null ? DEFAULT_INK_COLOR : accentColor`.
+- [ ] **Sketch treatment: "ADRIAN" sitting higher than the rest of the
+  text — status unconfirmed.** Not verified either way this session.
+- [x] Sticky header jank — `lib/stickyHeader.ts` was rewritten from a
+  hysteresis/settle-window state machine to a single exact rule:
+  `nextHeaderShrunk(currentY) => currentY > 0`. Full header only at the exact
+  document top; compact bar everywhere else. Simpler than the fix this
+  session was about to attempt, and removes the class of bug entirely rather
+  than tuning around it.
+- [x] Pull-to-exit removed from case study pages — `lib/scrollExit.ts` and
+  `hooks/useScrollUpExit.ts` are deleted outright (not just unused), along
+  with the pull-progress bar UI. `leave()` in `CaseStudyView.tsx` is now a
+  plain click handler.
+- [x] Home-page wheel-capture interaction — implemented in
+  `hooks/useFanProgress.ts` (`wheelCapturedRef`, `wheelStepRef`,
+  `wheelDeltaRef`, `FAN_WHEEL_STEP_COUNT`). Not verified in a live browser by
+  this session, but present, typed, and covered by
+  `hooks/useFanProgress.test.ts`.
+- [x] Bold next-project label on hover — `case-study-next-label` now carries
+  `font-bold` in `CaseStudyView.tsx`.
+- [~] Mobile bugs — **two different fixes, two different fates:**
+  - The sketch correction (X spanning the whole word, red N centred on the
+    header instead of the glyph) was root-caused to `measureMark()` calling
+    `getBBox()` on an unpositioned `<tspan>`, a known WebKit quirk area where
+    the parent `<text>`'s box can be reported instead of the glyph's. Fixed
+    by preferring `getExtentOfChar(index)`, which measures one character
+    directly. **This fix is still in `components/StrokeText.tsx` and
+    survived the parallel session's edits untouched.** Still not verified on
+    a real device.
+  - The ASCII "huge and out of position on iOS" bug was given a defensive
+    fix — extra `visualViewport`/`orientationchange` listeners plus a 500ms
+    delayed re-measure. **This one caused a real regression on desktop**
+    (reported directly by the user: the ASCII headline rendered smaller and
+    offset left on reload) and was reverted in full. **Update (2026-09-02):**
+    the "smaller and offset left" symptom was a real, separate, long-standing
+    bug — not caused by the reverted fix, and not fixed by reverting it. See
+    "The ASCII camera was closer to the plane than the plane was wide" below
+    for the actual root cause and fix. The original iOS-specific report is
+    still unconfirmed either way.
+
+### The collapsible long-read and the "catchy hook" styling (parallel session)
+
+Not asked for in the 7-item list, but built in the same window, presumably in
+response to earlier requests in the conversation:
+
+- `CaseStudyView.tsx` now collapses sections beyond the first when there are
+  more than `COLLAPSIBLE_SECTION_MINIMUM` (2) of them, with a "Read more" /
+  "Show less" toggle (`data-testid="case-study-read-more"`,
+  `aria-expanded`).
+- A new `case-study-intro` block renders `caseStudy.blurb` as a large
+  `<h2>` above the sections, with `overview` as a subtitle underneath — this
+  looks like the "make the hook bigger and bolder" request, formalised.
+- `CaseStudySection` gained an optional `bullets?: string[]` field, and
+  section `heading`s are rendered again (`<h2 className="font-bold">`) —
+  reversing the earlier "no headings in the right column" decision. Given the
+  new format is genuinely six short bulleted beats rather than two long
+  paragraphs, headings likely earn their place back; worth confirming this
+  was deliberate rather than a side effect.
+- `CaseStudyFact.value` can now be a `string[]`, rendered as a `<ul>` inside
+  the fact's `<dd>` — a real capability upgrade the original type didn't have.
+- `components/HomeIconAnimation.tsx` — a genuinely custom five-frame
+  stop-motion SVG icon (`public/assets/home-animation-1..5.svg`) that steps
+  forward as the header collapses and back as it expands, with a distinct
+  hover "wiggle" replay and a deliberate delay so the reverse animation
+  doesn't play underneath the still-collapsed header. Replaces this session's
+  much simpler raw `<img>` + `boil-line` attempt entirely.
+- `components/LazyVideo.tsx` — `IntersectionObserver`-gated video loading
+  (`rootMargin: "320px 0px"`), so a long case study's showreel doesn't start
+  downloading while the reader is still in the opening copy. Both media types
+  in `public/assets/christie-*` were also converted from `.jpg`/`.gif` to
+  `.webp`/`.mp4` — smaller and more efficient than what this session copied
+  in originally.
+- The Windows 95/XP icon set (`public/icons/win95-winxp/`, dozens of files)
+  was deleted, and a new `lightning.svg` (`data-testid="lightning"`, with
+  `boil-line`) appears in `Hero.tsx` where the ASCII desktop icons used to be
+  rendered. Not investigated further this session — check `Hero.tsx` and
+  `Hero.module.css` for the current ASCII-stage iconography before assuming
+  the old desktop-icons behaviour still applies.
+- Three more weights of PP Neue Montreal were added
+  (`app/fonts/PPNeueMontreal-{Bold,Medium,Regular}.otf`), alongside the
+  existing Book weight.
+
+### Case study content
+
+- **Spotify Jam** — drafted with `portfolio-writer`, then the user rewrote it
+  by hand into a punchier six-section style (no em dashes, bulleted beats
+  under each bolded topic). The live copy in `data/caseStudies.ts` is folded
+  in from `docs/case-studies/spotify-jam.md`, which is the user's editing
+  surface going forward — check that file before assuming the data file is
+  current.
+- **Seamless Strategy** — drafted, then the four biggest gaps a
+  `/portfolio-review` pass found (no wrong assumption, no rejected direction,
+  no cost-of-alignment, no adoption number) were closed with material the
+  user had another agent pull from the real internal docs.
+- **Focals by North** and **Christie Digital** — built from raw material in
+  `Desktop/North` (Kona) and the user's old personal portfolio site
+  (`Desktop/Portfolio Website`), since `Desktop/Christie` turned out to be
+  empty. `portfolio-review` findings led to real fixes (added a milestone fact
+  where the entry had zero numbers, matched the "0→1" language every other
+  entry's Scope fact already used).
+- A new skill, `.claude/skills/portfolio-review/SKILL.md`, audits case studies
+  against a staff/principal hiring bar (positioning, story structure, scope,
+  hidden mess, selectivity, craft evidence). Companion to `portfolio-writer`.
+- `docs/case-studies/*.md` — one file per case study, meant for the user to
+  hand-edit. Fold changes back into `data/caseStudies.ts` on request; don't
+  assume the two are in sync without checking.
+
+**Real media assets were added, then reverted, then two specific ones were
+restored individually** (the Focals hero video, `/assets/focals.mp4` — note
+this is the *original* placeholder video, not `focals-homescreen-modules.mp4`,
+which was copied in from Kona and then explicitly rejected). If asked to "add
+real images" again: verify each asset by opening it before assigning a
+caption — two real mismatches were caught this way (a file named
+`fusion_playlist_editor.png` was actually the nav spec; an "alexa" folder
+dated 2017 was an unrelated living-room concept, not Focals). Never invent a
+caption for a slot with no verified real asset — grey placeholder is better
+than a confident, wrong one.
+
+### Earlier fixes this session, still standing
+
+- **Header/column alignment at wide viewports.** Two rounds: the first fix
+  matched class *names* between the header and the columns but not
+  *structure* — padding ended up applied twice (once inside the header's own
+  max-width box, once via the parent that already provided it for the
+  columns), so the header still drifted right at wide viewports. Fixed by
+  moving the header's padding to its outer element, matching exactly how
+  `case-study-body` → `case-study-columns` already works. Lesson: matching
+  class *strings* is not the same as matching *box structure*.
+- **Second column stretches to the header's right edge.** It had a
+  `max-w-[70ch]` readability cap that stopped it short of the grid track's
+  true width. Removed, per the user's request — the rail column (`22rem`)
+  was explicitly left alone.
+- **The sketch correction's `getExtentOfChar` fix** — see the checklist above,
+  still in place and still unverified on a real device.
+- **About Me** — a real 5th sheet (not a case study), reusing `CaseStudyView`
+  with a `CaseStudy`-shaped object in `data/about.ts` kept outside the
+  `caseStudies` array. `caseStudyRoute()` in `data/caseStudies.ts` is the one
+  place that knows `/about` differs from `/work/[slug]`. The "next project"
+  loop runs through it too: last case study → About → first case study,
+  wired as an explicit override in `app/work/[slug]/page.tsx` and
+  `app/about/page.tsx`, not by adding About to the shared array (that would
+  also make it a duplicate `/work/about` static route via
+  `generateStaticParams`). **Correction made mid-session:** About was
+  initially left out of the page indicator and the next-project loop
+  entirely — the user had to point out both omissions. Don't infer scope
+  narrower than asked; "make it an About page instead of a case study" did
+  not mean "remove it from the places a case study normally appears."
+
+**Superseded, not accomplished:** this session's earlier attempt at hardening
+ASCII's mobile plane scaling (`visualViewport`/`orientationchange` listeners
+plus a delayed re-measure) was reverted after it caused a real desktop
+regression — see the checklist above. Do not re-add it without a way to
+verify the fix actually helps before landing it.
+
+### Checklist completed locally (2026-08-31) — the parallel session's own log
+
+- [x] Default treatment arrow now rests in the ink colour; treatment arrows
+      retain their individual accents.
+- [x] Sketch headline alignment: removed its extra 12px post-centring lift,
+      so the measured ink now shares the other treatments' centre line.
+- [x] Sketch treatment's lower-right doodle is now the user-supplied
+      `public/assets/lightning.svg`, retaining the existing responsive
+      bottom-right placement and scale and sharing the cool S's `#0040C0`
+      sketch ink.
+- [x] Case-study home icon now sits above the title row instead of overlapping
+      it, and maps its black SVG ink to the title's `#1C1C1C` colour while
+      retaining the line-boil treatment.
+- [x] The header home icon now uses the supplied five-frame SVG sequence in
+      `public/assets/home-animation-1.svg` through `home-animation-5.svg`.
+      It plays forward as the header collapses and backwards when the full
+      header returns. Collapse hides with the compact header; rebuild waits
+      180ms for the expanding header to clear the icon, and reduced-motion
+      visitors receive the final frame directly.
+- [x] The on-page work overviews now use Spotify Jam's concise, first-person
+      structure: a short setup, named beats, and supporting bullets. They are
+      designed as an invitation to an interview, not a full case-study report.
+- [x] Revealed home-stack cards use larger title and subheader type, plus more
+      left and bottom padding so the enlarged copy has room to sit inside each
+      sheet instead of hugging the fan edges.
+- [x] Sticky header stays compact at every nonzero scroll position and expands
+      only at the exact document top, so body copy never sits behind it.
+- [x] Removed the pull-to-exit gesture, helper modules, tests, and progress UI.
+- [x] Desktop wheel input captures the five-sheet home stack in discrete steps;
+      a click or moving onto a revealed card hands control back to the cursor.
+- [x] The revealed next-project label is bold.
+- [x] Long reads show their first two sections with a `Read more` toggle before
+      the gallery; short case studies remain fully visible.
 
 ## History worth knowing
 
@@ -895,3 +1136,738 @@ the load story, which turned "pick one" into "show all three in sequence,
 because the sequence is the point" — a sketch becoming a prototype becoming
 finished work. That is why the treatments are no longer interchangeable and why
 deleting one is a content decision rather than a cleanup.
+
+## Session: cross-browser treatment bugs — ASCII sizing and two Firefox draw-ins (2026-09-02)
+
+**Do not push. See the callout at the top of this file.**
+
+This session chased three separate, real bugs across the ASCII and sketch
+treatments, reported by the user directly comparing browsers/devices rather
+than from code reading alone. One early fix attempt was wrong and fully
+reverted; the other three are landed, tested, and (as far as they can be
+without a real Brave/Firefox session) verified.
+
+### The ASCII camera was closer to the plane than the plane was wide
+
+**This is almost certainly the real fix for the long-running "ASCII looks
+smaller and shifted left" reports**, on desktop, that survived several earlier
+attempts this project (see the checklist entry above).
+
+Root cause, found by working the perspective maths by hand rather than by
+guessing: `ASCII_CAMERA_DISTANCE` was `30`, but the plane's own half-width
+works out to roughly `32` — **the plane is wider than the camera is far from
+it.** `mesh.rotation.y` tilts the plane on every hover (and the intro's own
+demo sweep leaves it tilted for the back half of its stage — see below), and
+rotating a plane that size that close to the camera is severe keystoning in
+disguise: one edge moves closer, the other farther, by `halfWidth × sin(angle)`.
+At the tilt's own designed maximum (~8.6°) that puts one edge at depth ≈25 and
+the other ≈35 — a ~38% difference in how large each edge projects. Blurred
+through the coarse ASCII-character sampling, that reads as "the whole word got
+smaller and drifted," not "it leaned." An orthographic `cos(angle)` estimate
+badly understates this effect when the camera sits this close relative to the
+plane — that understatement is why this was dismissed as too small to matter
+earlier in the same conversation, before the maths were redone properly.
+
+Fixed in `lib/asciiText.ts`: `ASCII_CAMERA_DISTANCE` is now 10× farther away,
+and `ASCII_CAMERA_FOV_DEG` is solved backward from the old 45°/30-unit pair so
+`visibleWorldHeight()` — the value every plane-sizing formula in the file is
+built on — comes out identical to six decimal places (there's a test pinning
+this). Only the camera's sensitivity to rotation changes; the untitled/resting
+size is provably unaffected.
+
+**A reverted, wrong intermediate step, for the record:** before finding this,
+a `textTextureLayout()` fix was landed to make the extrusion's canvas margins
+symmetric (the extruded body only trails down-and-right, so the old flat
+margin biased the face a few px left/up within its own texture). That fix is
+real and still in — `lib/asciiText.ts`'s `textTextureLayout()` — but it was
+never the dominant cause; the effect is under 5px on a ~650px word. Don't
+mistake it for the fix if this regresses again; check the camera-distance
+maths first.
+
+**Playwright testing at this exact bug produced a false negative** — worth
+remembering. Every automated check dispatched a synthetic hover at the
+headline's *centre*, which drives `pointer.targetX` to ~0 — level, no tilt,
+no keystoning. That's why repeated Playwright measurements found ASCII and
+Warp within 2–5% of each other and reported no bug, while the user, whose real
+cursor is essentially never exactly centred, saw it every time. The bug only
+surfaced once the user sent same-window, before/after screenshots directly.
+**Lesson:** a synthetic interaction test that always drives a value to its
+"resting" state can hide a bug that depends on that value being anything else
+— don't trust it as proof of parity for anything cursor-position-dependent.
+
+### Two unrelated Firefox draw-in bugs, both in `StrokeText.tsx`
+
+Both reported directly by the user testing in real Firefox; neither shows up
+in jsdom, and neither was something this session could verify itself once the
+user asked to stop using Playwright.
+
+1. **The correction mark's X and hand-written N "popped in" instead of
+   drawing.** They used an SVG `pathLength={1}` trick (dasharray/dashoffset of
+   1 = "0% to 100% drawn", author-normalised) so the GSAP tween wouldn't need
+   each path's real length. GSAP writes `strokeDashoffset` as an inline style,
+   and **Firefox does not rescale a style-set stroke-dasharray/-dashoffset
+   against `pathLength`** — it renders in the path's real units instead. A
+   dasharray/dashoffset of `1` against a path dozens of units long is
+   imperceptible, so the mark was always ~100% drawn; only its `opacity: 0 →
+   1` set was actually doing anything, hence "pops in."
+
+   Fixed by measuring each mark's real length with `getTotalLength()` (an old,
+   universally-supported SVGGeometryElement method, unrelated to the newer
+   `pathLength` attribute's rendering-normalisation semantics) instead of
+   relying on `pathLength` at all. `realPathLength()` in `StrokeText.tsx`, with
+   a `1000`-unit fallback (`UNMEASURED_DASH_LENGTH`) for jsdom and any engine
+   without the method. `pathLength={1}` is removed from all three affected
+   elements (hatch lines, correction cross, correction letter) — leaving it in
+   would have been misleading since it's no longer load-bearing. A regression
+   test (`components/StrokeText.test.tsx`, "dashes each mark to its own
+   measured length") mocks `getTotalLength()` and was confirmed to fail against
+   the pre-fix component before the fix was written.
+
+2. **The whole headline's outline (and, dominated by the same visual cue, its
+   fill) also popped in — a different, bigger version of the same class of
+   bug.** The main letters are `<tspan>`s inside a `<text>`, not `<path>`
+   elements, and stroke-dasharray/-dashoffset revealing a *stroked text
+   glyph's outline* progressively is not reliably supported across engines the
+   way it is for a plain path or line — this is a real, separate gap from the
+   `pathLength` issue above, not fixed by it.
+
+   Rather than rebuild the per-letter staggered dash-draw into something
+   text-safe (a much bigger change, and the per-letter stagger still works
+   fine on engines where dasharray-on-text *is* respected), this session added
+   an independent, purely additive fallback: a second clip-path
+   (`outlineWipeId` / `outlineWipeRectRef`) wraps the stroke layer and sweeps
+   open left-to-right over `outlineEnd` seconds, in parallel with the existing
+   per-character dash animation. A clip-path only ever crops already-rendered
+   output, so it reveals the word regardless of whether the dash animation
+   underneath it is doing anything — correct on every engine, and redundant
+   but harmless where the finer per-letter draw already works. Applied to both
+   `data-stroke-layer` and the mirrored `data-correction-stroke` glyph.
+   Three new tests in `components/StrokeText.test.tsx` ("the outline reveals
+   itself independently of stroke-dasharray") pin the clip starting closed,
+   opening to the word's full (padded) width, and being wired to the stroke
+   layer's `clip-path`.
+
+   **Not yet separately confirmed:** whether the pencil-hatch fill (fix #1,
+   above) was already invisible-but-correct in Firefox once its own
+   `pathLength` bug was fixed, or whether "fill also pops in" was purely the
+   outline dominating what's visible. No further fill-specific change was made
+   beyond fix #1 — if hatch shading is *still* reported as popping in after
+   this, that needs fresh investigation, not an assumption that fix #1 covers
+   it.
+
+### Brave's ASCII bug — parked, fingerprinting protection ruled out
+
+The user has "Block fingerprinting" enabled in Brave; ASCII is still broken
+there after the camera-distance fix above resolved it everywhere else tested.
+**Toggling Shields off for `localhost:3000` and reloading made no
+difference** — this rules out Brave's farbling/fingerprinting protection as
+the cause (that was the leading hypothesis; it's wrong). No other Brave-only
+mechanism has been identified. **Explicitly parked by the user** — do not
+keep investigating this unprompted. A console diagnostic script (measures
+`devicePixelRatio`, the frame/word-metrics rects, and scans both the ASCII
+output canvas and the Warp canvas for their real rendered ink bounding boxes)
+was handed to the user to run in Brave's own DevTools when they want to pick
+this back up; no results from it were received before the topic was parked.
+Whoever resumes this should ask for that data first rather than re-guessing
+from scratch — Shields-off already rules out one whole category of
+explanation.
+
+### The outline-wipe Firefox fix (above) briefly broke the letter stagger everywhere
+
+Landing the clip-path fallback for Firefox's stroke-dasharray-on-text gap
+(previous session entry) had a real side effect the user caught immediately:
+**on every engine where the per-character dash animation already worked
+correctly, running the clip-path sweep in parallel with it fought the
+stagger.** The clip reveals the whole word in one continuous left-to-right
+sweep regardless of how far any individual letter's own stroke has drawn — so
+a letter (the last one, i.e. the correction "N", most noticeably) could be
+clip-revealed at a point where its own dash-draw was already at or near
+completion, and it read as arriving with the rest of the word instead of
+visibly drawing in sequence. **"Fixes Firefox" is not the same bar as "doesn't
+regress everyone else"** — a fallback that runs unconditionally next to a
+mechanism that already works somewhere is still a regression there.
+
+Fixed by scoping the clip-path fallback to Firefox specifically
+(`isFirefox` state in `StrokeText.tsx`, read from `navigator.userAgent` inside
+a `useEffect` — after mount, not during render, the same reason
+`prefers-reduced-motion` is read that way elsewhere in this file — so server
+and client agree on the first paint and every other engine's JSX is
+byte-for-byte what it was before the Firefox fix existed). User-agent sniffing
+is a deliberate, narrow exception to feature-detection-over-sniffing: this is
+a documented *rendering* difference for a specific engine, not something
+`@supports` or a capability check can express. A regression test
+("leaves the per-character stagger alone on every other engine") asserts no
+clip-path is present at all on a non-Firefox UA; the existing Firefox-path
+tests now mock `navigator.userAgent` to exercise the gated branch.
+
+### Watch out for, this session
+
+- **A camera positioned closer than the geometry it renders is wider is a
+  latent keystoning bug**, even if the untitled/resting state looks perfectly
+  correct. Check this specifically any time a 3D-perspective treatment "looks
+  fine at rest but wrong under interaction."
+- **`stroke-dasharray`/`-dashoffset` reveal animations are not equally
+  reliable across engines for every element type.** Plain `<path>`/`<line>`
+  geometry: fine, but verify `pathLength`-based normalisation isn't silently
+  assumed (Firefox doesn't rescale a style-set dasharray against it). Stroked
+  SVG *text*: don't rely on dasharray revealing it at all cross-browser — use
+  a clip-path sweep instead, or verify first.
+- **A synthetic test that always drives an input to a "neutral" value (cursor
+  dead-centre, no tilt) can produce a false negative for any bug that only
+  shows up away from that value.** Vary the input, or get a real screenshot,
+  before trusting an automated parity check.
+- **A cross-browser fallback that runs unconditionally is a regression risk on
+  every engine where the original already worked.** Scope it to the specific
+  engine that needs it (see `isFirefox` in `StrokeText.tsx`) rather than
+  running both mechanisms everywhere "to be safe."
+- The user has asked this session to stop using Playwright directly; further
+  browser verification here depends on the user's own testing and
+  screenshots, not on this session driving a browser itself.
+- `public/icons/win95-winxp/*` showed up **staged for deletion** in `git
+  status` this session, unrelated to anything done here — pre-existing,
+  uncommitted state, presumably from the icon-set swap logged above. Left
+  untouched; flagging it here so it isn't mistaken for a new, unexplained
+  change later.
+
+## Session: page-indicator interactions and a case-study page punch list (2026-09-02)
+
+**Do not push. See the callout at the top of this file.**
+
+### PageIndicator: wider hover target, hover-synced dot scale, clickable chip
+
+`components/PageIndicator.tsx`:
+- `HOVER_TARGET_RIGHT_EXTENSION` raised 48 → 80px, per direct request ("extend
+  a little bit further to the right").
+- The dot's scale-up used to be pure CSS `:hover`/`:focus-visible`, which only
+  fires with the cursor directly over the 14px dot -- not the wider hit area
+  around it that reveals the chip. It's now driven off the same `revealed`
+  state as the chip (`REVEALED_DOT_SCALE`, an inline `transform`), so hovering
+  anywhere in the hit area scales the dot, not just the dot itself.
+- The chip was `pointer-events-none` (decorative only); a click there did
+  nothing. `onClick` moved from the dot's own `<button>` to the shared
+  hit-area wrapper `<div>` (a button's click still bubbles there, so keyboard
+  Enter/Space still works unchanged), and `pointer-events-none` was dropped
+  from the chip so a click on it also selects the page. `aria-hidden` stays on
+  the chip -- its text duplicates the button's own accessible name.
+
+### Wheel remapped: cycles the rail, no longer touches the stack
+
+Built after being interrupted once by the case-study punch list below. Per
+the two scoping answers given at the time — **clamp at the ends** (no
+wrap-around) and **the stack stays cursor-only** (wheel never fans it open) —
+the whole `wheelCapturedRef`/`wheelStepRef`/`wheelDeltaRef` mechanism in
+`hooks/useFanProgress.ts` is **deleted outright**, along with
+`FAN_WHEEL_STEP_DELTA_PX`, `FAN_WHEEL_STEP_COUNT`, and `travelForWheelStep`
+from `lib/fanProgress.ts` (and their tests) — not left as dead code, matching
+this project's usual practice for a removed mechanic (see the pull-to-exit
+deletion earlier in this file). `useFanProgress`'s `wheelStepCount` parameter
+is gone too; `app/page.tsx`'s call site no longer passes it. The now-orphaned
+`data-stack-card` attribute (`CaseStudyPreview.tsx`) — it existed solely so
+the old wheel handler could detect "cursor moved onto a revealed card" — is
+gone as well.
+
+The replacement lives entirely in `PageIndicator.tsx`: a `wheel` listener
+(gated on `pointerType === "fine"` and the same `interactive` flag that
+already governs the rail's own opacity fade, so it doesn't cycle a rail
+nobody can see) accumulates delta the same way the old handler did
+(`WHEEL_STEP_DELTA_PX`, a fresh local constant — the old one was deleted with
+the rest of `lib/fanProgress.ts`'s wheel code) and steps `revealed` by ±1,
+clamped to `[0, caseStudies.length - 1]`. Starting from nothing highlighted,
+the first notch lands on the first page scrolling down or the last one
+scrolling up, rather than needing a throwaway notch just to establish a
+position.
+
+Enter now selects whichever page is highlighted, from any source — hover,
+keyboard focus, or the wheel, which (unlike a tabbed-to dot) has no DOM focus
+of its own to hang a native activation off. A global `keydown` listener
+handles this, but only while `revealed !== null`, and it explicitly steps
+aside when `document.activeElement` is the highlighted dot itself — that dot
+already gets Enter for free from its own `<button>` (a real browser dispatches
+a click, which bubbles to the hit area's `onClick`), and firing both would
+select the page twice. jsdom doesn't simulate that native
+focused-button-dispatches-click-on-Enter behaviour from a bare `keydown`, so
+the regression test for it fires the keydown (asserting `onSelect` is *not*
+called by the global handler) and then an explicit `click` (asserting it *is*
+called, exactly once) to model what a real browser actually does across both
+steps.
+
+### Case study page punch list
+
+All seven items the user listed in one message. Numbers below match the order
+they were given in, not necessarily edit order:
+
+1. **Home icon moved back to the left**, over the title, mirroring where it
+   sat before an earlier session moved it to the right (over the next-project
+   circle). `app/globals.css`'s `.case-study-home` now uses `left:` instead of
+   `right:` — same formula, since the header's padding is symmetric
+   (`--case-study-header-inline-inset` is shared by both sides already).
+2. **The header-rebuild icon animation could replay forward mid-rebuild.**
+   `.case-study-home` is `pointer-events: none` while the header is
+   collapsed; the moment scrolling back to the top flips that to `auto`, a
+   cursor already sitting over the icon's on-screen position is treated as
+   freshly entering it (no actual movement needed — this is standard
+   pointer-events/hit-testing behaviour, not a bug specific to this site). That
+   fired the hover "wiggle" (which always restarts at frame 1), stomping the
+   in-progress reverse rebuild and reading as the whole animation playing
+   forward again. Fixed in `components/HomeIconAnimation.tsx` with a
+   `suppressHoverRef` that blocks hover-replay for 600ms around every `shrunk`
+   change (comfortably past the reverse sequence's own ~500ms duration:
+   `REBUILD_DELAY_MS` + four `REBUILD_FRAME_DURATION_MS` steps). A genuine
+   hover once things have settled still works — see the new regression test
+   in `HomeIconAnimation.test.tsx`.
+3. **A refresh partway down a case study page used to keep that scroll
+   position** (and therefore the collapsed header) — deliberate, per an
+   earlier session's own comment ("a reload partway down the page has no
+   gesture to read, so go on position"). The user now wants the opposite:
+   always land at the top with the full header. `CaseStudyView.tsx` gained a
+   `useLayoutEffect` (fires before paint, to minimise any visible snap) that
+   sets `history.scrollRestoration = "manual"` and calls `window.scrollTo(0,
+   0)` on mount, ahead of the existing scroll-position effect.
+4. **The intro subheader now uses PP Neue Montreal** (`font-body font-bold`)
+   instead of PP Frama (`font-display`) — `case-study-intro-title` in
+   `CaseStudyView.tsx`.
+5. **The next-project label is one weight lighter**: `font-bold` (700) →
+   `font-medium` (500) on `case-study-next-label`. PP Neue Montreal has real
+   400/500/700 weight files registered (`app/layout.tsx`), so 500 is a genuine
+   Medium weight, not a synthesised one.
+6. **Responsive reorder: subheader → facts → body text**, not facts → (subheader
+   + body text) as it was. The subheader `<h2>` is no longer nested inside
+   `case-study-detail` — it's now its own sibling grid item alongside
+   `case-study-overview` (facts) and `case-study-detail` (overview paragraph +
+   sections), all three direct children of `case-study-columns`. Mobile order
+   comes from Tailwind `order-1/2/3` (matching DOM order, so reading order for
+   assistive tech is unaffected); at `lg:` each gets an explicit
+   `col-start`/`row-start` (`lg:order-none` cancels the mobile order) to
+   reproduce the original two-column layout — the facts aside additionally
+   gets `lg:row-span-2` so it still reads as one continuous left column
+   beside both the subheader and the long read beneath it. Spacing between
+   all three now comes purely from the grid's own `gap-12`/`lg:gap-20`; the
+   now-pointless `.case-study-intro` wrapper (and its `margin-bottom`) and
+   `.case-study-intro-copy`'s `margin-top` were removed rather than left as
+   dead, double-counted spacing.
+7. **The tagline is now `font-body` (PP Neue Montreal) instead of
+   `font-script`** (the Adrian handwriting face), and therefore has no
+   line-boil (boil is keyed to `.font-script`/`.boil-line` globally — removing
+   the class removes the effect for free, no separate opt-out needed). Framed
+   by the user as "let's see what it looks like" — a live preview to react to,
+   not a confirmed final decision. **Update: reverted.** The user tried it and
+   preferred the original — `hero-tagline` is back to `font-script` (the
+   Adrian handwriting face, with its line-boil). Don't re-suggest PP Neue
+   Montreal for this element without a new reason to revisit it.
+
+Full suite at 451/451 after this batch; `tsc`/`lint` clean.
+
+## Session: OG image, case-study dates/contact, the wheel-floor mechanic, and a much shorter intro (2026-09-03)
+
+**Do not push. See the callout at the top of this file.**
+
+### Placeholder social-share image, and the metadata that was entirely missing
+
+`app/layout.tsx` had only a plain `title`/`description` — no `og:image`, no
+Twitter card, so a shared link showed up bare. Added:
+
+- `app/opengraph-image.tsx` — a build-time-generated 1200×630 PNG via
+  `next/og`'s `ImageResponse` (ADRIAN in the real PP Frama black weight, on
+  the site's own cream, with the tagline underneath). **`export const dynamic
+  = "force-static"` is required on this route under `output: "export"`** —
+  the build fails without it (`next build` caught this immediately; the
+  local Next.js docs didn't mention the requirement, so this needed a real
+  build, not just `tsc`, to surface). `app/twitter-image.tsx` re-exports the
+  same image under the file-name convention Twitter/X looks for specifically
+  — route segment config (`dynamic`) has to be declared literally in that
+  file too; it cannot be re-exported, Next.js parses it per-file.
+- `metadata.openGraph` / `metadata.twitter` (`card: "summary_large_image"`)
+  added alongside the existing title/description.
+- `metadata.metadataBase` set to `https://adrianklisz.com` — required to
+  resolve the image URLs to an absolute address (`next build` warns loudly
+  and falls back to `localhost:3000` without it, which would silently ship a
+  broken image URL to production). **This is a guess from the user's email
+  domain, not confirmed** — verify it's actually where this deploys before
+  trusting the generated URLs.
+
+### About page: real contact links, not placeholder text
+
+`CaseStudyFact.value` (`data/caseStudies.ts`) gained a third shape,
+`CaseStudyFactLink[]` (`{ label, href }`), rendered as real `<a>` tags in
+`CaseStudyView.tsx`'s fact list (previous shapes — a plain string, or a
+plain bulleted `string[]` — render unchanged). `data/about.ts`'s "Say hi"
+fact now uses it: `hello@adrianklisz.com` (`mailto:`) and a LinkedIn profile
+link. Location, current role, and the bio section are still placeholder —
+not asked for, and not something to invent.
+
+### Case study dates, as a second line under Role
+
+Pulled from `docs/case-studies/*.md` — the user's own editing source, which
+already had a `Timeline` row per study that never made it into
+`data/caseStudies.ts`. Rather than add a fourth fact row, each `Role` value
+is now `"<role>\n<dates>"` — a plain string with an embedded newline.
+`.case-study-fact dd` already has `white-space: pre-line` (pre-existing
+CSS), so this renders as two clean lines with no bullet and needed zero
+component changes. If a similar "value reads as two lines" need comes up
+again, reach for this pattern before reaching for the bulleted-list one —
+they read differently and this one is what "role, then dates" wants.
+
+### The wheel-floor mechanic (attempt three at this interaction, and the one that stuck)
+
+Third redesign of wheel-vs-cursor on the home page this project, worth
+reading the arc of if touching it again:
+
+1. Wheel captured and stepped through the stack directly (discrete steps).
+   Removed — conflicted with the cursor driving the same fan.
+2. Wheel decoupled entirely, remapped to cycling the page-indicator rail
+   instead. Built, shipped, then explicitly reverted: **"doesn't feel
+   natural... very unexpected."** Lesson: decoupling the wheel from the
+   thing it visually looks like it should control (the stack, right there
+   on screen) is the wrong instinct even when it resolves the input
+   conflict cleanly on paper.
+3. **What actually shipped**: the wheel does not decouple from the stack at
+   all — cursor position still drives everything, unchanged, exactly as it
+   already did (down opens further, up closes, no new logic there). The
+   wheel's only job is a one-time kick: scrolling down from closed jumps the
+   reveal to "the first card" (`travel = fanSplit` — the exact point where
+   the fan finishes opening and the emphasis peak lands on the first case
+   study, an existing, meaningful threshold in the interaction model, not an
+   arbitrary new constant) without needing the cursor to travel there.
+
+   The real difficulty was that the very next `mousemove` after a wheel
+   notch is almost always incidental (a visitor's hand is on the wheel, not
+   deliberately steering the cursor at that instant) and would otherwise
+   read the cursor's actual, unrelated position and snap the reveal straight
+   back to 0. Fixed with `wheelFloorRef` in `hooks/useFanProgress.ts`: the
+   wheel sets a floor, not a target. A `mousemove` while a floor is active
+   only overrides it if the cursor is genuinely moving *up* (closing is the
+   whole point of "cursor up closes it," so that always wins immediately) —
+   otherwise the applied value is `Math.max(floor, computedFromCursor)`,
+   and the floor clears itself the moment the cursor's own position
+   naturally catches up past it. `lastMouseYRef` tracks direction between
+   calls to tell "genuine upward move" apart from "cursor happens to be
+   somewhere lower right now."
+
+   `PageIndicator`'s wheel-cycling from attempt 2 is fully removed (not left
+   dormant) — the wheel does not touch that rail at all any more, per direct
+   instruction after the floor mechanic shipped and attempt 2 was still
+   partly wired up alongside it (both were firing on the same scroll for one
+   turn — worth double-checking old feature removal actually removed the
+   *quicker-built version* too, not just the one most recently discussed).
+
+### Card padding
+
+`CaseStudyPreview.tsx`'s sheet copy had asymmetric padding (`pl-10 pr-6
+pt-6 pb-10`, wider on the left and bottom than the right and top). Brought
+down to symmetric (`pl-6 pr-6 pt-6 pb-6` / `md:pl-10 md:pr-10 md:pt-8
+md:pb-8`) per direct request — the tighter pair (right/top) was already
+established as the intended baseline; left/bottom were the outliers.
+
+### A much shorter intro: five stages, ~3.4s instead of nine
+
+Replaced the sketch → ascii → warp narrative (9s, each treatment drawing
+itself in over 3s) with a quick flip-through: **default (400ms) → sketch,
+already finished (1s) → ascii, leaning (1s) → warp, circling (1s) → default.**
+Direct motivation: the 9-second version was already flagged as a real cost
+("Next steps" list, above) for a returning visitor sitting through the whole
+story every load; this resolves it by being fast rather than by gating it on
+`sessionStorage`.
+
+- `lib/headlineIntro.ts`: added a `"default"` phase to
+  `HeadlineIntroPhase`/`HEADLINE_INTRO_STEPS` (mapped to no active
+  treatment in `Hero.tsx` — same fallthrough `null` → resting Warp that
+  `"final"` already used, so this needed no new mapping logic at all).
+  `HEADLINE_TREATMENT_DURATION_MS` is now 1000ms (was 3000), and
+  `HEADLINE_HANDOVER_MS` dropped from 600ms to 250ms — at the old handover
+  length, fade alone would have eaten well over half of each new one-second
+  beat.
+- **Sketch shows itself already drawn, filled, and corrected — no draw-in,
+  ever, intro or hover.** `Hero.tsx` now passes `animate={false}`
+  unconditionally instead of `animate={!intro.done}`. This does not just
+  affect the intro: a *later hover* on sketch was already static by design
+  before this change (the old `!intro.done` was already `false` once the
+  intro finished), so nothing changed there — the only actual behaviour
+  change is that the intro's own sketch beat is now static too.
+- **Ascii keeps a single scripted motion — a gentle one-way tilt, left to
+  right —but no longer types itself in.** `typeProgress` is now a flat `1`
+  instead of being driven by `intro.phaseProgress`; `demoTiltMs` is
+  unchanged (still `ASCII_INTRO_DEMO_MS` during the ascii phase). The
+  existing tilt behaviour (`demoTiltAt` in `lib/asciiText.ts`, already a
+  single one-way lean per its own doc comment) turned out to already be
+  exactly what was wanted here — no new ascii-side code needed.
+- **Warp gets a new circling motion, replacing the sweep, for this specific
+  use.** The old sweep crosses the whole headline end to end — sensible over
+  a 2.2s demo, but touring the entire word in a one-second beat would look
+  frantic, and it doesn't need to prove anything beyond "this reacts to a
+  pointer." `demoCircleAt()` (new, `lib/warpText.ts`) traces a small ellipse
+  around the centre in the same 0-1 uv space `demoPointerAt` uses, with the
+  radius eased up from centre and back down across the run (a sine
+  envelope) so it starts and ends exactly at centre rather than snapping
+  onto the circle's edge or stranding the pointer off to one side when the
+  demo hands over. `WarpText` gained a `demoMode?: "sweep" | "circle"` prop
+  (default `"sweep"`, so every existing caller and test is untouched) read
+  through a ref in the same rAF loop as `demoSweepMs`, for the identical
+  reason that value is ref'd rather than a dependency (invariant 11, above:
+  putting either in the effect's dependency array would rebuild the WebGL
+  context to read a primitive). `Hero.tsx` passes `demoMode="circle"` for
+  its own warp usage; the sweep function, its constant, and its full
+  existing test suite are all still there, untouched, in case anything ever
+  wants the old motion back.
+- `lib/headlineIntro.test.ts` was rewritten close to fully — the old sketch
+  duration and "does the correction mark finish drawing before handover"
+  tests no longer apply at all (there's no draw-in to finish inside the
+  stage any more). `hooks/useHeadlineIntro.test.ts` and `app/page.test.tsx`
+  needed small fixes for the shifted starting phase (`"default"` first, not
+  `"sketch"`) — the latter had a checked-in comment ("assert the frame is
+  present rather than one particular treatment") that the assertion right
+  below it didn't actually follow; fixed to match its own stated intent
+  (assert on the always-mounted `warp-text`, not a specific phase's testid).
+
+Full suite at 458/458 after this session; `tsc`/`lint`/`next build` all
+clean. Verified with a real production build, not just `tsc` — the
+`opengraph-image` static-export requirement above would not have surfaced
+otherwise.
+
+### Then five rapid rounds of timing tuning, ending in a hard cut
+
+Once the shorter intro above was live, timing got tuned in quick succession,
+each request landing on the same handful of exported constants in
+`lib/headlineIntro.ts`:
+
+1. "faster transitions" → `HEADLINE_HANDOVER_MS` cut from 250ms toward 150ms.
+2. "linger on default for 1s, then 1.5s per treatment" →
+   `DEFAULT_INTRO_DURATION_MS` = 1000, `HEADLINE_TREATMENT_DURATION_MS` =
+   1500.
+3. "should feel glitchy" → the crossfade was replaced with `glitchFlicker()`,
+   a smoothstep envelope perturbed by a decaying sine (`HANDOVER_FLICKER_CYCLES
+   = 2.5`), so a handover stutters instead of dissolving. Framed at the time
+   as a first pass since it couldn't be seen running.
+4. "make each treatment last 400ms" → `HEADLINE_TREATMENT_DURATION_MS` = 400.
+5. **"harsher — no crossfade, should feel like they're flashing by"** →
+   `HEADLINE_HANDOVER_MS` set to **0**. `handoverOpacityAt` now short-circuits
+   (`if (half <= 0) return 1`) rather than dividing by zero, so every
+   handover is a true hard cut with opacity pinned at 1 throughout —
+   including exactly on a boundary, where it used to be pinned at 0 instead.
+   `introStateAt`'s "done" check no longer waits an extra half-handover past
+   the last boundary, since there's no trailing fade-in left to finish.
+
+`glitchFlicker` was left in place and exported rather than deleted — it's a
+tunable currently dialed to zero-effect (any nonzero `HEADLINE_HANDOVER_MS`
+brings it back), not abandoned code. `lib/headlineIntro.test.ts` now pins its
+start/end/clamping/non-monotonic shape directly against `t`, independent of
+whatever the live handover constant is set to.
+
+**Worth watching for, unverified:** the hard cut gives up the fade's other
+job — hiding a treatment mid-mount before its own WebGL/SVG has initialised.
+Warp stays mounted throughout the intro and was never at risk from this, but
+ASCII and Stroke fully mount and unmount on every swap. If a swap *into*
+ascii or sketch shows a one-frame flash of unstyled fallback text now, that's
+this trade — needs a look in a real browser, not just the test suite.
+
+Full suite at 459/459; `tsc`/`lint` clean. `next build` not re-run for this
+specific batch (no static-export-sensitive files touched).
+
+### The default stage joins the others' beat, and a warp bug the request surfaced
+
+"Make the default treatment last the same time as the others" — rather than
+give `DEFAULT_INTRO_DURATION_MS` its own value equal to
+`HEADLINE_TREATMENT_DURATION_MS` (400), it now derives from that constant
+directly, so retuning the shared beat again moves every stage including the
+opening one without a second edit.
+
+Then "make the cursor in warp only move a few pixels, very subtle" —
+`WARP_DEMO_CIRCLE_RADIUS_X/Y` (`lib/warpText.ts`) dropped from 0.14/0.1 to
+0.015/0.01 (uv-space fractions of the rendered headline).
+
+That second request, tuning the demo circle's radius, is what surfaced a real
+bug the small radius made obvious: **the resting headline kept a faint warp
+distortion after the intro ended, instead of settling to plain undistorted
+text.** Root cause, in `components/WarpText.tsx`: the effect that reacts to
+`demoSweepMs` nulls `demoSweepStartedAtRef` the instant the prop drops to 0
+(when Hero leaves the warp phase). The render loop's only recentring branch
+required that same ref to still be non-null — a condition that same effect
+had just made false, in the same tick. Both clocks (React's intro-phase
+timer and WarpText's own internal one) are aiming at the same duration, so
+the prop update usually beat the loop to noticing the demo had ended,
+leaving `pointer.strength` (which drives `uHover`/`uPointerActive`, and with
+it the ambient noise warp — not just the pointer lens) parked wherever the
+demo had last eased it toward, i.e. still on. A race, not a one-off glitch —
+which is why it wasn't obviously visible with the old, much larger radius.
+
+Fixed with an explicit one-shot signal instead of relying on the loop to
+notice in time: `demoEndRequestRef` (a counter) increments inside that same
+effect whenever `demoSweepMs` transitions from active to 0. The render loop
+compares it against a locally-held `handledEndRequest` each frame and, on a
+change, forces `pointer.targetX/Y` back to centre and `targetStrength` to 0
+exactly once — independent of whichever clock happens to notice first. The
+old natural-expiry recentring branch (for a demo left to run past its own
+duration without the prop ever clearing) is kept alongside it, since it's
+still reachable for a caller other than Hero.
+
+Not covered by an automated test: `WarpText.test.tsx` only exercises the
+DOM fallback, since `typeof WebGL2RenderingContext === "undefined"` in
+jsdom bails out of the whole renderer/rAF effect before this code ever runs
+— the same reason the demo-mode ref-reading pattern earlier in this file
+went untested too. Needs a look in a real browser to confirm the resting
+Warp headline is now clean after the intro finishes.
+
+Full suite at 459/459 (unchanged — no new coverage was possible here);
+`tsc`/`lint` clean.
+
+### Faster transitions, and a lift that had gone missing
+
+"Make the default treatment last the same time as the others" turned into a
+couple more rounds of live tuning against the running dev server:
+`HEADLINE_TREATMENT_DURATION_MS` went 400 → 250 ("faster transitions
+please") → 350 ("a little slower, maybe 350") — each checked directly in the
+browser rather than described, since Turbopack hot-reloads the change
+instantly.
+
+That surfaced **"the sketch treatment is sitting a bit lower than the
+others"** — a real regression, not a new ask. `STROKE_INK_LIFT_PX = 12`
+(`lib/strokeText.ts`) was a calibrated nudge (added in `5a84705`, the commit
+that first aligned sketch's ink-centring against ascii) that made the
+sketch's vertical centring match the other treatments' — without it,
+`inkCentringOffset` centres on the *true* glyph ink, which reads a shade
+lower than where ascii/warp's own metric-based centring happens to land.
+It had been silently dropped from this session's still-uncommitted working
+tree: the Firefox-outline-wipe edits to `components/StrokeText.tsx` touched
+the same import block and the same `inkCentringOffset(...)` call site as an
+earlier, legitimately-reverted fix (the correction-mark `writeBelow`
+change), and the constant went out with it by accident. Restored both the
+constant and its use (`inkCentringOffset(box, centreY, STROKE_INK_LIFT_PX)`)
+— nothing else from that revert was touched.
+
+**Worth remembering:** this session's `lib/strokeText.ts` /
+`components/StrokeText.tsx` changes were never committed, so `git diff`
+against HEAD is the fastest way to audit exactly what this session has
+changed in a file — that diff is what caught this.
+
+Full suite at 459/459; `tsc`/`lint` clean.
+
+### The hard cut catching ascii mid-lean
+
+"Now it looks like ascii is sitting a bit low and maybe a bit to the right" —
+a second regression the hard-cut change (above) quietly created, this time
+in `demoTiltAt` (`lib/asciiText.ts`). Its scripted lean was designed to ease
+up to its peak angle and **hold there**, relying on the handover fade to
+disappear before anyone clocked it frozen mid-tilt — a design the file's own
+old comment stated outright. `ASCII_INTRO_DEMO_MS` is defined as
+`ASCII_INTRO_DURATION_MS - HEADLINE_HANDOVER_MS / 2`, which used to reserve a
+sliver of the stage after the sweep for exactly this settle; at
+`HEADLINE_HANDOVER_MS = 0` that reserve is also 0, so the lean is still
+sitting at its peak on the exact frame the hard cut fires. A tilted plane on
+a perspective camera reads as shifted and shrunk, not just angled — which is
+what "low and to the right" was.
+
+Fixed at the source rather than by clawing back settle time (the component's
+pointer-easing rate needs the better part of a second to visibly settle,
+which no longer fits in a 350ms stage regardless): `demoTiltAt`'s envelope
+changed from a one-way ease-and-hold (`phase * phase * (3 - 2 * phase)`,
+0 → 1) to a rise-and-return one (`Math.sin(phase * Math.PI)`, 0 → 1 → 0) --
+the same shape `demoCircleAt` already uses for warp's demo, for the same
+reason: whatever a scripted demo does, it needs to be back at rest by its
+own end now, since nothing hides the moment it hands off. It still never
+leans the other way (the sine stays non-negative over its domain), so the
+one-direction-only design this replaced is preserved -- it just no longer
+gets stuck at the far end of it. `lib/asciiText.test.ts`'s old "never
+doubling back" test asserted the previous hold-forever shape directly and
+had to go; replaced with tests for the new peak-then-relax shape and for
+landing back near level before the duration is up.
+
+Full suite at 460/460 (one net new test); `tsc`/`lint` clean. Not yet
+re-checked in a real browser — the WebGL renderer this drives can't be
+reached by jsdom, same caveat as the warp fix above.
+
+### Ascii's static texture centring: advance width isn't ink width
+
+The tilt fix above didn't fully explain it: "the ascii is still sitting a few
+px low and a few px to the right" persisted even without any lean in play,
+pointing at the texture's own static layout rather than the demo motion.
+
+`textTextureLayout` (`lib/asciiText.ts`) already centred vertically on tight
+ink bounds (`actualBoundingBoxAscent`/`Descent`) — provably symmetric
+regardless of their actual values, by construction. Horizontally it centred
+on `metrics.width` instead: the glyph run's *advance* width, not its ink
+width. A bold display face's left and right side bearings are rarely equal,
+so the tight ink doesn't sit centred within its own advance box — centring
+margins around that box left the ink itself a few pixels off from where the
+margins implied it should be. The exact same metrics-box-vs-ink-box mismatch
+already found and fixed for the sketch treatment's vertical centring
+(`STROKE_INK_LIFT_PX`, above), just on the other axis and a different
+treatment.
+
+Fixed by switching `textTextureLayout` to take `inkLeftPx`/`inkRightPx`
+(canvas's `actualBoundingBoxLeft`/`Right`) instead of a single advance width,
+centring the margins on `inkLeftPx + inkRightPx` and anchoring `baseX` at
+`marginX + inkLeftPx` — the same shape of fix as the vertical side, applied
+to the axis that was still missing it. `ASCIIText.tsx`'s call site passes
+the two bounding-box metrics instead of `metrics.width`. The existing test
+for this function used equal-ish left/right anyway, which is exactly why it
+couldn't have caught this: rewrote it with deliberately asymmetric
+`inkLeftPx`/`inkRightPx` (3.2 / 1379.24) so the assertions actually
+distinguish "centred on the ink" from "centred on the advance box".
+
+Full suite at 460/460; `tsc`/`lint` clean. Also not browser-verified yet —
+worth confirming both this and the tilt fix above together, since either one
+being incomplete could still look like "a few px off" on its own.
+
+### The actual root cause: "default" itself was never ink-centred
+
+Restoring, then re-tuning `STROKE_INK_LIFT_PX` (12 → 6) chased a symptom
+without asking why a fudge constant was needed at all. The request that
+followed named the real requirement directly: **"the illusion I'm trying to
+recreate is that when the treatments apply, the word stays perfectly still,
+it's just viewed from another lens — size and position must stay exactly
+the same."** That reframes this from "does sketch look about right" to "do
+all four treatments target the literal same point" — and the answer was no.
+
+The "default" treatment — what a visitor sees with no hover, and what every
+other treatment is implicitly judged against — is warp at rest (it's the
+one treatment that never remounts; Hero falls through to it whenever no
+effect is active). Its text layout, in `drawTextCanvas`
+(`components/WarpText.tsx`), turned out to have exactly the same two bugs
+just fixed elsewhere, undiagnosed because nobody had reason to doubt the
+baseline itself:
+
+- Horizontally, it centred each character's cursor on the summed *advance*
+  width (`measure()`), not the run's tight ink bounds.
+- Vertically, it used `textBaseline = "middle"`, which centres on the
+  font's ascent/descent *metrics*, not the rendered ink either.
+
+So the very treatment everything else was being tuned to match was itself
+off-centre by the same bearing/metrics slop as sketch and ascii — which is
+why `STROKE_INK_LIFT_PX` needed hand-tuning at all: it was compensating for
+warp's own drift, not sketch's. No empirical constant tuned against a moving
+target was ever going to land cleanly.
+
+Fixed at the root: added `centeredRunLayout` (`lib/warpText.ts`), a pure
+function that takes each character's canvas `TextMetrics`
+(`actualBoundingBoxLeft/Right/Ascent/Descent`, plus its advance) and returns
+where to draw each character, and the shared baseline y, so that the whole
+run's *combined* tight ink span — not any single character's, and not the
+advance box — sits exactly centred in the host on both axes.
+`drawTextCanvas` now measures each character, calls this, and draws with
+`textBaseline = "alphabetic"` at the computed positions instead of
+`"middle"` at a naive advance-centred cursor. Fully unit tested (asymmetric
+per-character bearings, multi-character combined-span centring, the shared
+baseline placement, an empty-run guard, and a sanity check against the easy
+symmetric case) since the WebGL canvas itself can't be reached from jsdom
+the way the underlying math now can be.
+
+With warp itself now ink-centred on both axes, sketch's horizontal centring
+got the matching fix it had never needed before warp moved: SVG's
+`text-anchor="middle"` has the identical advance-box-not-ink problem, just
+unnoticed because nothing had flagged it yet. Added `inkCentringOffsetX`
+(`lib/strokeText.ts`), mirroring the existing vertical `inkCentringOffset`,
+and applied it alongside the existing vertical offset in the same wrapping
+`<g transform="translate(x, y)">` in `components/StrokeText.tsx`.
+`STROKE_INK_LIFT_PX` is now `0` (kept, not deleted, as a tunable) — with
+both treatments centring on the same literal definition of "centre," it
+should no longer be needed at all.
+
+ASCII needed no further change: its texture-layout fix from earlier in this
+session was already centring on tight ink bounds on both axes, which is now
+confirmed to be the *correct* target rather than a coincidentally-close one.
+
+Full suite at 470/470 (10 net new tests, all pure and jsdom-safe); `tsc`/
+`lint` clean. This is the deepest of today's fixes and the most in need of a
+real look in the browser: check all three treatments (plus default/warp
+itself at rest) against a ruler or overlay, not just each other, since
+"matches its neighbour" was exactly the kind of comparison that let warp's
+own drift go unnoticed this whole time.

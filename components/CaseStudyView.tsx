@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { pullOffset, pullProgress } from "@/lib/scrollExit";
-import { HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
-import { useScrollUpExit } from "@/hooks/useScrollUpExit";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { HomeIconAnimation } from "@/components/HomeIconAnimation";
+import { LazyVideo } from "@/components/LazyVideo";
+import { caseStudyRoute } from "@/data/caseStudies";
+import { nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
 import type { CaseStudy, CaseStudyMedia } from "@/data/caseStudies";
 
@@ -17,10 +18,15 @@ type CaseStudyViewProps = {
 
 // Matched to the homepage's own arrow, a step down so it sits inside the
 // header rather than filling it.
-const HOME_LABEL_SIZE = "clamp(1.05rem, 1.5vw, 1.5rem)";
 
 // The drop back onto the stack. The inverse of the sheet lift that opened it.
 const EXIT_ANIMATION_MS = 420;
+// Keep the first beat visible, then invite the reader onward before the long
+// read pushes the first evidence tile below the initial viewport.
+const COLLAPSED_SECTION_COUNT = 1;
+// Two concise beats are already an overview, not a long read. Preserve those
+// in full; three or more use the shorter opening above.
+const COLLAPSIBLE_SECTION_MINIMUM = COLLAPSED_SECTION_COUNT + 1;
 
 const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
   full: "col-span-2 row-span-2",
@@ -39,6 +45,11 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
   // scroll shrink can transition.
   const [settled, setSettled] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const [isLongReadExpanded, setIsLongReadExpanded] = useState(false);
+  const hasCollapsibleLongRead = sections.length > COLLAPSIBLE_SECTION_MINIMUM;
+  const visibleSections = hasCollapsibleLongRead && !isLongReadExpanded
+    ? sections.slice(0, COLLAPSED_SECTION_COUNT)
+    : sections;
 
   useEffect(() => {
     const timer = setTimeout(() => setSettled(true), 620);
@@ -47,59 +58,53 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
 
   const shrunkRef = useRef(false);
 
-  useEffect(() => {
-    let previousY = window.scrollY;
-    let changedAt = -Infinity;
+  // A fresh load should always land at the top with the full header --
+  // never wherever the browser's own scroll restoration (or a scroll
+  // position left over from before a refresh) happens to put it. Runs
+  // before paint so there is nothing to visibly snap back from.
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+  }, []);
 
+  useEffect(() => {
     const settle = (next: boolean) => {
       if (next === shrunkRef.current) return;
       shrunkRef.current = next;
-      changedAt = performance.now();
       setShrunk(next);
     };
 
     const onScroll = () => {
       const currentY = window.scrollY;
-      settle(
-        nextHeaderShrunk({
-          shrunk: shrunkRef.current,
-          previousY,
-          currentY,
-          sinceChangeMs: performance.now() - changedAt,
-        })
-      );
-      previousY = currentY;
+      settle(nextHeaderShrunk(currentY));
     };
 
-    // A reload partway down the page has no gesture to read, so go on position.
-    settle(window.scrollY > HEADER_SHRINK_AT_PX);
+    settle(nextHeaderShrunk(window.scrollY));
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Pulling up at the top drops the page back onto the stack. The home button
-  // stays regardless: the gesture is undiscoverable on its own, and there has
-  // to be a keyboard way out.
+  // Home is an intentional click, not a hidden scroll gesture. The page still
+  // drops back onto the stack so this explicit route change carries the same
+  // visual language as the sheet lift that opened it.
   const leave = useCallback(() => {
     markReturningHome();
     setExiting(true);
     setTimeout(() => router.push("/"), EXIT_ANIMATION_MS);
   }, [router]);
 
-  const pull = useScrollUpExit(leave, !exiting);
-  const offset = pullOffset(pull);
-
   return (
     <>
-      {/* Revealed behind the page as it is pulled down, so the gesture shows
-          the ground it is heading back to. */}
+      {/* Revealed behind the page during the explicit home transition. */}
       <div aria-hidden="true" className="fixed inset-0 -z-10 bg-cream" />
       <main
         data-testid="case-study-view"
         data-exiting={exiting}
         className="min-h-screen bg-cream text-ink"
         style={{
-          transform: exiting ? "translateY(100vh)" : `translateY(${offset}px)`,
+          transform: exiting ? "translateY(100vh)" : undefined,
           transition: exiting
             ? `transform ${EXIT_ANIMATION_MS}ms cubic-bezier(0.4, 0, 1, 1)`
             : undefined,
@@ -113,89 +118,84 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
           data-testid="case-study-header"
           data-shrunk={shrunk}
           data-settled={settled}
-          className="case-study-header sticky top-0 z-30 flex flex-col justify-end px-6 pb-5 md:px-10 md:pb-7 2xl:px-14"
+          className="case-study-header sticky top-0 z-30 relative flex flex-col justify-end px-6 pb-5 md:px-10 md:pb-7 2xl:px-14"
           style={{ backgroundColor: caseStudy.thumbnailColor }}
         >
-          {/* The inverse of the homepage's down arrow, and it leaves the same
-              way the pull gesture does. A real link, so the browser's own
-              open-in-a-new-tab still works; only a plain click is intercepted. */}
-          <Link
-            data-testid="case-study-home"
-            href="/"
-
-            onClick={(event) => {
-              if (
-                event.button !== 0 ||
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey
-              ) {
-                return;
-              }
-              event.preventDefault();
-              leave();
-            }}
-            className="case-study-home absolute top-4 left-6 md:left-10 2xl:left-14 hover:opacity-60"
-          >
-            {/* .font-script carries the line boil on its own, so the word is
-                drawn in the same hand as the homepage tagline. */}
-            <span
-              data-testid="case-study-home-label"
-              className="font-script block leading-none"
-              style={{ fontSize: HOME_LABEL_SIZE }}
+          {/* Same max-width-and-centre box the columns use below (case-study-body
+              provides the padding the way this header does, outside the max-width,
+              so both cap at an identical content width and land on the same edges
+              at every viewport size). No padding of its own here -- adding it would
+              double up with the header's, which is exactly the bug that shipped
+              the first time this was "fixed": the classes matched, but padding
+              inside the max-width box is not the same box as padding outside it. */}
+          <div className="case-study-header-inner static mx-auto w-full max-w-[100rem]">
+            {/* The inverse of the homepage's down arrow, and it leaves the same
+                way the pull gesture does. A real link, so the browser's own
+                open-in-a-new-tab still works; only a plain click is intercepted. */}
+            <Link
+              data-testid="case-study-home"
+              href="/"
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                leave();
+              }}
+              aria-label="Home"
+              className="case-study-home absolute top-5 md:top-7"
             >
-              BACK
-            </span>
-          </Link>
+              {/* boil-line redraws the icon's edges each frame with the same
+                  turbulence displacement as the rest of the hand-drawn marks,
+                  so a plain raster icon still reads as sketched rather than
+                  a clean UI glyph. */}
+            <HomeIconAnimation shrunk={shrunk} />
+            </Link>
 
-          {/* How close the pull is to committing, so the gesture is never a
-              surprise: it fills as the page slides down, and empties if you
-              stop short. */}
-          <div
-            data-testid="case-study-pull-progress"
-            aria-hidden="true"
-            className="absolute inset-x-0 top-0 h-1 origin-left bg-ink/30"
-            style={{ transform: `scaleX(${pullProgress(pull)})` }}
-          />
-
-          <div className="case-study-header-row flex items-end justify-between gap-6">
-            <h1
-              data-testid="case-study-title"
-              className="case-study-title font-display leading-none"
-            >
-              {caseStudy.title}
-            </h1>
-            {next && (
-              <Link
-                data-testid="case-study-next"
-                href={`/work/${next.slug}`}
-                // The control wears the colour of the project it leads to, and
-                // opens into a pill naming it, so the next sheet announces
-                // itself before you commit to it.
-                style={{ backgroundColor: next.thumbnailColor }}
-                className="case-study-next group shrink-0 inline-flex items-center rounded-full h-14 md:h-16"
+            <div className="case-study-header-row flex items-end justify-between gap-6">
+              <h1
+                data-testid="case-study-title"
+                className="case-study-title font-display leading-none"
               >
-                <span className="sr-only">Next project:</span>
-                <span
-                  data-testid="case-study-next-label"
-                  className="case-study-next-label font-body whitespace-nowrap overflow-hidden"
+                {caseStudy.title}
+              </h1>
+              {next && (
+                <Link
+                  data-testid="case-study-next"
+                  href={caseStudyRoute(next)}
+                  // The control wears the colour of the project it leads to, and
+                  // opens into a pill naming it, so the next sheet announces
+                  // itself before you commit to it.
+                  style={{ backgroundColor: next.thumbnailColor }}
+                  className="case-study-next group shrink-0 inline-flex items-center rounded-full h-14 md:h-16"
                 >
-                  {next.title}
-                </span>
-                <span className="case-study-next-arrow grid place-items-center size-14 md:size-16 shrink-0">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path
-                      d="M4 12h15m0 0-6-6m6 6-6 6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-              </Link>
-            )}
+                  <span className="sr-only">Next project:</span>
+                  <span
+                    data-testid="case-study-next-label"
+                    className="case-study-next-label font-body font-medium whitespace-nowrap overflow-hidden"
+                  >
+                    {next.title}
+                  </span>
+                  <span className="case-study-next-arrow grid place-items-center size-14 md:size-16 shrink-0">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M4 12h15m0 0-6-6m6 6-6 6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </Link>
+              )}
+            </div>
           </div>
         </header>
 
@@ -209,24 +209,47 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
             data-testid="case-study-columns"
             className="mx-auto grid w-full max-w-[100rem] gap-12 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-20"
           >
+            {/* Its own grid item, not nested in case-study-detail, so it can
+                sit ahead of the facts on narrow screens (order-1) while
+                staying above the long read in the right-hand column at lg
+                (an explicit grid placement, since two column-2 rows need
+                declaring once a third item -- this -- shares the grid). */}
+            <h2 className="case-study-intro-title font-body font-bold order-1 lg:order-none lg:col-start-2 lg:row-start-1">
+              {caseStudy.blurb}
+            </h2>
+
             <aside
               data-testid="case-study-overview"
-              className="font-body lg:sticky lg:top-32 lg:self-start"
+              className="font-body order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-32 lg:self-start"
             >
-              {/* The blurb is this project in one line, which is exactly what
-                  the rail leads with until a fuller overview is written. */}
-              <p className="text-lg leading-relaxed">{overview ?? caseStudy.blurb}</p>
               {facts.length > 0 && (
-                <dl className="mt-8">
+                <dl className="case-study-facts">
                   {facts.map((fact) => (
                     <div
                       key={fact.label}
-                      className="flex justify-between gap-6 border-t border-ink/15 py-3"
+                      className="case-study-fact"
                     >
-                      <dt className="text-sm uppercase tracking-wide opacity-60">
-                        {fact.label}
-                      </dt>
-                      <dd className="text-sm text-right">{fact.value}</dd>
+                      <dt>{fact.label}</dt>
+                      <dd>
+                        {Array.isArray(fact.value) ? (
+                          <ul className="case-study-fact-list">
+                            {fact.value.map((item) =>
+                              typeof item === "string" ? (
+                                <li key={item}>{item}</li>
+                              ) : (
+                                <li key={item.href}>
+                                  <a
+                                    href={item.href}
+                                    className="underline underline-offset-2 hover:opacity-70"
+                                  >
+                                    {item.label}
+                                  </a>
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        ) : fact.value}
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -234,24 +257,49 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
             </aside>
 
             {/* The page is wide, prose is not: the measure stays readable even
-                when the gallery below runs the full width. */}
-            <div data-testid="case-study-detail" className="font-body max-w-[70ch]">
-              {/* Plain paragraphs. At one or two of them the headings were
-                  louder than the copy they introduced; the section headings in
-                  the data are kept for ordering and for the writer's benefit,
-                  but they are not rendered. */}
+                when the gallery below runs the full width. Short titled beats
+                keep these as an invitation to a conversation, not a full case
+                study document. */}
+            <div
+              data-testid="case-study-detail"
+              className="font-body order-3 lg:order-none lg:col-start-2 lg:row-start-2"
+            >
+              {overview && <p className="case-study-copy case-study-intro-copy">{overview}</p>}
               {sections.length > 0 ? (
-                sections.map((section) => (
-                  <p key={section.heading} className="case-study-copy mb-8 last:mb-0">
-                    {section.body}
-                  </p>
-                ))
-              ) : (
+                <>
+                {visibleSections.map((section) => (
+                  <section key={section.heading ?? section.body} className="case-study-copy mb-8 last:mb-0">
+                    {section.heading && (
+                      <h2 className="font-body font-bold text-2xl leading-none mb-3">{section.heading}</h2>
+                    )}
+                    <p>{section.body}</p>
+                    {section.bullets && section.bullets.length > 0 && (
+                      <ul className="mt-3 list-disc space-y-2 pl-5">
+                        {section.bullets.map((bullet) => (
+                          <li key={bullet}>{bullet}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                ))}
+                {hasCollapsibleLongRead && (
+                  <button
+                    type="button"
+                    data-testid="case-study-read-more"
+                    aria-expanded={isLongReadExpanded}
+                    onClick={() => setIsLongReadExpanded((expanded) => !expanded)}
+                    className="mt-2 font-display text-xl underline underline-offset-4 transition-opacity hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+                  >
+                    {isLongReadExpanded ? "Show less" : "Read more"}
+                  </button>
+                )}
+                </>
+              ) : !overview ? (
                 <p className="case-study-copy">
                   Placeholder body copy for {caseStudy.title}. The real write-up goes
                   here: process, decisions, and the work itself.
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -263,7 +311,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
               className="mx-auto mt-20 w-full max-w-[110rem]"
             >
               {videoSrc && (
-                <video
+                <LazyVideo
                   data-testid="case-study-video"
                   className="w-full mx-auto rounded-2xl"
                   src={videoSrc}
@@ -288,7 +336,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                       >
                         {item.src ? (
                           item.kind === "video" ? (
-                            <video
+                            <LazyVideo
                               className="size-full object-cover"
                               src={item.src}
                               autoPlay
@@ -302,6 +350,8 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                               src={item.src}
                               alt={item.alt}
                               className="size-full object-cover"
+                              loading="lazy"
+                              decoding="async"
                             />
                           )
                         ) : (

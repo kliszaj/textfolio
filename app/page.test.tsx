@@ -3,6 +3,7 @@ import HomePage from "./page";
 import { useFanProgress } from "@/hooks/useFanProgress";
 import { usePointerType } from "@/hooks/usePointerType";
 import { caseStudies } from "@/data/caseStudies";
+import { ABOUT_PAGE } from "@/data/about";
 import { markReturningHome, resetReturningHomeForTests } from "@/hooks/useStackCollapse";
 
 jest.mock("@/hooks/useFanProgress");
@@ -25,10 +26,11 @@ beforeEach(() => {
 
 test("renders the hero and all case study sheets", () => {
   render(<HomePage />);
-  // The headline plays its sketch -> prototype -> finished story on load, so
-  // assert the frame is present rather than one particular treatment.
+  // The headline flips through default -> sketch -> ascii -> warp -> default
+  // on load, so assert the frame is present rather than one particular
+  // treatment. Warp is always mounted regardless of which is active.
   expect(screen.getByTestId("hero-headline")).toBeInTheDocument();
-  expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.getByTestId("warp-text")).toHaveAttribute("aria-label", "ADRIAN");
   caseStudies.forEach((cs) => {
     expect(screen.getByText(cs.title)).toBeInTheDocument();
   });
@@ -91,6 +93,28 @@ test("prefetches every case study route so the lift lands instantly", () => {
   caseStudies.forEach((cs) => {
     expect(mockPrefetch).toHaveBeenCalledWith(`/work/${cs.slug}`);
   });
+});
+
+test("prefetches About too, at its own route rather than /work/about", () => {
+  render(<HomePage />);
+  expect(mockPrefetch).toHaveBeenCalledWith("/about");
+  expect(mockPrefetch).not.toHaveBeenCalledWith("/work/about");
+});
+
+test("lifts and navigates to About the same way a case study does", () => {
+  jest.useFakeTimers();
+  render(<HomePage />);
+  fireEvent.click(screen.getByText(ABOUT_PAGE.title));
+
+  const overlay = screen.getByTestId("case-study-focus");
+  expect(overlay).toHaveAttribute("data-variant", "lift");
+  expect(mockPush).not.toHaveBeenCalled();
+
+  act(() => {
+    jest.advanceTimersByTime(2000);
+  });
+  expect(mockPush).toHaveBeenCalledWith("/about");
+  jest.useRealTimers();
 });
 
 test("plays the sheet lift and then navigates to the case study", () => {

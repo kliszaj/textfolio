@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { sheetViewportLeftPercent } from "@/lib/fanSheet";
+import { caseStudyRoute } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
 
 // The sheet bleeds past both side edges; its text must not go with it.
@@ -36,20 +37,20 @@ export function CaseStudyPreview({
     <button
       type="button"
       onClick={() =>
-        onSelect ? onSelect(caseStudy) : router.push(`/work/${caseStudy.slug}`)
+        onSelect ? onSelect(caseStudy) : router.push(caseStudyRoute(caseStudy))
       }
       className="relative w-full h-full text-left cursor-pointer"
       style={{ backgroundColor: caseStudy.thumbnailColor }}
     >
       <div
-        className="absolute bottom-0 p-6"
+        className="absolute bottom-0 pl-6 pr-6 pt-6 pb-6 md:pl-10 md:pr-10 md:pt-8 md:pb-8"
         style={{
           left: `${VIEWPORT_INSET_PERCENT}%`,
           right: `${VIEWPORT_INSET_PERCENT}%`,
         }}
       >
         <span className="font-display text-2xl md:text-4xl block">{caseStudy.title}</span>
-        <span className="font-body text-xl block mt-2" style={{ opacity: blurbOpacity }}>
+        <span className="font-body text-xl md:text-2xl block mt-3" style={{ opacity: blurbOpacity }}>
           {caseStudy.blurb}
         </span>
       </div>

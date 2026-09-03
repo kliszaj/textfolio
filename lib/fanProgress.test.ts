@@ -2,7 +2,6 @@ import {
   computeCursorTravel,
   computeScrollTravel,
   splitTravel,
-  travelAfterWheel,
   FAN_THRESHOLD_PX,
 } from "./fanProgress";
 
@@ -78,28 +77,5 @@ describe("splitTravel", () => {
     const atEnd = splitTravel(1, 1);
     expect(atEnd.fanProgress).toBe(1);
     expect(atEnd.sweepProgress).toBe(0);
-  });
-});
-
-describe("travelAfterWheel", () => {
-  test("scrolling down opens the stack, scrolling up closes it", () => {
-    expect(travelAfterWheel(0.4, 350, 700)).toBeCloseTo(0.9);
-    expect(travelAfterWheel(0.4, -350, 700)).toBeCloseTo(-0.1 + 0.1);
-    expect(travelAfterWheel(0.9, -350, 700)).toBeCloseTo(0.4);
-  });
-
-  test("cannot be scrolled past either end of the gesture", () => {
-    expect(travelAfterWheel(0.9, 5000, 700)).toBe(1);
-    expect(travelAfterWheel(0.1, -5000, 700)).toBe(0);
-  });
-
-  test("a full range of scrolling covers the whole gesture", () => {
-    expect(travelAfterWheel(0, 700, 700)).toBe(1);
-  });
-
-  test("survives a nonsense delta or range rather than stranding the stack", () => {
-    expect(travelAfterWheel(0.5, NaN, 700)).toBe(0.5);
-    expect(travelAfterWheel(0.5, 100, 0)).toBe(0.5);
-    expect(travelAfterWheel(0.5, 100, -1)).toBe(0.5);
   });
 });

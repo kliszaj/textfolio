@@ -125,9 +125,27 @@ export function inkCentringOffset(
   return centreY - (box.y + box.height / 2) - liftPx;
 }
 
-// A touch above true centre, which is where the sketch reads best against the
-// other treatments.
-export const STROKE_INK_LIFT_PX = 12;
+// SVG's own text-anchor="middle" centres a run on its advance width, the
+// same kind of proxy-for-the-ink mismatch as the vertical case above --
+// warp (the "default" treatment every other one is meant to sit exactly on
+// top of) now centres on tight ink bounds on both axes, via
+// centeredRunLayout in warpText.ts, so this one gets the matching fix rather
+// than a second empirical lift.
+export function inkCentringOffsetX(
+  box: { x: number; width: number } | null,
+  centreX: number,
+  liftPx = 0
+): number {
+  if (!box || !Number.isFinite(box.x) || !Number.isFinite(box.width)) return 0;
+  return centreX - (box.x + box.width / 2) - liftPx;
+}
+
+// No longer needed now that warp itself centres on tight ink bounds on both
+// axes (see inkCentringOffsetX's comment) -- both treatments now target the
+// same true centre, rather than sketch's ink-tight centre being nudged to
+// match warp's previously metrics-based one. Kept at 0, not deleted: a
+// tunable a future visual pass may still want, not an abandoned feature.
+export const STROKE_INK_LIFT_PX = 0;
 
 // --- Correction marks ------------------------------------------------------
 // The sketch stage shows the name mid-correction: the final N drawn back to

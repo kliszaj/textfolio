@@ -1,6 +1,7 @@
 "use client";
 
 import { caseStudies } from "@/data/caseStudies";
+import { ABOUT_PAGE } from "@/data/about";
 import { computeEmphasis, computeSheetInset } from "@/lib/fanSheet";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 import type { CaseStudy } from "@/data/caseStudies";
@@ -39,6 +40,7 @@ type PaperStackProps = {
   paperTextureConfig?: PaperTextureConfig;
   onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
   playIntro?: boolean;
+  suppressHeadlineHover?: boolean;
 };
 
 export function PaperStack({
@@ -52,8 +54,12 @@ export function PaperStack({
   paperTextureConfig = DEFAULT_PAPER_TEXTURE_CONFIG,
   onSelectCaseStudy,
   playIntro,
+  suppressHeadlineHover = false,
 }: PaperStackProps) {
-  const sheetCount = caseStudies.length;
+  // About rides as one more sheet behind the last case study, so it takes
+  // its own colour and band but never appears in the page indicator or the
+  // "next project" cycle, both of which read the caseStudies array directly.
+  const sheetCount = caseStudies.length + 1;
   const heroInset = computeSheetInset(0, fanProgress, sweepProgress, config, sheetCount);
   const heroLift = heroInset.bottom * HERO_LIFT_RATIO;
   return (
@@ -67,9 +73,9 @@ export function PaperStack({
         transitionMs={transitionMs}
         zIndex={zIndexForDepth(0, sheetCount)}
       >
-        <Hero playIntro={playIntro} onSelectCaseStudy={onSelectCaseStudy} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} />
+        <Hero playIntro={playIntro} suppressHeadlineHover={suppressHeadlineHover} onSelectCaseStudy={onSelectCaseStudy} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} />
       </PaperSheet>
-      {caseStudies.map((caseStudy, index) => {
+      {[...caseStudies, ABOUT_PAGE].map((caseStudy, index) => {
         const depth = index + 1;
         const emphasis = computeEmphasis(
           depth,

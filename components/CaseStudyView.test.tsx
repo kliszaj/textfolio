@@ -10,7 +10,6 @@ beforeEach(() => {
   window.scrollY = 0;
 });
 
-import { EXIT_PULL_THRESHOLD_PX } from "@/lib/scrollExit";
 import { CaseStudyView } from "./CaseStudyView";
 
 const caseStudy = {
@@ -29,14 +28,19 @@ const nextStudy = {
 
 const withVideo = { ...caseStudy, videoSrc: "/assets/jam.mp4" };
 
-test("puts the title in the header and the blurb at the head of the rail", () => {
+test("puts the title in the header and the blurb at the head of the reading column", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
   expect(screen.getByTestId("case-study-header")).toContainElement(
     screen.getByText("Test Case")
   );
-  // The header carries the title and the two controls only; the blurb is the
-  // one-line overview the left column leads with.
-  expect(screen.getByTestId("case-study-overview")).toContainElement(
+  // The header carries the project name and controls. The framing sentence
+  // is its own grid item -- not nested in case-study-detail -- specifically
+  // so it can reorder ahead of the facts rail on narrow screens; it belongs
+  // with the reading column's content either way, not the header or the rail.
+  expect(screen.getByTestId("case-study-columns")).toContainElement(
+    screen.getByText("A test blurb.")
+  );
+  expect(screen.getByTestId("case-study-overview")).not.toContainElement(
     screen.getByText("A test blurb.")
   );
 });
@@ -67,10 +71,11 @@ test("bottom-aligns the header content to match where the lift left it", () => {
   expect(screen.getByTestId("case-study-header")).toHaveClass("justify-end", "pb-5");
 });
 
-test("shows the case study's video as soon as the page opens", () => {
+test("defers the case study video until it is close to view", () => {
   render(<CaseStudyView caseStudy={withVideo} />);
   const video = screen.getByTestId("case-study-video");
-  expect(video).toHaveAttribute("src", "/assets/jam.mp4");
+  expect(video).not.toHaveAttribute("src");
+  expect(video).toHaveAttribute("preload", "none");
   expect(video).toHaveAttribute("autoplay");
   expect(video).toHaveAttribute("loop");
 });
@@ -118,9 +123,48 @@ test("lists the at-a-glance facts in the overview column", () => {
   expect(overview).toContainElement(screen.getByText("Role"));
   expect(overview).toContainElement(screen.getByText("Lead Designer"));
   expect(overview).toContainElement(screen.getByText("Timeline"));
-  expect(overview).toContainElement(
+  expect(screen.getByTestId("case-study-detail")).toContainElement(
     screen.getByText("Rebuilding a retailer's identity system from the crest outward.")
   );
+});
+
+test("renders multi-value facts as a concise bulleted list", () => {
+  render(
+    <CaseStudyView
+      caseStudy={{
+        ...caseStudy,
+        facts: [{ label: "Impact", value: ["First metric", "Second metric"] }],
+      }}
+    />
+  );
+
+  expect(screen.getByRole("list")).toHaveTextContent("First metric");
+  expect(screen.getByRole("list")).toHaveTextContent("Second metric");
+});
+
+test("renders link facts as real, tappable links, not plain text", () => {
+  // Contact details specifically need to be openable, not just readable.
+  render(
+    <CaseStudyView
+      caseStudy={{
+        ...caseStudy,
+        facts: [
+          {
+            label: "Say hi",
+            value: [
+              { label: "hello@adrianklisz.com", href: "mailto:hello@adrianklisz.com" },
+              { label: "LinkedIn", href: "https://www.linkedin.com/in/adrianklisz/" },
+            ],
+          },
+        ],
+      }}
+    />
+  );
+
+  const email = screen.getByRole("link", { name: "hello@adrianklisz.com" });
+  expect(email).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
+  const linkedIn = screen.getByRole("link", { name: "LinkedIn" });
+  expect(linkedIn).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
 });
 
 test("puts every written section in the in-depth column", () => {
@@ -151,6 +195,12 @@ test("keeps the placeholder note while a case study is still unwritten", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
   expect(screen.getByTestId("case-study-detail")).toHaveTextContent(/Placeholder body copy/);
   expect(screen.queryByTestId("case-study-media")).not.toBeInTheDocument();
+});
+
+test("does not add placeholder copy after a complete overview", () => {
+  render(<CaseStudyView caseStudy={{ ...caseStudy, overview: "A complete overview." }} />);
+  expect(screen.getByText("A complete overview.")).toBeInTheDocument();
+  expect(screen.queryByText(/Placeholder body copy/)).not.toBeInTheDocument();
 });
 
 test("always sets the rail beside the long read, per the two-column brief", () => {
@@ -237,52 +287,12 @@ test("renders a placeholder tile for media that has no asset yet", () => {
   expect(screen.getByTestId("case-study-tile")).toBeInTheDocument();
 });
 
-function wheelUp(deltaY: number) {
-  act(() => {
-    window.dispatchEvent(new WheelEvent("wheel", { deltaY, cancelable: true }));
-  });
-}
-
-test("follows the reader down as they keep scrolling up at the top", () => {
+test("does not expose a hidden pull-to-exit gesture", () => {
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
-  const view = screen.getByTestId("case-study-view");
-  expect(view.style.transform).toBe("translateY(0px)");
-
-  wheelUp(-80);
-  // Damped, so the page lags the gesture rather than tracking it one-to-one.
-  const offset = parseFloat(view.style.transform.replace(/[^0-9.]/g, ""));
-  expect(offset).toBeGreaterThan(0);
-  expect(offset).toBeLessThan(80);
-});
-
-test("shows how close the pull is to committing", () => {
-  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
-  const meter = screen.getByTestId("case-study-pull-progress");
-  expect(meter).toHaveStyle({ transform: "scaleX(0)" });
-
-  wheelUp(-EXIT_PULL_THRESHOLD_PX / 2);
-  expect(meter).toHaveStyle({ transform: "scaleX(0.5)" });
-});
-
-test("drops the page back onto the stack, then goes home", () => {
-  jest.useFakeTimers();
-  try {
-    render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
-    wheelUp(-EXIT_PULL_THRESHOLD_PX);
-
-    const view = screen.getByTestId("case-study-view");
-    expect(view).toHaveAttribute("data-exiting", "true");
-    // Falls all the way off before navigating, so the drop is seen.
-    expect(view.style.transform).toBe("translateY(100vh)");
-    expect(push).not.toHaveBeenCalled();
-
-    act(() => {
-      jest.advanceTimersByTime(600);
-    });
-    expect(push).toHaveBeenCalledWith("/");
-  } finally {
-    jest.useRealTimers();
-  }
+  window.dispatchEvent(new WheelEvent("wheel", { deltaY: -400, cancelable: true }));
+  expect(screen.queryByTestId("case-study-pull-progress")).not.toBeInTheDocument();
+  expect(screen.getByTestId("case-study-view")).toHaveAttribute("data-exiting", "false");
+  expect(push).not.toHaveBeenCalled();
 });
 
 test("keeps a home button, because the gesture is undiscoverable on its own", () => {
@@ -294,29 +304,96 @@ test("names the next project in the pill that opens out of the arrow", () => {
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
   const label = screen.getByTestId("case-study-next-label");
   expect(label).toHaveTextContent("Next Case");
-  // Collapsed at rest; CSS opens it on hover and keyboard focus.
-  expect(label).toHaveClass("case-study-next-label", "overflow-hidden");
+  // Collapsed at rest; CSS opens it on hover and keyboard focus. One weight
+  // lighter than the case-study title next to it, so the two don't compete.
+  expect(label).toHaveClass("case-study-next-label", "font-medium", "overflow-hidden");
   expect(screen.getByTestId("case-study-next")).toHaveClass("case-study-next");
 });
 
-test("runs the long read as plain paragraphs, with no headings of its own", () => {
+test("puts a project framing headline above the titled overview beats", () => {
   render(<CaseStudyView caseStudy={written} next={nextStudy} />);
+  const columns = screen.getByTestId("case-study-columns");
   const detail = screen.getByTestId("case-study-detail");
 
-  // One or two paragraphs do not need signposting; the headings were louder
-  // than the copy they introduced.
-  expect(detail.querySelectorAll("h2")).toHaveLength(0);
-  expect(screen.queryByText("The problem")).not.toBeInTheDocument();
+  // The headline is its own grid item now, not nested in case-study-detail --
+  // that's what lets it reorder ahead of the facts on narrow screens without
+  // duplicating markup. Only the two section headings live in detail.
+  expect(detail.querySelectorAll("h2")).toHaveLength(2);
+  const headline = screen.getByText("A test blurb.");
+  expect(headline).toHaveClass("case-study-intro-title");
+  expect(headline.parentElement).toBe(columns);
+  expect(screen.getByText("The problem")).toHaveClass("font-body", "font-bold");
   expect(
     screen.getByText("Inconsistent line work across applications.")
   ).toBeInTheDocument();
   expect(screen.getByText("One crest, redrawn at every scale it ships at.")).toBeInTheDocument();
 });
 
+test("renders a concise supporting list when a work overview needs one", () => {
+  const withBullets = {
+    ...written,
+    sections: [
+      {
+        heading: "The decision",
+        body: "A short setup.",
+        bullets: ["The constraint", "The trade-off"],
+      },
+    ],
+  };
+  render(<CaseStudyView caseStudy={withBullets} next={nextStudy} />);
+
+  expect(screen.getByRole("list")).toHaveTextContent("The constraint");
+  expect(screen.getByRole("list")).toHaveTextContent("The trade-off");
+});
+
 test("sets the long read larger than the overview rail", () => {
   render(<CaseStudyView caseStudy={written} next={nextStudy} />);
   const body = screen.getByText("Inconsistent line work across applications.");
-  expect(body).toHaveClass("case-study-copy");
+  expect(body.closest(".case-study-copy")).not.toBeNull();
+});
+
+test("collapses long reads until the reader asks to continue", () => {
+  const longRead = {
+    ...written,
+    sections: [
+      { heading: "One", body: "First section." },
+      { heading: "Two", body: "Second section." },
+      { heading: "Three", body: "Third section." },
+      { heading: "Four", body: "Fourth section." },
+    ],
+  };
+  render(<CaseStudyView caseStudy={longRead} next={nextStudy} />);
+
+  expect(screen.getByText("First section.")).toBeInTheDocument();
+  expect(screen.queryByText("Second section.")).not.toBeInTheDocument();
+  expect(screen.queryByText("Third section.")).not.toBeInTheDocument();
+  const toggle = screen.getByTestId("case-study-read-more");
+  expect(toggle).toHaveTextContent("Read more");
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+  fireEvent.click(toggle);
+  expect(screen.getByText("Second section.")).toBeInTheDocument();
+  expect(screen.getByText("Third section.")).toBeInTheDocument();
+  expect(screen.getByText("Fourth section.")).toBeInTheDocument();
+  expect(toggle).toHaveTextContent("Show less");
+  expect(toggle).toHaveAttribute("aria-expanded", "true");
+});
+
+test("keeps a continuous narrative unheaded while still offering Read more", () => {
+  const continuous = {
+    ...written,
+    sections: [
+      { body: "First continuation." },
+      { body: "Second continuation." },
+      { body: "Third continuation." },
+    ],
+  };
+  render(<CaseStudyView caseStudy={continuous} next={nextStudy} />);
+
+  expect(screen.getByText("First continuation.")).toBeInTheDocument();
+  expect(screen.queryByText("Second continuation.")).not.toBeInTheDocument();
+  expect(screen.getByTestId("case-study-read-more")).toHaveTextContent("Read more");
+  expect(screen.queryByRole("heading", { name: "First continuation." })).not.toBeInTheDocument();
 });
 
 test("centres the collapsed bar's controls instead of letting them overflow it", () => {
@@ -330,23 +407,31 @@ test("centres the collapsed bar's controls instead of letting them overflow it",
   expect(screen.getByTestId("case-study-home")).toHaveClass("case-study-home");
 });
 
-test("offers a written BACK home, ranged left with the title", () => {
+test("offers a sketched home icon in the header's upper-right corner", () => {
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
   const home = screen.getByTestId("case-study-home");
 
   // The inverse of the homepage's down arrow: same idea, pointing back up.
   expect(home).toHaveAttribute("href", "/");
-  // Shares the header's own padding, so it lines up with the title beneath.
-  expect(home.className).toMatch(/left-6/);
+  // CSS shares the header's responsive content inset (including the 100rem
+  // centred cap); the link itself must not carry a separate right offset.
+  expect(home.className).toMatch(/top-5/);
+  expect(home.className).toMatch(/md:top-7/);
+  expect(home.className).not.toMatch(/(?:^|\s)(?:left|md:left|2xl:left)-/);
   expect(home.className).not.toMatch(/-translate-x-1\/2/);
-  const label = screen.getByTestId("case-study-home-label");
-  expect(home).toContainElement(label);
-  // Written in the same hand as the homepage tagline; .font-script is what
-  // carries the line boil, so it draws rather than prints.
-  expect(label).toHaveClass("font-script");
-  expect(label).toHaveTextContent("BACK");
-  // The word is the link's accessible name now, so no aria-label overrides it.
-  expect(home).toHaveAccessibleName("BACK");
+  expect(home.className).not.toMatch(/hover:opacity-/);
+  const icon = screen.getByTestId("case-study-home-label");
+  expect(home).toContainElement(icon);
+  // A sketched icon, not the plain "BACK" word: boil-line is what redraws
+  // its edges each frame the same way the rest of the hand-drawn marks do.
+  expect(icon.tagName).toBe("IMG");
+  expect(icon).toHaveClass("boil-line");
+  expect(icon).toHaveClass("case-study-home-icon");
+  expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
+  expect(icon).toHaveAttribute("width", "40");
+  expect(icon).toHaveAttribute("height", "40");
+  // The icon has no text of its own, so the link needs its own label.
+  expect(home).toHaveAccessibleName("Home");
 });
 
 test("drops the page home on the arrow, rather than cutting to it", () => {

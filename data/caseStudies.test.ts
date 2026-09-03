@@ -1,4 +1,5 @@
-import { caseStudies, getCaseStudyBySlug, getNextCaseStudy } from "./caseStudies";
+import { caseStudies, caseStudyRoute, getCaseStudyBySlug, getNextCaseStudy } from "./caseStudies";
+import { ABOUT_PAGE } from "./about";
 
 test("has at least 3 case studies", () => {
   expect(caseStudies.length).toBeGreaterThanOrEqual(3);
@@ -7,6 +8,17 @@ test("has at least 3 case studies", () => {
 test("all slugs are unique", () => {
   const slugs = caseStudies.map((c) => c.slug);
   expect(new Set(slugs).size).toBe(slugs.length);
+});
+
+test("work overview body copy avoids em dashes", () => {
+  for (const caseStudy of caseStudies) {
+    for (const section of caseStudy.sections ?? []) {
+      expect(section.body).not.toContain("—");
+      for (const bullet of section.bullets ?? []) {
+        expect(bullet).not.toContain("—");
+      }
+    }
+  }
 });
 
 test("getCaseStudyBySlug finds an existing entry", () => {
@@ -20,7 +32,9 @@ test("getCaseStudyBySlug returns undefined for an unknown slug", () => {
 
 describe("getNextCaseStudy", () => {
   test("returns the following study so the header arrow walks the list", () => {
-    expect(getNextCaseStudy("spotify-jam").slug).toBe("focals-by-north");
+    // Derived, not hardcoded: the running order changes as studies are written.
+    expect(getNextCaseStudy(caseStudies[0].slug).slug).toBe(caseStudies[1].slug);
+    expect(getNextCaseStudy(caseStudies[1].slug).slug).toBe(caseStudies[2].slug);
   });
 
   test("wraps past the last study back to the first", () => {
@@ -30,5 +44,15 @@ describe("getNextCaseStudy", () => {
 
   test("falls back to the first study for a slug that is not in the list", () => {
     expect(getNextCaseStudy("no-such-study").slug).toBe(caseStudies[0].slug);
+  });
+});
+
+describe("caseStudyRoute", () => {
+  test("routes a real case study to /work/[slug]", () => {
+    expect(caseStudyRoute(caseStudies[0])).toBe(`/work/${caseStudies[0].slug}`);
+  });
+
+  test("routes About to /about, not /work/about", () => {
+    expect(caseStudyRoute(ABOUT_PAGE)).toBe("/about");
   });
 });

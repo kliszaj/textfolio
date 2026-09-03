@@ -79,7 +79,7 @@
    rather than crowding one side. Same counter-inset for the sheet overscan,
    and a gentle counter-tilt against the cool-s's 15deg. Deliberately no
    shadow: these are pencil on paper, not stickers above it. */
-.doodles {
+.lightning {
   position: absolute;
   bottom: clamp(3rem, 6vw, 6rem);
   right: calc(60vw + clamp(3rem, 6vw, 6rem));
@@ -93,24 +93,27 @@
   transform-origin: bottom right;
 }
 
+/* Every treatment fills the frame and they sit on top of one another, so the
+   one underneath keeps painting while another is shown. */
+.treatmentLayer {
+  position: absolute;
+  inset: 0;
+}
+
+.treatmentLayer[data-active="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .treatmentMount {
   width: 100%;
   height: 100%;
-  /* Every treatment paints something wrong in its first frames: an svg that
-     has not been measured yet, a webgl canvas that has not drawn, a fallback
-     headline still at full opacity. Each of those fills the headline frame,
-     so it read as a box flashing around the word. The intro hid its own swaps
-     behind the handover fade; a hover swap had nothing, so this fades every
-     freshly mounted treatment in. Deliberately not disabled under reduced
-     motion -- it suppresses a flash rather than adding one. */
-  animation: treatment-mount-in 220ms ease-out both;
-}
+  /* Sizing only. It carries the key that decides when a treatment remounts, so
+     rest and warp share an identity and that swap stays free.
 
-@keyframes treatment-mount-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+     It used to fade each treatment in, which promoted this to a composited
+     layer the size of the frame -- the same thing that made the frame's
+     isolation flash white. The treatments guard their own first frames
+     instead: stroke holds opacity until it has measured, and the ascii
+     fallback stays hidden until its renderer is ready. */
 }

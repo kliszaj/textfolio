@@ -11,8 +11,9 @@ import { FanDebugPanel } from "@/components/FanDebugPanel";
 import { CaseStudyFocus } from "@/components/CaseStudyFocus";
 import type { FocusOrigin } from "@/components/CaseStudyFocus";
 import { DEFAULT_FOCUS_VARIANT_ID } from "@/lib/focusVariants";
-import { caseStudies } from "@/data/caseStudies";
+import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
+import { ABOUT_PAGE } from "@/data/about";
 import { FAN_SMOOTHING_MS, FAN_SPLIT, FAN_THRESHOLD_PX, splitTravel } from "@/lib/fanProgress";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
@@ -87,7 +88,9 @@ export default function HomePage() {
   // Warm every case study route so the push at the end of the lift is instant
   // and the colour carries straight through.
   useEffect(() => {
-    caseStudies.forEach((caseStudy) => router.prefetch(`/work/${caseStudy.slug}`));
+    [...caseStudies, ABOUT_PAGE].forEach((caseStudy) =>
+      router.prefetch(caseStudyRoute(caseStudy))
+    );
   }, [router]);
 
   // onClickCapture runs before the sheet's own handler, so by the time
@@ -116,6 +119,7 @@ export default function HomePage() {
           warpConfig={warpConfig}
           strokeConfig={strokeConfig}
           paperTextureConfig={paperTextureConfig}
+          suppressHeadlineHover={collapseTravel !== null}
           onSelectCaseStudy={liftCaseStudy}
 
         />
@@ -130,7 +134,7 @@ export default function HomePage() {
           caseStudy={lifting.caseStudy}
           variantId={DEFAULT_FOCUS_VARIANT_ID}
           origin={lifting.origin}
-          onEntered={() => router.push(`/work/${lifting.caseStudy.slug}`)}
+          onEntered={() => router.push(caseStudyRoute(lifting.caseStudy))}
         />
       )}
       {SHOW_DEBUG_PANEL && !isMobileLayout && (

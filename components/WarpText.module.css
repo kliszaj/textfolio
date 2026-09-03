@@ -6,7 +6,10 @@
   min-height: 0;
   /* Sized here, not cut off here -- same as the headline frame. */
   overflow: visible;
-  isolation: isolate;
+  /* Not isolated, for the same reason the frame is not: nothing in here blends,
+     and an isolation group is a frame-sized render surface that paints white
+     until it has been rasterised. This is the resting treatment, so its surface
+     was the one being torn down every time another treatment mounted. */
 }
 
 .fallback {

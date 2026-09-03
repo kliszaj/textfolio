@@ -19,7 +19,9 @@ const caseStudy = {
 
 test("always renders the title", () => {
   render(<CaseStudyPreview caseStudy={caseStudy} emphasis={0} />);
-  expect(screen.getByText("Test Case")).toBeInTheDocument();
+  const title = screen.getByText("Test Case");
+  expect(title).toHaveClass("text-2xl", "md:text-4xl");
+  expect(title).toBeInTheDocument();
 });
 
 test("keeps the blurb mounted but fully transparent with no emphasis", () => {
@@ -65,5 +67,15 @@ test("sets the blurb in the body face, not the handwriting", () => {
   render(<CaseStudyPreview caseStudy={caseStudy} emphasis={1} />);
   const blurb = screen.getByText("A test blurb.");
   expect(blurb).toHaveClass("font-body");
+  expect(blurb).toHaveClass("text-xl", "md:text-2xl");
   expect(blurb).not.toHaveClass("font-script");
+});
+
+test("keeps the card copy clear of the sheet's edges, evenly on every side", () => {
+  const { container } = render(<CaseStudyPreview caseStudy={caseStudy} emphasis={1} />);
+  const copy = container.querySelector("button > div");
+  // Left and bottom used to run wider than right and top; brought down to
+  // match them, per direct request, rather than the sheet reading lopsided.
+  expect(copy).toHaveClass("pl-6", "pr-6", "pt-6", "pb-6");
+  expect(copy).toHaveClass("md:pl-10", "md:pr-10", "md:pt-8", "md:pb-8");
 });

@@ -15,6 +15,7 @@ import {
   chipForBrightness,
   asciiFontSizeForHost,
   planeHeightForFontSize,
+  textTextureLayout,
 } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import styles from "./ASCIIText.module.css";
@@ -211,18 +212,28 @@ export function ASCIIText({
         textContext.font = font;
         const metrics = textContext.measureText(text);
         // The body is drawn behind the face, so the canvas has to make room
-        // for it or the deepest layers would be clipped away.
+        // for it or the deepest layers would be clipped away. The layout
+        // keeps that room equal on every side -- the body only ever trails
+        // down-and-right from the face, so a margin sized to fit just that
+        // reach put more empty canvas on the right and bottom than the left
+        // and top, and it is the whole canvas a centred plane centres on
+        // screen, not just the face drawn on it.
         const extrudeX = Math.max(0, textFontSize * extrudeDepth);
         const extrudeY = extrudeX * ASCII_EXTRUDE_RISE;
-        textCanvas.width = Math.ceil(metrics.width + extrudeX) + 40;
-        textCanvas.height =
-          Math.ceil(
-            metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent + extrudeY
-          ) + 40;
+        const layout = textTextureLayout({
+          inkLeftPx: metrics.actualBoundingBoxLeft,
+          inkRightPx: metrics.actualBoundingBoxRight,
+          ascentPx: metrics.actualBoundingBoxAscent,
+          descentPx: metrics.actualBoundingBoxDescent,
+          extrudeXPx: extrudeX,
+          extrudeYPx: extrudeY,
+        });
+        textCanvas.width = layout.canvasWidth;
+        textCanvas.height = layout.canvasHeight;
         textContext.font = font;
 
-        const baseX = 20;
-        const baseY = 20 + metrics.actualBoundingBoxAscent;
+        const baseX = layout.baseX;
+        const baseY = layout.baseY;
         const stepX = extrudeX / ASCII_EXTRUDE_LAYERS;
         const stepY = extrudeY / ASCII_EXTRUDE_LAYERS;
 
@@ -369,10 +380,19 @@ export function ASCIIText({
           if (swept !== null) {
             pointer.targetX = swept;
             pointer.targetY = 0;
+          } else {
+            // The sweep itself never reverses mid-pass -- doing that read as
+            // a boomerang -- but once it has landed there is no reason to
+            // leave the plane tilted indefinitely with nobody hovering it.
+            // A tilted plane on a perspective camera reads as smaller and
+            // off-centre, not just angled, so relying on the handover fade to
+            // hide that left the word looking wrong on a slow fade or a
+            // screenshot caught mid-way. Settling back to level here is a
+            // continuation of the same easing that drives the lean-in, not a
+            // second, opposite move.
+            pointer.targetX = 0;
+            pointer.targetY = 0;
           }
-          // Nothing here on purpose: once the pass reaches the right it stops
-          // there. Returning the plane to level made a one-way sweep read as a
-          // boomerang, and the treatment fades out at the handover anyway.
         }
         pointer.x += (pointer.targetX - pointer.x) * 0.05;
         pointer.y += (pointer.targetY - pointer.y) * 0.05;

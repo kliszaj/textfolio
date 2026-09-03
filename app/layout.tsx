@@ -10,11 +10,14 @@ const displayFont = localFont({
   display: "swap",
 });
 
-// Body face for case-study copy: the script is part of the hero voice, but it
-// is hard to read at a glance on a sheet that is only partly revealed.
+// Body family for case-study copy: the script is part of the hero voice, but
+// it is hard to read at a glance on a sheet that is only partly revealed.
 const bodyFont = localFont({
-  src: "./fonts/PPNeueMontreal-Book.otf",
-  weight: "400",
+  src: [
+    { path: "./fonts/PPNeueMontreal-Regular.otf", weight: "400", style: "normal" },
+    { path: "./fonts/PPNeueMontreal-Medium.otf", weight: "500", style: "normal" },
+    { path: "./fonts/PPNeueMontreal-Bold.otf", weight: "700", style: "normal" },
+  ],
   variable: "--font-pp-neue-montreal",
   display: "swap",
 });
@@ -26,8 +29,22 @@ const scriptFont = localFont({
 });
 
 export const metadata: Metadata = {
+  // Needed to resolve the og:image/twitter:image URLs to an absolute
+  // address; without it Next.js defaults to localhost in production.
+  // TODO: confirm this is actually where the site is deployed.
+  metadataBase: new URL("https://adrianklisz.com"),
   title: "Adrian",
   description: "Designer, tinkerer, zero-to-one builder",
+  openGraph: {
+    title: "Adrian",
+    description: "Designer, tinkerer, zero-to-one builder",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Adrian",
+    description: "Designer, tinkerer, zero-to-one builder",
+  },
 };
 
 export default function RootLayout({

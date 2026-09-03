@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PaperStack } from "./PaperStack";
 import { caseStudies } from "@/data/caseStudies";
+import { ABOUT_PAGE } from "@/data/about";
 import { usePointerType } from "@/hooks/usePointerType";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 
@@ -40,10 +41,13 @@ function renderStack(fanProgress: number, sweepProgress: number) {
   );
 }
 
-const DEPTHS = [0, ...caseStudies.map((_, i) => i + 1)];
+// About rides one sheet behind the last case study (see PaperStack), so the
+// stack has one more depth than caseStudies.length.
+const SHEET_COUNT = caseStudies.length + 1;
+const DEPTHS = [0, ...caseStudies.map((_, i) => i + 1), SHEET_COUNT];
 const LAST = caseStudies.length - 1;
-// sweep 0.5 puts the peak at depth 1 + (N-1)/2
-const MID = (caseStudies.length - 1) / 2;
+// sweep 0.5 puts the peak at depth 1 + (SHEET_COUNT-1)/2
+const MID = (SHEET_COUNT - 1) / 2;
 
 function blurbOpacity(text: string): number {
   return parseFloat(screen.getByText(text).style.opacity);
@@ -83,10 +87,14 @@ test("the first case study holds the emphasis at the start of the sweep", () => 
   expect(blurbOpacity(caseStudies[LAST].blurb)).toBe(0);
 });
 
-test("the emphasis hands off to the last case study by the end of the sweep", () => {
+test("the emphasis hands off to the About sheet by the end of the sweep", () => {
+  // About is the true last sheet now (see PaperStack), so the last case
+  // study no longer takes full emphasis at the end of a full sweep -- About
+  // does.
   renderStack(1, 1);
   expect(blurbOpacity(caseStudies[0].blurb)).toBe(0);
-  expect(blurbOpacity(caseStudies[LAST].blurb)).toBe(1);
+  expect(blurbOpacity(caseStudies[LAST].blurb)).toBe(0);
+  expect(blurbOpacity(ABOUT_PAGE.blurb)).toBe(1);
 });
 
 test("the middle case study holds the emphasis halfway through the sweep", () => {
@@ -130,10 +138,21 @@ test("hovering a sheet changes nothing", () => {
 
 test("the backmost sheet stays square and full-bleed as the fixed base", () => {
   // It replaces the separate backdrop element: nothing can show behind it.
+  // That backmost sheet is About now, one depth behind the last case study.
   renderStack(1, 1);
-  const base = screen.getByTestId(`paper-sheet-${caseStudies.length}`);
+  const base = screen.getByTestId(`paper-sheet-${SHEET_COUNT}`);
   expect(base).toHaveStyle({ transform: "rotate(0deg)" });
   expect(parseFloat(base.style.bottom)).toBe(0);
+});
+
+test("renders About as one more sheet behind the last case study", () => {
+  renderStack(0, 0);
+  const sheet = screen.getByTestId(`paper-sheet-${SHEET_COUNT}`);
+  expect(sheet).toBeInTheDocument();
+  expect(screen.getByText(ABOUT_PAGE.title)).toBeInTheDocument();
+  // Not part of the case-study set: the page indicator and the next-project
+  // cycle both read caseStudies directly and must not pick it up.
+  expect(caseStudies.some((cs) => cs.slug === ABOUT_PAGE.slug)).toBe(false);
 });
 
 test("rides the name upward as the stack opens beneath it", () => {

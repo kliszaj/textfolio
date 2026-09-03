@@ -7,7 +7,6 @@ import Image from "next/image";
 import { NAME } from "@/data/letterTreatments";
 import {
   ASCII_INK_LIME,
-  ASCII_TYPE_SHARE,
   DEFAULT_ASCII_TEXT_CONFIG,
 } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
@@ -25,6 +24,7 @@ import { WarpText } from "./WarpText";
 import { PageIndicator } from "./PageIndicator";
 import { isOverHeadline } from "@/lib/headlineHit";
 import { caseStudies } from "@/data/caseStudies";
+import { ABOUT_PAGE } from "@/data/about";
 import type { CaseStudy } from "@/data/caseStudies";
 import styles from "./Hero.module.css";
 
@@ -88,6 +88,9 @@ type HeroProps = {
   paperTextureConfig?: PaperTextureConfig;
   // Plays the sketch -> prototype -> finished story once on mount.
   playIntro?: boolean;
+  // A return from a case study folds the stack back into place. Do not let the
+  // cursor already resting on the name interrupt that transition.
+  suppressHeadlineHover?: boolean;
   onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
 };
 
@@ -104,6 +107,7 @@ export function Hero({
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
   paperTextureConfig = DEFAULT_PAPER_TEXTURE_CONFIG,
   playIntro = true,
+  suppressHeadlineHover = false,
 }: HeroProps) {
   const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
   const intro = useHeadlineIntro(playIntro);
@@ -151,9 +155,12 @@ export function Hero({
     activeEffect === "ascii" ? "ascii" : activeEffect === "stroke" ? "stroke" : "warp";
   const showCoolS = activeEffect === "stroke";
   const arrowOpacity = 1 - Math.min(1, fanProgress * 2);
+  // The resting word is quiet grey, but the hand-drawn prompt needs enough
+  // contrast to read as an affordance before any treatment has been invoked.
+  const arrowColor = activeEffect === null ? DEFAULT_INK_COLOR : accentColor;
 
   const activateHeadline = () => {
-    if (!intro.done) return;
+    if (suppressHeadlineHover || !intro.done) return;
     if (isHeadlinePointerInsideRef.current) return;
     isHeadlinePointerInsideRef.current = true;
     const effect = HEADLINE_EFFECT_SEQUENCE[nextEffectIndexRef.current];
@@ -201,8 +208,11 @@ export function Hero({
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
           enough for the two to overlap. */}
+      {/* About rides alongside the real case studies here even though it
+          lives outside the caseStudies array -- the indicator is the one
+          place a visitor should be able to see and jump to it directly. */}
       <PageIndicator
-        caseStudies={caseStudies}
+        caseStudies={[...caseStudies, ABOUT_PAGE]}
         fanProgress={fanProgress}
         onSelect={onSelectCaseStudy}
       />
@@ -252,11 +262,11 @@ export function Hero({
       )}
       {showCoolS && (
         <Image
-          data-testid="doodles"
-          className={`${styles.doodles} boil-line`}
-          src="/assets/doodles.svg"
-          width={285}
-          height={237}
+          data-testid="lightning"
+          className={`${styles.lightning} boil-line`}
+          src="/assets/lightning.svg"
+          width={263}
+          height={238}
           alt=""
           aria-hidden="true"
           priority
@@ -270,10 +280,18 @@ export function Hero({
         {/* The frame sizes every treatment but no longer clips them: one
             that draws past its own box -- a correction mark, a warp, a tilted
             plane -- now paints instead of being cut off. Its layout box is
-            unchanged, so nothing moves or resizes. */}
+            unchanged, so nothing moves or resizes.
+
+            Deliberately NOT isolated. isolation: isolate made the browser build
+            a render surface the exact size of this frame, and a fresh surface
+            paints white before it has been rasterised -- that was the white box
+            flashing on every treatment that mounts. Warp was clean only because
+            it never remounts. Nothing inside here blends: the one
+            mix-blend-mode is the ascii gradient pre, which is display:none in
+            the default colour mode and whose own root isolates when it is not. */}
         <div
           data-testid="headline-frame"
-          className="relative isolate w-[min(94vw,72rem)]"
+          className="relative w-[min(94vw,72rem)]"
           style={{
             height: "clamp(11rem, min(25vw, 30vh), 20rem)",
             "--headline-font-size": HEADLINE_SIZE,
@@ -304,35 +322,25 @@ export function Hero({
             style={{ opacity: intro.opacity }}
           >
           <div
-            key={treatment}
             data-testid="treatment-mount"
             data-treatment={treatment}
             className={styles.treatmentMount}
           >
-          {activeEffect === "ascii" ? (
-            <ASCIIText
-              text={NAME}
-              {...asciiConfig}
-              demoTiltMs={intro.phase === "ascii" ? ASCII_INTRO_DEMO_MS : 0}
-              typeProgress={
-                intro.phase === "ascii"
-                  ? Math.min(1, intro.phaseProgress / ASCII_TYPE_SHARE)
-                  : 1
-              }
-            />
-          ) : activeEffect === "stroke" ? (
-            <StrokeText
-              text={NAME}
-              {...strokeConfig}
-              fontSize={HEADLINE_SIZE}
-              fontWeight={HEADLINE_FONT_WEIGHT}
-              correctionIndex={NAME.length - 1}
-              // Drawn once during the story. A hover afterwards shows the
-              // finished sketch, correction and all, rather than starting over.
-              animate={!intro.done}
-              style={{ fontFamily: HEADLINE_FONT_FAMILY }}
-            />
-          ) : (
+          {/* Warp stays mounted whatever is on top of it. Its webgl canvas is a
+              composited layer the size of the frame; tearing that out left the
+              rectangle it occupied unpainted for a frame or two, which is the
+              white box. Every hover swap starts from warp -- leaving the
+              headline returns to it -- so every swap was destroying that layer.
+              The intro never showed it only because the stage is faded to zero
+              across each handover. */}
+          <div
+            data-testid="treatment-layer-warp"
+            className={styles.treatmentLayer}
+            data-active={treatment === "warp"}
+            // Still painting, but not the headline any more: without this a
+            // screen reader would read the word twice.
+            aria-hidden={treatment !== "warp"}
+          >
             <WarpText
               text={NAME}
               color={isHeadlineActive ? "#FFFFFF" : DEFAULT_INK_COLOR}
@@ -341,10 +349,43 @@ export function Hero({
               fontWeight={HEADLINE_FONT_WEIGHT}
               fontFamily={HEADLINE_FONT_FAMILY}
               demoSweepMs={intro.phase === "warp" ? HEADLINE_INTRO_DEMO_MS : 0}
+              // A gentle circle held at the centre, not the old sweep across
+              // the whole headline -- enough to prove the warp reacts to a
+              // pointer at all, without touring the word in only a second.
+              demoMode="circle"
               letterSpacing="0"
               lineHeight={1}
             />
-          )}
+          </div>
+          {activeEffect === "ascii" ? (
+            <div className={styles.treatmentLayer} data-active="true">
+            <ASCIIText
+              text={NAME}
+              {...asciiConfig}
+              demoTiltMs={intro.phase === "ascii" ? ASCII_INTRO_DEMO_MS : 0}
+              // No type-in rain any more: the flip-through shows the settled
+              // word straight away, leaning as its one bit of scripted
+              // motion, same as sketch shows itself already drawn.
+              typeProgress={1}
+            />
+            </div>
+          ) : activeEffect === "stroke" ? (
+            <div className={styles.treatmentLayer} data-active="true">
+            <StrokeText
+              text={NAME}
+              {...strokeConfig}
+              fontSize={HEADLINE_SIZE}
+              fontWeight={HEADLINE_FONT_WEIGHT}
+              correctionIndex={NAME.length - 1}
+              // Always shown drawn, filled, and corrected already -- during
+              // the flip-through and on every hover afterwards alike. Its
+              // whole appeal is the finished hand-inked look, which a still
+              // frame shows off in an instant instead of over several seconds.
+              animate={false}
+              style={{ fontFamily: HEADLINE_FONT_FAMILY }}
+            />
+            </div>
+          ) : null}
           </div>
           </div>
         </div>
@@ -368,7 +409,7 @@ export function Hero({
         className="boil-line scroll-hint-bob absolute z-10 bottom-8 leading-none transition-opacity duration-300"
         style={{
           opacity: arrowOpacity,
-          color: accentColor,
+          color: arrowColor,
           fontSize: activeEffect === "stroke" ? SKETCH_ARROW_SIZE : ARROW_SIZE,
           transition: "color 420ms ease",
         }}

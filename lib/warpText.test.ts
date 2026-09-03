@@ -1,4 +1,5 @@
-import { DEFAULT_WARP_TEXT_CONFIG, demoPointerAt } from "./warpText";
+import { centeredRunLayout, DEFAULT_WARP_TEXT_CONFIG, demoCircleAt, demoPointerAt } from "./warpText";
+import type { CharGlyphMetrics } from "./warpText";
 
 test("every field has a default, so the config can be spread as props", () => {
   const keys = Object.keys(DEFAULT_WARP_TEXT_CONFIG).sort();
@@ -137,4 +138,129 @@ test("is already moving the moment the sweep starts", () => {
   // A pure ease-in crept for the opening moments: nothing read as motion until
   // the sweep was already a good way across.
   expect(speedAt(DURATION * 0.02) / average).toBeGreaterThan(0.15);
+});
+
+describe("the scripted pointer circle", () => {
+  const DURATION = 1000;
+
+  test("starts and ends exactly at centre, not part-way round the circle", () => {
+    const start = demoCircleAt(0, DURATION)!;
+    expect(start.x).toBeCloseTo(0.5, 5);
+    expect(start.y).toBeCloseTo(0.5, 5);
+
+    const nearEnd = demoCircleAt(DURATION - 1, DURATION)!;
+    expect(nearEnd.x).toBeCloseTo(0.5, 1);
+    expect(nearEnd.y).toBeCloseTo(0.5, 1);
+  });
+
+  test("reaches its widest point around the middle of the run", () => {
+    const distanceFromCentre = (t: number) => {
+      const { x, y } = demoCircleAt(t, DURATION)!;
+      return Math.hypot(x - 0.5, y - 0.5);
+    };
+    const middle = distanceFromCentre(DURATION / 2);
+    expect(middle).toBeGreaterThan(distanceFromCentre(DURATION * 0.05));
+    expect(middle).toBeGreaterThan(distanceFromCentre(DURATION * 0.95));
+  });
+
+  test("stays close to centre -- a gentle circle, not a tour of the word", () => {
+    for (let t = 0; t < DURATION; t += 25) {
+      const { x, y } = demoCircleAt(t, DURATION)!;
+      expect(Math.hypot(x - 0.5, y - 0.5)).toBeLessThan(0.2);
+    }
+  });
+
+  test("actually travels in a circle, not back and forth on one axis", () => {
+    // Sampled across the run, x and y should each visit both sides of centre.
+    const points = [];
+    for (let t = 0; t < DURATION; t += 25) points.push(demoCircleAt(t, DURATION)!);
+    expect(points.some((p) => p.x > 0.5)).toBe(true);
+    expect(points.some((p) => p.x < 0.5)).toBe(true);
+    expect(points.some((p) => p.y > 0.5)).toBe(true);
+    expect(points.some((p) => p.y < 0.5)).toBe(true);
+  });
+
+  test("stays out of the way when it was never asked for", () => {
+    expect(demoCircleAt(10, 0)).toBeNull();
+    expect(demoCircleAt(NaN, DURATION)).toBeNull();
+    expect(demoCircleAt(-5, DURATION)).toBeNull();
+    expect(demoCircleAt(DURATION, DURATION)).toBeNull();
+    expect(demoCircleAt(DURATION + 400, DURATION)).toBeNull();
+  });
+});
+
+describe("centreing a hand-laid-out run on its own tight ink, not its advance box", () => {
+  // Canvas has no built-in way to centre a run drawn character-by-character
+  // on its combined ink bounds: textBaseline "middle" centres on the font's
+  // ascent/descent metrics, and a naive `width/2 - totalAdvance/2` start
+  // centres on the advance box. A bold display face's side bearings are
+  // rarely equal left to right (or top to bottom), so either proxy can leave
+  // the actual ink a few pixels off from the host's true centre -- the same
+  // class of mismatch already found on the sketch and ascii treatments, here
+  // affecting the "default" warp treatment every other treatment is meant to
+  // match exactly.
+  const char = (
+    advance: number,
+    boundingBoxLeft: number,
+    boundingBoxRight: number,
+    boundingBoxAscent: number,
+    boundingBoxDescent: number
+  ): CharGlyphMetrics => ({ advance, boundingBoxLeft, boundingBoxRight, boundingBoxAscent, boundingBoxDescent });
+
+  test("centres a single character's ink, not its advance box", () => {
+    // Advance is 20, but the ink itself (bearing 2 in, bearing 15 out) is
+    // only 17 wide and sits off-centre within that advance box.
+    const layout = centeredRunLayout([char(20, 2, 15, 30, 5)], 0, 100, 100);
+    const inkLeft = layout.charX[0] - 2;
+    const inkRight = layout.charX[0] + 15;
+    expect(inkLeft).toBeCloseTo(100 / 2 - 17 / 2, 6);
+    expect(inkRight).toBeCloseTo(100 / 2 + 17 / 2, 6);
+  });
+
+  test("centres the whole run's combined ink span, not each character alone", () => {
+    const layout = centeredRunLayout(
+      [char(10, 1, 8, 20, 3), char(12, 3, 9, 25, 6)],
+      2,
+      200,
+      100
+    );
+    const inkLeft = layout.charX[0] - 1;
+    const inkRight = layout.charX[1] + 9;
+    expect(inkLeft).toBeCloseTo(200 / 2 - (inkRight - inkLeft) / 2, 6);
+    expect(inkRight).toBeCloseTo(200 / 2 + (inkRight - inkLeft) / 2, 6);
+    // The gap between characters is still the requested letter-spacing --
+    // centring the run doesn't compress or stretch it.
+    expect(layout.charX[1] - layout.charX[0]).toBeCloseTo(10 + 2, 6);
+  });
+
+  test("places the shared baseline on the run's tallest ascent and descent", () => {
+    const layout = centeredRunLayout(
+      [char(10, 1, 8, 20, 3), char(12, 3, 9, 25, 6)],
+      2,
+      200,
+      100
+    );
+    // Ink top = baselineY - maxAscent, ink bottom = baselineY + maxDescent;
+    // centred means those sit symmetrically around the host's own centre.
+    const inkTop = layout.baselineY - 25;
+    const inkBottom = layout.baselineY + 6;
+    expect(inkTop).toBeCloseTo(100 / 2 - (inkBottom - inkTop) / 2, 6);
+    expect(inkBottom).toBeCloseTo(100 / 2 + (inkBottom - inkTop) / 2, 6);
+  });
+
+  test("matches naive advance-box centring when the ink happens to fill it exactly", () => {
+    // A sanity check that this is a generalisation, not a different answer
+    // for the easy case: ink spanning exactly [0, advance] (no bearing
+    // either side) should land exactly where a plain width/2 - advance/2
+    // start would.
+    const layout = centeredRunLayout([char(20, 0, 20, 10, 10)], 0, 100, 100);
+    expect(layout.charX[0]).toBeCloseTo(100 / 2 - 20 / 2, 6);
+    expect(layout.baselineY).toBeCloseTo(100 / 2, 6);
+  });
+
+  test("stays inert for an empty run rather than dividing by nothing", () => {
+    const layout = centeredRunLayout([], 0, 100, 100);
+    expect(layout.charX).toEqual([]);
+    expect(layout.baselineY).toBeCloseTo(50, 6);
+  });
 });

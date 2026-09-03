@@ -36,6 +36,28 @@
   filter: url("#line-boil-4");
 }
 
+/* The home asset is a black raster icon. Map it to the same softened ink as
+   the case-study title, while preserving its hand-drawn line boil. */
+.case-study-home-icon {
+  filter: invert(11%);
+}
+
+[data-line-boil="on"][data-line-boil-frame="1"] .case-study-home-icon {
+  filter: url("#line-boil-1") invert(11%);
+}
+
+[data-line-boil="on"][data-line-boil-frame="2"] .case-study-home-icon {
+  filter: url("#line-boil-2") invert(11%);
+}
+
+[data-line-boil="on"][data-line-boil-frame="3"] .case-study-home-icon {
+  filter: url("#line-boil-3") invert(11%);
+}
+
+[data-line-boil="on"][data-line-boil-frame="4"] .case-study-home-icon {
+  filter: url("#line-boil-4") invert(11%);
+}
+
 body {
   margin: 0;
   background-color: var(--color-cream);
@@ -172,6 +194,19 @@ body {
 :root {
   --case-study-header-height: 22vh;
   --case-study-header-shrunk-height: 5.25rem;
+  --case-study-header-inline-inset: 1.5rem;
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --case-study-header-inline-inset: 2.5rem;
+  }
+}
+
+@media (min-width: 96rem) {
+  :root {
+    --case-study-header-inline-inset: 3.5rem;
+  }
 }
 
 .case-study-header {
@@ -232,8 +267,29 @@ body {
     opacity 200ms ease-out;
 }
 
-/* Home has no room in the collapsed bar, and it was overlapping the title.
-   Scrolling back to the top brings it back. */
+/* Left side, over the title -- the same inset the title itself sits at. */
+.case-study-home {
+  left: calc(
+    max(
+      var(--case-study-header-inline-inset),
+      calc((100% - 100rem) / 2)
+    ) + 0.5rem
+  );
+}
+
+@media (min-width: 48rem) {
+  .case-study-home {
+    left: calc(
+      max(
+        var(--case-study-header-inline-inset),
+        calc((100% - 100rem) / 2)
+      ) + 0.75rem
+    );
+  }
+}
+
+/* Home has no room in the collapsed bar. It leaves with the compact header;
+   its rebuild waits in HomeIconAnimation until the full header has opened. */
 .case-study-header[data-shrunk="true"] .case-study-home {
   opacity: 0;
   pointer-events: none;
@@ -291,8 +347,53 @@ body {
   line-height: 1.55;
 }
 
+.case-study-facts {
+}
+
+.case-study-fact {
+  padding: 1.35rem 0 1.55rem;
+}
+
+.case-study-fact:first-child {
+  padding-top: 0;
+}
+
+.case-study-fact + .case-study-fact {
+  border-top: 1px solid color-mix(in srgb, currentColor 58%, transparent);
+}
+
+.case-study-fact dt {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.case-study-fact dd {
+  margin-top: 0.75rem;
+  font-size: clamp(1.25rem, 1.6vw, 1.6rem);
+  line-height: 1.15;
+  white-space: pre-line;
+}
+
+.case-study-fact-list {
+  margin: 0;
+  padding-left: 1.1em;
+  list-style: disc outside;
+}
+
+.case-study-intro-title {
+  max-width: 26ch;
+  font-size: clamp(2rem, 3.1vw, 3.5rem);
+  line-height: 0.98;
+}
+
+.case-study-intro-copy {
+  white-space: pre-line;
+}
+
 .case-study-title {
-  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  font-size: clamp(2.75rem, 7.5vw, 6rem);
   transition: font-size 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 

@@ -45,3 +45,13 @@ next-env.d.ts
 
 # static export output
 /out
+
+# real, uncleared case-study source material and reference docs -- see
+# handoff.md. The published site (data/caseStudies.ts) uses placeholder
+# copy; none of this should ever go in a commit.
+/assets/
+/docs/case-studies/
+/public/assets/christie-boxer-*
+/public/assets/christie-fusion-*
+/public/assets/christie-spyder-*
+/public/assets/focals-go-compass-concept.png

@@ -22,6 +22,12 @@ function moveTo(clientY: number) {
   });
 }
 
+function wheelDown() {
+  act(() => {
+    window.dispatchEvent(new WheelEvent("wheel", { deltaY: 1, cancelable: true }));
+  });
+}
+
 // Let the animation loop run until the stack has caught up with the cursor.
 function settle() {
   act(() => {
@@ -109,9 +115,13 @@ describe("useFanProgress", () => {
   });
 });
 
-// Parked alongside the wheel handler in useFanProgress. Unskip when the
-// scroll gesture is brought back.
-describe.skip("scrolling with a mouse", () => {
+describe("a wheel notch gives the cursor a floor, not a competing driver", () => {
+  // The cursor already opens further on down and closes on up -- that stays
+  // completely unchanged. The wheel's only job is to kick the reveal open to
+  // "the first card" without making the cursor travel there first, and to
+  // survive the incidental mousemove that almost always follows a wheel
+  // notch (the visitor's hand is on the wheel, not deliberately steering the
+  // cursor at that instant).
   beforeEach(() => {
     jest.useFakeTimers();
     mockUsePointerType.mockReturnValue("fine");
@@ -122,68 +132,70 @@ describe.skip("scrolling with a mouse", () => {
     jest.clearAllMocks();
   });
 
-  function wheel(deltaY: number) {
-    act(() => {
-      window.dispatchEvent(new WheelEvent("wheel", { deltaY }));
-    });
-  }
-
-  test("the wheel opens the stack, the same as walking the cursor down", () => {
+  test("scrolling down from closed reveals the first card, no cursor movement needed", () => {
     const { result } = render();
-    wheel(700);
+    wheelDown();
     settle();
-    expect(result.current.fanProgress).toBe(1);
-    expect(result.current.sweepProgress).toBe(1);
+    expect(result.current.fanProgress).toBeCloseTo(1);
+    expect(result.current.sweepProgress).toBe(0);
   });
 
-  test("scrolling back up closes it again", () => {
-    const { result } = render();
-    wheel(700);
-    settle();
-    wheel(-700);
-    settle();
-    expect(result.current.fanProgress).toBe(0);
+  test("prevents the page from actually scrolling when it acts on the notch", () => {
+    render();
+    let event!: WheelEvent;
+    act(() => {
+      event = new WheelEvent("wheel", { deltaY: 1, cancelable: true });
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
   });
 
-  test("scrolling accumulates rather than jumping to an absolute position", () => {
+  test("an incidental cursor position right after the notch does not undo it", () => {
     const { result } = render();
-    wheel(175);
+    wheelDown();
     settle();
-    const quarter = result.current.fanProgress;
-    wheel(175);
+    // No prior mousemove to compare against -- exactly the situation a real
+    // visitor is in immediately after using a wheel, not a mouse.
+    moveTo(0);
     settle();
-    expect(result.current.fanProgress).toBeGreaterThan(quarter);
+    expect(result.current.fanProgress).toBeCloseTo(1);
   });
 
-  test("a jog of the mouse does not undo a scroll", () => {
-    // Otherwise the smallest tremor would snap the stack back to the cursor.
+  test("moving the cursor up afterward still closes it -- the floor is not a lock", () => {
     const { result } = render();
-    act(() => {
-      window.dispatchEvent(new MouseEvent("mousemove", { clientX: 300, clientY: 400 }));
-    });
-    wheel(700);
+    wheelDown();
     settle();
-    expect(result.current.fanProgress).toBe(1);
-
-    // A few pixels of tremor, well inside the takeover distance.
-    act(() => {
-      window.dispatchEvent(new MouseEvent("mousemove", { clientX: 304, clientY: 403 }));
-    });
+    moveTo(400); // establishes a baseline position to move "up" from
     settle();
-    expect(result.current.fanProgress).toBe(1);
+    moveTo(100); // a real upward move
+    settle();
+    expect(result.current.fanProgress).toBeLessThan(1);
   });
 
-  test("but genuinely moving the cursor takes the gesture back", () => {
+  test("moving the cursor down keeps opening further, same as without the wheel", () => {
+    const { result } = render();
+    wheelDown();
+    settle();
+    moveTo(800);
+    settle();
+    expect(result.current).toEqual({ fanProgress: 1, sweepProgress: 1 });
+  });
+
+  test("does nothing once the cursor has already opened past the first card", () => {
+    const { result } = render();
+    moveTo(800);
+    settle();
+    wheelDown();
+    settle();
+    expect(result.current).toEqual({ fanProgress: 1, sweepProgress: 1 });
+  });
+
+  test("scrolling up does nothing -- only a deliberate scroll down kicks it", () => {
     const { result } = render();
     act(() => {
-      window.dispatchEvent(new MouseEvent("mousemove", { clientX: 0, clientY: 400 }));
-    });
-    wheel(700);
-    settle();
-    act(() => {
-      window.dispatchEvent(new MouseEvent("mousemove", { clientX: 500, clientY: 100 }));
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 }));
     });
     settle();
-    expect(result.current.fanProgress).toBe(0);
+    expect(result.current).toEqual({ fanProgress: 0, sweepProgress: 0 });
   });
 });

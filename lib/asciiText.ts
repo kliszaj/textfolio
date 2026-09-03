@@ -69,8 +69,28 @@ export function chipForBrightness(brightness: number, jitter = 0.5): AsciiColorC
   return ASCII_DEPTH_RAMP[index];
 }
 
-export const ASCII_CAMERA_FOV_DEG = 45;
-export const ASCII_CAMERA_DISTANCE = 30;
+// The plane's own half-width works out to roughly 32 world units -- wider
+// than the camera used to sit from it (30). Rotating a plane that size on a
+// camera that close is severe keystoning in disguise: at the tilt's own
+// design maximum, one edge sits at depth ~25 and the other ~35, a ~38%
+// difference in how large each edge projects. That read as the whole word
+// shrinking and drifting, not leaning, whenever the cursor (or the intro's
+// demo sweep) left it rotated. Moving the camera much farther away and
+// narrowing the FOV to match keeps visibleWorldHeight() -- and therefore
+// every on-screen size this file computes -- exactly where it was, while
+// making the plane's edges close to equidistant from the camera regardless
+// of rotation, so a lean stays a lean instead of a resize.
+const LEGACY_ASCII_CAMERA_FOV_DEG = 45;
+const LEGACY_ASCII_CAMERA_DISTANCE = 30;
+export const ASCII_CAMERA_DISTANCE = LEGACY_ASCII_CAMERA_DISTANCE * 10;
+export const ASCII_CAMERA_FOV_DEG =
+  (2 *
+    Math.atan(
+      (Math.tan((LEGACY_ASCII_CAMERA_FOV_DEG * Math.PI) / 360) * LEGACY_ASCII_CAMERA_DISTANCE) /
+        ASCII_CAMERA_DISTANCE
+    ) *
+    180) /
+  Math.PI;
 // Keep the cell grid legible on narrow phones without letting the configured
 // desktop size turn into oversized blocks. The reference width is the shared
 // headline frame at a 1280px desktop viewport.
@@ -183,11 +203,17 @@ export const ASCII_DEMO_TILT_MS = 2200;
 // so it reads as a settle rather than a demonstration.
 const DEMO_TILT_REACH = 0.42;
 
-// One gentle lean in a single direction: level at the start, eased into its
-// final angle, and held there. Travelling from one extreme to the other made
-// the plane cross level in the middle and read as two moves rather than one.
-// Returns null once the sweep is done or was never asked for, so the caller
-// leaves the real pointer target alone.
+// One gentle lean in a single direction: level at the start, eased up to its
+// peak angle partway through, then eased back to level by the end -- never
+// crossing to the other side, so it never reads as two separate moves.
+// This used to hold at the peak rather than ease back, relying on the
+// handover fade to hide the plane disappearing mid-lean. That stopped being
+// safe once a handover could be a hard cut with no fade at all
+// (HEADLINE_HANDOVER_MS can be 0): a hard cut caught the plane still at its
+// peak lean, and a perspective camera reads a tilted plane as shifted and
+// shrunk, not just angled -- "sitting a bit low and to the right" rather than
+// "leaning". Returns null once the sweep is done or was never asked for, so
+// the caller leaves the real pointer target alone.
 export function demoTiltAt(
   elapsedMs: number,
   durationMs: number,
@@ -197,8 +223,8 @@ export function demoTiltAt(
   if (elapsedMs < 0 || elapsedMs >= durationMs) return null;
 
   const phase = elapsedMs / durationMs;
-  const eased = phase * phase * (3 - 2 * phase);
-  return eased * tiltStrength * DEMO_TILT_REACH;
+  const envelope = Math.sin(phase * Math.PI);
+  return envelope * tiltStrength * DEMO_TILT_REACH;
 }
 
 // Layers used to build the extruded body. Enough that the shading reads as a
@@ -213,6 +239,59 @@ export function extrudeLayerShade(layer: number, layers: number): number {
   if (layers <= 0) return 0;
   const depth = Math.min(1, Math.max(0, layer / layers));
   return Math.round(255 * (1 - depth) * 0.9);
+}
+
+export type TextTextureLayout = {
+  canvasWidth: number;
+  canvasHeight: number;
+  // Where the face's own baseline origin lands on the canvas.
+  baseX: number;
+  baseY: number;
+};
+
+// A centred, unrotated plane centres its whole texture canvas on screen --
+// not just the face drawn on it. The extruded body only ever trails
+// down-and-right from the face, so sizing the canvas with a flat margin plus
+// just that trailing reach leaves more empty canvas on the right and bottom
+// than the left and top. That asymmetry is what put the ASCII word visibly
+// left of, and above, the same headline rendered by the other treatments.
+// Matching the margin on every side keeps the face itself centred instead.
+//
+// Horizontally this centres on the ink's own tight bounds (inkLeftPx +
+// inkRightPx from canvas's actualBoundingBoxLeft/Right), not the advance
+// width `measureText` reports as `width` -- the same distinction that
+// mattered for the sketch treatment's vertical centring (see
+// inkCentringOffset in strokeText.ts). A bold display face's side bearings
+// are rarely equal left to right, so centring on the wider advance box left
+// the tighter ink sitting a few pixels off from where the sum of symmetric
+// margins put it. Vertically this was already ink-tight via
+// actualBoundingBoxAscent/Descent, which is why only the horizontal side
+// needed the same fix.
+export function textTextureLayout({
+  inkLeftPx,
+  inkRightPx,
+  ascentPx,
+  descentPx,
+  extrudeXPx,
+  extrudeYPx,
+  edgeMarginPx = 20,
+}: {
+  inkLeftPx: number;
+  inkRightPx: number;
+  ascentPx: number;
+  descentPx: number;
+  extrudeXPx: number;
+  extrudeYPx: number;
+  edgeMarginPx?: number;
+}): TextTextureLayout {
+  const marginX = edgeMarginPx + Math.max(0, extrudeXPx);
+  const marginY = edgeMarginPx + Math.max(0, extrudeYPx);
+  return {
+    canvasWidth: Math.ceil(inkLeftPx + inkRightPx + marginX * 2),
+    canvasHeight: Math.ceil(ascentPx + descentPx + marginY * 2),
+    baseX: marginX + inkLeftPx,
+    baseY: marginY + ascentPx,
+  };
 }
 
 // Share of the ascii stage spent typing the word in. The rain lands with time
