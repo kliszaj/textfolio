@@ -36,3 +36,26 @@ export function splitTravel(travel: number, fanSplit: number): FanPhases {
 
   return { fanProgress, sweepProgress };
 }
+
+// The inverse of splitTravel: reconstructs the single travel scalar from
+// the two phases it was split into. Used to start a scripted stack
+// animation (see useStackShuffle) from wherever the stack actually is right
+// now, rather than snapping to a fixed starting point.
+export function combineTravel(
+  fanProgress: number,
+  sweepProgress: number,
+  fanSplit: number
+): number {
+  if (sweepProgress > 0) return fanSplit + sweepProgress * (1 - fanSplit);
+  return fanProgress * fanSplit;
+}
+
+// The travel value whose emphasis peak (see computeEmphasis in
+// lib/fanSheet.ts) lands exactly on `depth` -- the inverse of that peak
+// formula. depth is 1-indexed, matching PaperStack's own numbering (the
+// hero is depth 0, and is never a valid target here).
+export function travelForDepth(depth: number, sheetCount: number, fanSplit: number): number {
+  if (sheetCount <= 1) return fanSplit;
+  const sweepProgress = clamp01((depth - 1) / (sheetCount - 1));
+  return fanSplit + sweepProgress * (1 - fanSplit);
+}

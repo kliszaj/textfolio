@@ -2,6 +2,8 @@ import {
   computeCursorTravel,
   computeScrollTravel,
   splitTravel,
+  combineTravel,
+  travelForDepth,
   FAN_THRESHOLD_PX,
 } from "./fanProgress";
 
@@ -77,5 +79,55 @@ describe("splitTravel", () => {
     const atEnd = splitTravel(1, 1);
     expect(atEnd.fanProgress).toBe(1);
     expect(atEnd.sweepProgress).toBe(0);
+  });
+});
+
+describe("combineTravel", () => {
+  test("round-trips with splitTravel across the fan phase", () => {
+    const { fanProgress, sweepProgress } = splitTravel(0.2, 0.45);
+    expect(combineTravel(fanProgress, sweepProgress, 0.45)).toBeCloseTo(0.2);
+  });
+
+  test("round-trips with splitTravel across the sweep phase", () => {
+    const { fanProgress, sweepProgress } = splitTravel(0.8, 0.45);
+    expect(combineTravel(fanProgress, sweepProgress, 0.45)).toBeCloseTo(0.8);
+  });
+
+  test("round-trips exactly at the split", () => {
+    const { fanProgress, sweepProgress } = splitTravel(0.45, 0.45);
+    expect(combineTravel(fanProgress, sweepProgress, 0.45)).toBeCloseTo(0.45);
+  });
+
+  test("handles a fanSplit of 0 -- sweepProgress alone carries the travel", () => {
+    const { fanProgress, sweepProgress } = splitTravel(0.5, 0);
+    expect(combineTravel(fanProgress, sweepProgress, 0)).toBeCloseTo(0.5);
+  });
+
+  test("handles a fanSplit of 1 -- fanProgress alone carries the travel", () => {
+    const { fanProgress, sweepProgress } = splitTravel(0.5, 1);
+    expect(combineTravel(fanProgress, sweepProgress, 1)).toBeCloseTo(0.5);
+  });
+
+  test("a fully closed stack combines back to 0", () => {
+    expect(combineTravel(0, 0, 0.45)).toBe(0);
+  });
+});
+
+describe("travelForDepth", () => {
+  test("the first case study's peak lands right at the fan/sweep split", () => {
+    expect(travelForDepth(1, 6, 0.45)).toBeCloseTo(0.45);
+  });
+
+  test("the last case study's peak lands at full travel", () => {
+    expect(travelForDepth(6, 6, 0.45)).toBeCloseTo(1);
+  });
+
+  test("a middle depth lands proportionally between the split and full travel", () => {
+    // depth 3 of 6: sweepProgress = (3-1)/(6-1) = 0.4
+    expect(travelForDepth(3, 6, 0.45)).toBeCloseTo(0.45 + 0.4 * 0.55);
+  });
+
+  test("falls back to a fully-fanned travel when there is only one sheet", () => {
+    expect(travelForDepth(1, 1, 0.45)).toBe(0.45);
   });
 });
