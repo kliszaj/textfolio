@@ -90,10 +90,10 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
   // drops back onto the stack so this explicit route change carries the same
   // visual language as the sheet lift that opened it.
   const leave = useCallback(() => {
-    markReturningHome();
+    markReturningHome(caseStudy.slug);
     setExiting(true);
     setTimeout(() => router.push("/"), EXIT_ANIMATION_MS);
-  }, [router]);
+  }, [caseStudy, router]);
 
   return (
     <>
