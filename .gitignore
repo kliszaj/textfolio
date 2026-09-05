@@ -55,3 +55,9 @@ next-env.d.ts
 /public/assets/christie-fusion-*
 /public/assets/christie-spyder-*
 /public/assets/focals-go-compass-concept.png
+
+# local dev journal only -- never for GitHub, not even the private repo
+/handoff.md
+
+# scratch workspace for subagent-driven-development plan execution
+/.superpowers/
