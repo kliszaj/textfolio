@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent, RefObject } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -17,12 +17,19 @@ import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
+import { useHeroReveal } from "@/hooks/useHeroReveal";
 import { ASCII_INTRO_DEMO_MS, HEADLINE_INTRO_DEMO_MS } from "@/lib/headlineIntro";
+import {
+  DEFAULT_INTRO_CUT_RGB_CONFIG,
+  INTRO_CUT_NOISE_BURST_MS,
+  alternatingRgbOffsetY,
+} from "@/lib/introCutEffect";
+import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
 import { PageIndicator } from "./PageIndicator";
-import { isOverHeadline } from "@/lib/headlineHit";
+import { isOverHeadline, unionBox } from "@/lib/headlineHit";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import type { CaseStudy } from "@/data/caseStudies";
@@ -55,7 +62,11 @@ const ASCII_DESKTOP_ICONS = [
 // min() takes the *smaller* term: on a phone that is the width one, on a
 // desktop the height one. Raising the width term therefore grows narrow
 // screens and leaves wide ones exactly where they were.
-const HEADLINE_SIZE = "clamp(3rem, min(18vw, 18vh), 14.5rem)";
+// The vw term itself steps up below lg (see --headline-vw in globals.css):
+// the page-indicator rail is gone there, so there is no side margin left to
+// protect and the name can read as monumental rather than a shrunk desktop
+// layout.
+const HEADLINE_SIZE = "clamp(3rem, min(var(--headline-vw), 18vh), 14.5rem)";
 // The headline sits in a fixed-height box that is taller than the word itself,
 // which left the tagline stranded well below it. Pull it back up so it sits
 // just under the letters, in the same place for every treatment.
@@ -69,11 +80,14 @@ const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
 // The page at rest, before any treatment has been hovered.
 const RESTING_ACCENT_COLOR = "#878787";
-const TAGLINE_SIZE = "clamp(1.35rem, min(7vw, 6.2vh), 4.5rem)";
+const TAGLINE_SIZE = "clamp(1.35rem, min(var(--tagline-vw), 6.2vh), 4.5rem)";
 const ARROW_SIZE = "clamp(2.1rem, 3.8vw, 4.6rem)";
 const SKETCH_ARROW_SIZE = "clamp(2.5rem, 4.2vw, 5.4rem)";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;
+// A named constant rather than an inline string: useHeroReveal needs its
+// length to time the typewriter, and the two must never drift apart.
+const TAGLINE_TEXT = "Designer, tinkerer, zero-to-one builder";
 
 type HeroProps = {
   fanProgress: number;
@@ -92,25 +106,157 @@ type HeroProps = {
   // cursor already resting on the name interrupt that transition.
   suppressHeadlineHover?: boolean;
   onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
+  // From the page-indicator rail specifically -- shuffles the stack open to
+  // find the case study before lifting, rather than lifting immediately
+  // from wherever the dot itself was clicked. Direct clicks on an
+  // already-fanned sheet keep using onSelectCaseStudy, unchanged.
+  onJumpToCaseStudy?: (caseStudy: CaseStudy) => void;
+  // What rides on top of each intro cut. "none" is a plain hard cut -- see
+  // lib/introCutEffect.ts for why a hard cut alone reads as abrupt rather
+  // than glitch.
+  cutEffect?: IntroCutEffect;
+  rgbConfig?: IntroCutRgbConfig;
 };
 
 type HeadlineEffect = "ascii" | "warp" | "stroke";
 const HEADLINE_EFFECT_SEQUENCE: HeadlineEffect[] = ["ascii", "warp", "stroke"];
+
+// A tiny generated static texture for the noise-burst cut effect. Not a pure,
+// tested helper like the rest of this codebase's timing math -- it draws to a
+// real canvas, which jsdom can't meaningfully verify, the same reason
+// WarpText's own canvas drawing lives in its component rather than lib/.
+function noiseTextureDataUrl(size: number): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return "";
+  const image = context.createImageData(size, size);
+  for (let i = 0; i < image.data.length; i += 4) {
+    const value = Math.random() * 255;
+    image.data[i] = value;
+    image.data[i + 1] = value;
+    image.data[i + 2] = value;
+    image.data[i + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+  return canvas.toDataURL();
+}
 
 export function Hero({
   fanProgress,
   liftPercent = 0,
   subheaderRef,
   onSelectCaseStudy,
+  onJumpToCaseStudy,
   asciiConfig = DEFAULT_ASCII_TEXT_CONFIG,
   warpConfig = DEFAULT_WARP_TEXT_CONFIG,
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
   paperTextureConfig = DEFAULT_PAPER_TEXTURE_CONFIG,
   playIntro = true,
   suppressHeadlineHover = false,
+  cutEffect = "none",
+  rgbConfig = DEFAULT_INTRO_CUT_RGB_CONFIG,
 }: HeroProps) {
   const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
   const intro = useHeadlineIntro(playIntro);
+  const rgbSplitFilterId = useId();
+  const [rgbFlash, setRgbFlash] = useState(false);
+  // Alternates sign each cut (into ascii, into warp, into final each land on
+  // a different one this way) rather than holding one fixed vertical split.
+  const rgbYSignRef = useRef<1 | -1>(1);
+  const [rgbOffsetY, setRgbOffsetY] = useState(() =>
+    alternatingRgbOffsetY(rgbConfig.offsetY, 1)
+  );
+  const [noiseBursting, setNoiseBursting] = useState(false);
+  const [noiseUrl, setNoiseUrl] = useState("");
+  // intro.phase only ever changes during the scripted intro (four times:
+  // into sketch, ascii, warp, then final) and never again afterward -- a
+  // later hover swap is driven by hoverEffect, a separate piece of state.
+  // That means watching this alone is enough to catch every intro cut and
+  // nothing else, with no need to also check intro.done: phase becomes
+  // "final" and done becomes true on the exact same tick (HEADLINE_HANDOVER_MS
+  // is 0), so gating on done as well would silently skip the last cut.
+  const previousIntroPhaseRef = useRef(intro.phase);
+  // Deliberately an effect comparing against a ref, not a render-time
+  // "adjust state when a prop changed" comparison (React's documented
+  // pattern for that shape, and what react-hooks/set-state-in-effect
+  // originally asked for here): tried that rewrite once, and with a
+  // fast-cycling driver like the intro's rAF loop it silently stopped
+  // re-arming after the first cut -- rgbFlash got stuck true forever from
+  // the second cut onward, confirmed with logging showing the clearing
+  // effect's cleanup never re-running for it. This version was verified
+  // correct across all four cuts and settling, repeatedly, including under
+  // React's own Strict Mode double-invocation.
+  useEffect(() => {
+    if (previousIntroPhaseRef.current === intro.phase) return;
+    previousIntroPhaseRef.current = intro.phase;
+    if (cutEffect === "rgb") {
+      setRgbOffsetY(alternatingRgbOffsetY(rgbConfig.offsetY, rgbYSignRef.current));
+      rgbYSignRef.current = rgbYSignRef.current === 1 ? -1 : 1;
+      setRgbFlash(true);
+      const timer = setTimeout(() => setRgbFlash(false), rgbConfig.durationMs);
+      return () => clearTimeout(timer);
+    }
+    if (cutEffect === "noise") {
+      setNoiseUrl(noiseTextureDataUrl(48));
+      setNoiseBursting(true);
+      const timer = setTimeout(() => setNoiseBursting(false), INTRO_CUT_NOISE_BURST_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [intro.phase, cutEffect, rgbConfig.durationMs, rgbConfig.offsetY]);
+  // An invisible copy of the word, laid out at the headline's own size, so the
+  // hit area follows the real glyph metrics at every viewport. Also the
+  // reference width the tagline stretches to match, below.
+  const wordRef = useRef<HTMLSpanElement>(null);
+  // The tagline's own font (font-script) and the headline's don't share a
+  // width-per-character, so matching TAGLINE_SIZE's clamp() to HEADLINE_SIZE's
+  // could get close but never exactly as wide -- stretched instead, via
+  // scaleX, to the headline's real measured width. Measured off a separate,
+  // always-full-text invisible copy (taglineMetricsRef) rather than the
+  // visible, typing-out tagline itself: measuring the live node's own
+  // scrollWidth only once typing finished made the whole line visibly pop
+  // out to its final width on the very last character. Computing the ratio
+  // from the full string up front and applying it throughout means every
+  // character is already sized where it will end up as it's typed in.
+  const taglineMetricsRef = useRef<HTMLParagraphElement>(null);
+  // The node itself is state, not a ref read inside the effect below:
+  // manually mutating a ref that an effect also reads is its own separate
+  // lint hazard (react-hooks/immutability), and state has the added benefit
+  // of the effect properly re-running the instant the node actually
+  // attaches, rather than depending on a ref mutation that triggers nothing
+  // on its own.
+  const [taglineNode, setTaglineNode] = useState<HTMLParagraphElement | null>(null);
+  const [taglineScaleX, setTaglineScaleX] = useState(1);
+  // The subheader, arrow, and page-indicator dots stay hidden until the
+  // headline's own intro hands off, then type/draw/pop themselves in as the
+  // intro's next beat -- gated on playIntro itself, not just intro.done,
+  // since intro.done is already true immediately on a return visit
+  // (playIntro false) and that visit should show everything at once, not
+  // replay this too.
+  const heroReveal = useHeroReveal(playIntro, intro.done, TAGLINE_TEXT.length, caseStudies.length + 1);
+  useEffect(() => {
+    const measure = () => {
+      // offsetWidth, not getBoundingClientRect().width: the hero sheet
+      // itself rotates (see PaperSheet's transform), and a return visit's
+      // stack-collapse animation can still have it mid-rotation the instant
+      // this effect first runs. getBoundingClientRect returns the rotated,
+      // on-screen bounding box -- wider than the real word -- and since
+      // ResizeObserver never fires again for a transform-only change, a
+      // measurement taken then would stay wrong for the rest of the mount.
+      // offsetWidth is the element's own layout-box width, unaffected by
+      // any ancestor's rotation.
+      const headerWidth = wordRef.current?.offsetWidth;
+      const naturalTaglineWidth = taglineMetricsRef.current?.scrollWidth;
+      if (!headerWidth || !naturalTaglineWidth) return;
+      setTaglineScaleX(headerWidth / naturalTaglineWidth);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    if (wordRef.current) observer.observe(wordRef.current);
+    if (taglineMetricsRef.current) observer.observe(taglineMetricsRef.current);
+    return () => observer.disconnect();
+  }, []);
   // The story owns the headline until it finishes; hover takes over after.
   const introEffect: HeadlineEffect | null =
     intro.phase === "sketch"
@@ -124,9 +270,6 @@ export function Hero({
   const [asciiStageColor, setAsciiStageColor] = useState(ASCII_BG_COLOR);
   const nextEffectIndexRef = useRef(0);
   const isHeadlinePointerInsideRef = useRef(false);
-  // An invisible copy of the word, laid out at the headline's own size, so the
-  // hit area follows the real glyph metrics at every viewport.
-  const wordRef = useRef<HTMLSpanElement>(null);
   const isHeadlineActive = activeEffect !== null;
   // Each treatment inks the tagline and arrow; the resting page has its own
   // grey rather than falling through to the hero's full-strength ink.
@@ -183,26 +326,47 @@ export function Hero({
   // The frame is as wide as the page so it can size the treatments; the word
   // is not. Only the letters, and a little air around them, answer to the
   // cursor -- hovering the empty frame either side used to change treatment.
+  // Extended to include the tagline too: its own box unions with the word's,
+  // so hovering the subheader activates a treatment exactly like hovering
+  // the name itself does.
   const handleHeadlinePointer = (event: PointerEvent<HTMLDivElement>) => {
     const word = wordRef.current?.getBoundingClientRect();
-    const over =
-      !word ||
-      isOverHeadline(
-        { x: event.clientX, y: event.clientY },
-        { left: word.left, right: word.right, top: word.top, bottom: word.bottom }
-      );
+    const tagline = taglineNode?.getBoundingClientRect();
+    const box = word ? unionBox(word, tagline) : undefined;
+    const over = !box || isOverHeadline({ x: event.clientX, y: event.clientY }, box);
     if (over) activateHeadline();
     else deactivateHeadline();
   };
 
   return (
     <div
-      className="relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center transition-[background-color] duration-500 ease-out"
+      // The 500ms background fade is for hover, after the intro -- switching
+      // treatments by hand deserves a soft crossfade. The intro itself is a
+      // hard cut with no fade anywhere else (HEADLINE_HANDOVER_MS is 0), so
+      // this transition has to be off for its duration too, or the
+      // background alone still visibly dissolves between each stage's
+      // colour while the headline on top of it hard-cuts.
+      className={`relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center ${
+        intro.done ? "transition-[background-color] duration-500 ease-out" : ""
+      }`}
       style={{
         backgroundColor: stageBackground,
         // The sketch lettering, tagline, and arrow share blue-pencil ink;
         // the correction mark stays red to remain visibly distinct.
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
+        // A period Windows 95 arrow while the CRT desktop treatment is up.
+        // win95-arrow.cur is the original asset, but it's a legacy 1-bit/
+        // 2-colour cursor (an old AND/XOR mask format) rather than the
+        // modern 32-bit ARGB .cur most browsers' decoders actually expect,
+        // and it silently failed to render at all -- no error, just a quiet
+        // fall-through to auto. win95-arrow.png (the same art, hand-decoded
+        // from the .cur's own mask data and re-encoded as ordinary RGBA) is
+        // the reliable fallback; a hotspot has to be given explicitly for
+        // it since PNG carries none of its own, unlike .cur.
+        cursor:
+          activeEffect === "ascii"
+            ? "url(/cursors/win95-arrow.cur), url(/cursors/win95-arrow.png) 0 0, auto"
+            : undefined,
       }}
     >
       {/* Sits outside the headline block so it stays put while the name and
@@ -214,7 +378,8 @@ export function Hero({
       <PageIndicator
         caseStudies={[...caseStudies, ABOUT_PAGE]}
         fanProgress={fanProgress}
-        onSelect={onSelectCaseStudy}
+        onSelect={onJumpToCaseStudy}
+        revealedCount={heroReveal.dotsRevealed}
       />
       {activeEffect === "stroke" && <SketchPaperShader config={paperTextureConfig} />}
       <div
@@ -276,6 +441,13 @@ export function Hero({
         data-testid="hero-headline"
         className="relative z-10 flex flex-col items-center"
         style={{ transform: `translateY(-${liftPercent}vh)` }}
+        // Moved up from the frame below: this wraps the frame and the
+        // tagline both, so the union hit-test in handleHeadlinePointer
+        // actually gets a chance to run while the cursor is over the
+        // subheader too, not just the name.
+        onPointerEnter={handleHeadlinePointer}
+        onPointerMove={handleHeadlinePointer}
+        onPointerLeave={deactivateHeadline}
       >
         {/* The frame sizes every treatment but no longer clips them: one
             that draws past its own box -- a correction mark, a warp, a tilted
@@ -291,16 +463,13 @@ export function Hero({
             the default colour mode and whose own root isolates when it is not. */}
         <div
           data-testid="headline-frame"
-          className="relative w-[min(94vw,72rem)]"
+          className="relative w-[min(94vw,72rem)] max-lg:w-[min(98vw,72rem)]"
           style={{
             height: "clamp(11rem, min(25vw, 30vh), 20rem)",
             "--headline-font-size": HEADLINE_SIZE,
             "--headline-font-family": HEADLINE_FONT_FAMILY,
             "--headline-font-weight": String(HEADLINE_FONT_WEIGHT),
           } as CSSProperties}
-          onPointerEnter={handleHeadlinePointer}
-          onPointerMove={handleHeadlinePointer}
-          onPointerLeave={deactivateHeadline}
         >
           <span
             ref={wordRef}
@@ -325,7 +494,67 @@ export function Hero({
             data-testid="treatment-mount"
             data-treatment={treatment}
             className={styles.treatmentMount}
+            style={rgbFlash ? { filter: `url(#${rgbSplitFilterId})` } : undefined}
           >
+          {rgbFlash && (
+            <>
+              {/* A marker for the flash's own on/off window -- the actual
+                  effect is the filter style above; this just makes that
+                  transient state queryable. */}
+              <span data-testid="intro-cut-rgb" aria-hidden="true" className="sr-only" />
+              {/* A CSS filter needs an SVG filter to point at, wherever it
+                  lives in the document -- 0x0 and hidden, it never paints
+                  itself. colorInterpolationFilters="sRGB" keeps the channel
+                  math predictable instead of the linearRGB spec default.
+
+                  Each channel is colourised from the glyph's own alpha
+                  (silhouette), not its original RGB value: extracting the
+                  literal red/green/blue component of dark ink extracts a
+                  dark, barely-visible fringe -- #1C1C1C's own red channel
+                  is only ~11% bright, so the split read as "does nothing"
+                  against the resting treatment's near-black text on cream,
+                  even though it was working correctly the whole time. Using
+                  alpha as the intensity source instead gives every
+                  treatment's ink a full-strength coloured fringe regardless
+                  of how dark that ink actually is. */}
+              <svg width="0" height="0" aria-hidden="true" style={{ position: "absolute" }}>
+                <defs>
+                  <filter id={rgbSplitFilterId} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+                    <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+                    <feOffset in="r" dx={-rgbConfig.offsetX} dy={-rgbOffsetY} result="rOffset" />
+                    <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 1 0" result="g" />
+                    <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 1 0  0 0 0 1 0" result="b" />
+                    <feOffset in="b" dx={rgbConfig.offsetX} dy={rgbOffsetY} result="bOffset" />
+                    <feBlend in="rOffset" in2="g" mode="screen" result="rg" />
+                    <feBlend in="rg" in2="bOffset" mode="screen" />
+                  </filter>
+                </defs>
+              </svg>
+            </>
+          )}
+          {noiseBursting && (
+            // One frame of generated static, on top of whichever treatment is
+            // active. Conditionally rendered rather than opacity-toggled, so
+            // it is a hard on/off with no transition of its own. Gated on the
+            // boolean, not the URL itself: noiseTextureDataUrl returns ""
+            // wherever canvas 2D isn't available (every jsdom test
+            // environment, absent the optional `canvas` package) rather than
+            // throwing, and "" is falsy -- gating on the string directly
+            // would hide the overlay in every test even though the real
+            // effect is genuinely active.
+            <div
+              data-testid="intro-cut-noise"
+              aria-hidden="true"
+              className={styles.treatmentLayer}
+              style={{
+                backgroundImage: `url(${noiseUrl})`,
+                backgroundRepeat: "repeat",
+                backgroundSize: "48px 48px",
+                imageRendering: "pixelated",
+                mixBlendMode: "overlay",
+              }}
+            />
+          )}
           {/* Warp stays mounted whatever is on top of it. Its webgl canvas is a
               composited layer the size of the frame; tearing that out left the
               rectangle it occupied unpainted for a frame or two, which is the
@@ -390,7 +619,19 @@ export function Hero({
           </div>
         </div>
         <p
-          ref={subheaderRef}
+          ref={taglineMetricsRef}
+          data-testid="tagline-width-metrics"
+          aria-hidden="true"
+          className="font-script pointer-events-none invisible absolute whitespace-nowrap"
+          style={{ fontSize: TAGLINE_SIZE, lineHeight: 1.1 }}
+        >
+          {TAGLINE_TEXT}
+        </p>
+        <p
+          ref={(node) => {
+            setTaglineNode(node);
+            if (subheaderRef) subheaderRef.current = node;
+          }}
           data-testid="hero-tagline"
           className="font-script"
           style={{
@@ -399,16 +640,44 @@ export function Hero({
             marginTop: TAGLINE_OFFSET,
             color: accentColor,
             transition: "color 420ms ease",
+            // Stretched to exactly the headline's own measured width (see
+            // the effect above) -- centred so it grows or shrinks toward the
+            // same midline the headline itself sits on. Applied throughout
+            // typing, not just once it finishes, so each character lands
+            // already at its final size instead of the whole line popping
+            // out wider on the last one.
+            transform: `scaleX(${taglineScaleX})`,
+            transformOrigin: "center",
           }}
         >
-          Designer, tinkerer, zero-to-one builder
+          {TAGLINE_TEXT.slice(0, heroReveal.subheaderChars)}
+          {heroReveal.phase === "typing" && (
+            // Always the same ink, not accentColor: typing happens right as
+            // the resting treatment settles in, and the resting tagline's
+            // own grey read as too faint for a cursor to blink in. PP Neue
+            // Montreal (the body face), not the tagline's script font: a
+            // pipe drawn in a cursive face comes out slanted and barely
+            // reads as a cursor.
+            <span
+              aria-hidden="true"
+              className="typewriter-cursor"
+              style={{ color: DEFAULT_INK_COLOR, fontFamily: "var(--font-pp-neue-montreal)" }}
+            >
+              |
+            </span>
+          )}
         </p>
       </div>
       <div
         data-testid="scroll-hint"
-        className="boil-line scroll-hint-bob absolute z-10 bottom-8 leading-none transition-opacity duration-300"
+        className="boil-line scroll-hint-bob absolute z-10 bottom-8 leading-none"
         style={{
-          opacity: arrowOpacity,
+          // A plain fade, not a clip-path draw -- and it waits for every
+          // dot to have already popped in (see heroRevealStateAt) rather
+          // than running alongside them. No CSS transition on opacity
+          // itself: arrowProgress already steps smoothly every frame, so a
+          // transition on top would double-ease it.
+          opacity: arrowOpacity * heroReveal.arrowProgress,
           color: arrowColor,
           fontSize: activeEffect === "stroke" ? SKETCH_ARROW_SIZE : ARROW_SIZE,
           transition: "color 420ms ease",

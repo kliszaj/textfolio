@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
 import { createRef } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { SKETCH_INK } from "@/lib/strokeText";
+import { HEADLINE_TREATMENT_DURATION_MS } from "@/lib/headlineIntro";
+import { INTRO_CUT_NOISE_BURST_MS, INTRO_CUT_RGB_FLASH_MS } from "@/lib/introCutEffect";
+import { TAGLINE_TYPE_MS_PER_CHAR, TYPE_START_DELAY_MS } from "@/lib/heroReveal";
+import { caseStudies } from "@/data/caseStudies";
 import styles from "./Hero.module.css";
 import { Hero, TAGLINE_OFFSET } from "./Hero";
 
@@ -34,7 +38,7 @@ test("uses one shared headline frame and typography baseline across treatments",
   // That was the white box flashing in on every treatment that mounts.
   expect(frame).not.toHaveClass("isolate");
   expect(frame).toHaveStyle({
-    "--headline-font-size": "clamp(3rem, min(18vw, 18vh), 14.5rem)",
+    "--headline-font-size": "clamp(3rem, min(var(--headline-vw), 18vh), 14.5rem)",
     "--headline-font-family": "var(--font-pp-frama)",
     "--headline-font-weight": "900",
   });
@@ -61,9 +65,16 @@ test("starts the hover cycle with ASCII text", () => {
   expect(hero).toHaveStyle({ backgroundColor: "#05AEAE" });
   expect(hero).toHaveStyle({ color: "#FFFFFF" });
 
+  // .cur first, but a PNG fallback with an explicit hotspot too -- the
+  // legacy 1-bit .cur silently fails to decode in most browsers, so the
+  // PNG is what actually renders in practice.
+  expect(hero.style.cursor).toContain("win95-arrow.cur");
+  expect(hero.style.cursor).toContain("win95-arrow.png");
+
   fireEvent.pointerLeave(headline);
   expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
+  expect(hero.style.cursor).toBe("");
 });
 
 test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries", () => {
@@ -122,7 +133,10 @@ test("the down-arrow hint fades as fanProgress increases", () => {
 test("attaches the given subheaderRef to the tagline paragraph", () => {
   const subheaderRef = createRef<HTMLParagraphElement>();
   render(<Hero playIntro={false} fanProgress={0} subheaderRef={subheaderRef} />);
-  expect(subheaderRef.current).toBe(screen.getByText("Designer, tinkerer, zero-to-one builder"));
+  // Not getByText: an invisible width-metrics copy of the same full string
+  // also renders (see the tagline scaleX effect), so the visible tagline
+  // needs its own testid to stay unambiguous.
+  expect(subheaderRef.current).toBe(screen.getByTestId("hero-tagline"));
 });
 
 test("pulls the tagline up close under the headline", () => {
@@ -139,8 +153,55 @@ test("scales the tagline up toward the headline while keeping a readable floor",
   // the height term keeps wide ones where they were.
   render(<Hero playIntro={false} fanProgress={0} />);
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({
-    fontSize: "clamp(1.35rem, min(7vw, 6.2vh), 4.5rem)",
+    fontSize: "clamp(1.35rem, min(var(--tagline-vw), 6.2vh), 4.5rem)",
   });
+});
+
+test("stretches the tagline to its final width from the first typed character, not just once it finishes", () => {
+  // Measured off a dedicated always-full-text copy (tagline-width-metrics),
+  // not the visible, still-typing tagline itself -- otherwise the ratio (and
+  // so the visible width) would only be right once typing finished, and the
+  // whole line would visibly pop out wider on the very last character.
+  // offsetWidth, not getBoundingClientRect: the real effect reads
+  // offsetWidth specifically so a rotated ancestor (the hero sheet, mid
+  // stack-collapse on a return visit) can't skew the measurement.
+  const offsetWidthSpy = jest
+    .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+    .mockReturnValue(500);
+  const scrollWidthSpy = jest
+    .spyOn(HTMLElement.prototype, "scrollWidth", "get")
+    .mockReturnValue(250);
+  jest.useFakeTimers();
+  try {
+    render(<Hero playIntro fanProgress={0} />);
+    // Stepped in increments, not one lump sum: jsdom's faked
+    // requestAnimationFrame needs to actually process the intro's own three
+    // treatment beats before the reveal's separate rAF loop can even start
+    // (same lesson as the cut-effect tests above).
+    for (let i = 0; i < 3; i += 1) {
+      act(() => {
+        jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS);
+      });
+    }
+    const typingTarget = TYPE_START_DELAY_MS + TAGLINE_TYPE_MS_PER_CHAR * 3 + 50;
+    for (let elapsed = 0; elapsed < typingTarget; elapsed += 50) {
+      act(() => {
+        jest.advanceTimersByTime(50);
+      });
+    }
+    const tagline = screen.getByTestId("hero-tagline");
+    // Still mid-type (only a few characters in) but already stretched to the
+    // full-text ratio (500 / 250 = 2), not left at 1 until the last letter.
+    expect(tagline.textContent!.length).toBeGreaterThan(0);
+    expect(tagline.textContent!.length).toBeLessThan(
+      "Designer, tinkerer, zero-to-one builder".length
+    );
+    expect(tagline.style.transform).toBe("scaleX(2)");
+  } finally {
+    jest.useRealTimers();
+    offsetWidthSpy.mockRestore();
+    scrollWidthSpy.mockRestore();
+  }
 });
 
 test("the tagline sits in the same place whatever treatment is active", () => {
@@ -155,15 +216,13 @@ test("tagline and arrow take the yellow accent under the ASCII treatment", () =>
   render(<Hero playIntro={false} fanProgress={0} asciiConfig={undefined} />);
   const tagline = screen.getByTestId("hero-tagline");
   const arrow = screen.getByTestId("scroll-hint");
-  const restingTagline = tagline.style.color;
 
+  // The hover handlers now live on hero-headline itself (so the tagline
+  // shares the same touch target as the word), and the hover cycle always
+  // starts on ASCII for a fresh render.
   fireEvent.pointerEnter(screen.getByTestId("hero-headline"));
-  if (screen.getByTestId("hero-headline").dataset.effect === "ascii") {
-    expect(tagline).toHaveStyle({ color: ASCII_INK_LIME });
-    expect(arrow).toHaveStyle({ color: ASCII_INK_LIME });
-  } else {
-    expect(tagline.style.color).toBe(restingTagline);
-  }
+  expect(tagline).toHaveStyle({ color: ASCII_INK_LIME });
+  expect(arrow).toHaveStyle({ color: ASCII_INK_LIME });
 });
 
 test("the resting page keeps the tagline quiet but inks the sketchy arrow black", () => {
@@ -313,4 +372,125 @@ test("includes About alongside the case studies in the page indicator", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
   const indicator = screen.getByTestId("page-indicator");
   expect(within(indicator).getByRole("button", { name: "About Me" })).toBeInTheDocument();
+});
+
+test("routes the page indicator through onJumpToCaseStudy, not onSelectCaseStudy", () => {
+  const onSelectCaseStudy = jest.fn();
+  const onJumpToCaseStudy = jest.fn();
+  render(
+    <Hero
+      playIntro={false}
+      fanProgress={0}
+      onSelectCaseStudy={onSelectCaseStudy}
+      onJumpToCaseStudy={onJumpToCaseStudy}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: caseStudies[0].title }));
+
+  expect(onJumpToCaseStudy).toHaveBeenCalledWith(caseStudies[0]);
+  expect(onSelectCaseStudy).not.toHaveBeenCalled();
+});
+
+describe("the intro's cut effect", () => {
+  // The cut itself never fades (HEADLINE_HANDOVER_MS is 0). These effects are
+  // separate, short-lived transients that ride on top of the cut instant --
+  // testing them means actually running the intro's real timers, unlike
+  // every other test in this file.
+  //
+  // Each scenario below mounts Hero exactly once and walks its single
+  // instance through every boundary it checks, rather than mounting a fresh
+  // Hero per assertion. Multiple mount/unmount cycles of Hero (which mounts
+  // StrokeText's dynamically-imported SketchPaperShader once phase reaches
+  // "sketch") inside one fake-timer describe block left a stray queued
+  // callback from an earlier instance firing during a later instance's own
+  // advanceTimersByTime, throwing that later test's timing off by an amount
+  // that had nothing to do with its own boundaries -- a real, reproduced
+  // Jest+rAF+dynamic-import interaction, not a bug in the cut-effect logic
+  // itself (confirmed by running each scenario as the only test in its own
+  // file, where it passed every time). One continuous mount per scenario
+  // sidesteps it entirely.
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test("flashes the rgb-split filter on, then off, at every cut -- but never once settled", () => {
+    render(<Hero playIntro fanProgress={0} cutEffect="rgb" />);
+
+    // The reel opens directly on sketch (no resting beat first), so the
+    // first real cut is sketch -> ascii, one treatment beat in. Comfortably
+    // before it: not yet flashing.
+    act(() => {
+      jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS - 50);
+    });
+    expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
+
+    // Past the cut (jsdom's faked requestAnimationFrame lands within about a
+    // frame of the target, not exactly on it, so every boundary check here
+    // gives itself a real margin either side rather than asserting at
+    // +1ms), still inside the flash's own short window.
+    act(() => {
+      jest.advanceTimersByTime(70);
+    });
+    expect(screen.getByTestId("intro-cut-rgb")).toBeInTheDocument();
+
+    // Past the flash's own window entirely: cleared again.
+    act(() => {
+      jest.advanceTimersByTime(INTRO_CUT_RGB_FLASH_MS + 50);
+    });
+    expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
+
+    // Comfortably into the second cut's own flash window (ascii -> warp,
+    // one treatment beat later): fires again, not just the first time.
+    act(() => {
+      jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS - INTRO_CUT_RGB_FLASH_MS - 20);
+    });
+    expect(screen.getByTestId("intro-cut-rgb")).toBeInTheDocument();
+
+    // Run out the rest of the intro (through the ascii -> warp and
+    // warp -> final cuts) and settle: no flash left lingering. Stepped in
+    // the same small increments as the boundaries above, rather than one
+    // huge jump -- jsdom's faked requestAnimationFrame needs to actually
+    // process each intermediate cut's own timers along the way.
+    for (let i = 0; i < 6; i += 1) {
+      act(() => {
+        jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS);
+      });
+    }
+    expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
+
+    // A real hover swap afterward is a deliberate, user-driven change, not a
+    // scripted cut -- it should stay clean.
+    fireEvent.pointerEnter(screen.getByTestId("headline-frame"), { pointerType: "mouse" });
+    expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
+  });
+
+  test("bursts one frame of noise at a cut, then clears it", () => {
+    render(<Hero playIntro fanProgress={0} cutEffect="noise" />);
+
+    act(() => {
+      jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS - 50);
+    });
+    expect(screen.queryByTestId("intro-cut-noise")).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(70);
+    });
+    expect(screen.getByTestId("intro-cut-noise")).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(INTRO_CUT_NOISE_BURST_MS + 50);
+    });
+    expect(screen.queryByTestId("intro-cut-noise")).not.toBeInTheDocument();
+  });
+
+  test("defaults to no cut effect at all", () => {
+    render(<Hero playIntro fanProgress={0} />);
+    act(() => {
+      jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS + 1);
+    });
+    expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("intro-cut-noise")).not.toBeInTheDocument();
+  });
 });

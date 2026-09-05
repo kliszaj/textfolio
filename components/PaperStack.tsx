@@ -13,6 +13,7 @@ import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
+import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
 import { Hero } from "./Hero";
 import { PaperSheet } from "./PaperSheet";
 import { CaseStudyPreview } from "./CaseStudyPreview";
@@ -39,8 +40,11 @@ type PaperStackProps = {
   strokeConfig?: StrokeTextConfig;
   paperTextureConfig?: PaperTextureConfig;
   onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
+  onJumpToCaseStudy?: (caseStudy: CaseStudy) => void;
   playIntro?: boolean;
   suppressHeadlineHover?: boolean;
+  cutEffect?: IntroCutEffect;
+  rgbConfig?: IntroCutRgbConfig;
 };
 
 export function PaperStack({
@@ -53,8 +57,11 @@ export function PaperStack({
   strokeConfig = DEFAULT_STROKE_TEXT_CONFIG,
   paperTextureConfig = DEFAULT_PAPER_TEXTURE_CONFIG,
   onSelectCaseStudy,
+  onJumpToCaseStudy,
   playIntro,
   suppressHeadlineHover = false,
+  cutEffect,
+  rgbConfig,
 }: PaperStackProps) {
   // About rides as one more sheet behind the last case study, so it takes
   // its own colour and band but never appears in the page indicator or the
@@ -73,7 +80,7 @@ export function PaperStack({
         transitionMs={transitionMs}
         zIndex={zIndexForDepth(0, sheetCount)}
       >
-        <Hero playIntro={playIntro} suppressHeadlineHover={suppressHeadlineHover} onSelectCaseStudy={onSelectCaseStudy} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} />
+        <Hero playIntro={playIntro} suppressHeadlineHover={suppressHeadlineHover} onSelectCaseStudy={onSelectCaseStudy} onJumpToCaseStudy={onJumpToCaseStudy} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} cutEffect={cutEffect} rgbConfig={rgbConfig} />
       </PaperSheet>
       {[...caseStudies, ABOUT_PAGE].map((caseStudy, index) => {
         const depth = index + 1;
