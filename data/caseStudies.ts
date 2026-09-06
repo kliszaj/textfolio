@@ -13,6 +13,8 @@ export type CaseStudyFact = { label: string; value: string | string[] | CaseStud
 export type CaseStudySection = {
   heading?: string;
   body: string;
+  bodyLink?: CaseStudyOverviewLink;
+  bodyLinks?: CaseStudyOverviewLink[];
   bullets?: string[];
 };
 
@@ -35,6 +37,13 @@ export type CaseStudyIntroImage = {
   height: number;
 };
 
+// A single editorial source within the opening summary. Keeping the linked
+// phrase separate from the copy avoids HTML in the content data.
+export type CaseStudyOverviewLink = {
+  label: string;
+  href: string;
+};
+
 export type CaseStudy = {
   slug: string;
   title: string;
@@ -44,6 +53,7 @@ export type CaseStudy = {
   videoSrc?: string;
   // Left column: what the work was, read in a glance.
   overview?: string;
+  overviewLink?: CaseStudyOverviewLink;
   facts?: CaseStudyFact[];
   introImage?: CaseStudyIntroImage;
   // Right column: the long read, in order.
@@ -61,9 +71,9 @@ export const caseStudies: CaseStudy[] = [
     slug: "spotify-jam",
     title: "Spotify Jam",
     thumbnailColor: "#15FF76",
-    blurb: "Making music multiplayer: the road the 50M monthly users.",
+    blurb: "Listen with friends from anywhere, on any device.",
     overview:
-      "Spotify Jam is a simple-to-use experience for listening together with friends, anywhere in the world, on any device.  Jam is now one of Spotify's fastest growing features with 50 million monthly active users and over 100 million monthly listening hours.  Jam is now a cornerstone of Spotify's 10 year multplayer strategy that was announted a Investor Days 2026.",
+      "Spotify Jam lets you listen together with friends from anywhere in the world, on any device.  Jam is now one of Spotify's fastest growing features with 50 million monthly active users and over 100 million monthly listening hours.",
     facts: [
       { label: "Role", value: "Lead Designer\n2023 – present" },
       { label: "Scope", value: "Design Strategy, Product Strategy" },
@@ -75,18 +85,19 @@ export const caseStudies: CaseStudy[] = [
     sections: [
       {
         body:
-          "Jam started as a set of fragmented beta listneing together features that user's weren't understading how to use or why they would use them.  The value proposition at the time was around shared control of devices and users didn't see much value in that. We used mixed-methods insights to consoldiate the disparate features into one holsitic experience that was focused around people - listening together and sharing a social moment powered by music with those who matter most. We also advoated to give the feature a branded name, something that they could remember and talk about together - 'Let's start a Jam'. I was the design lead for the core mobile experience but I worked closely with platform designers to adapt it to Car, Desktop, and TV. After launch, Jam found some product-market fit in shared physical spaces such as living rooms and cars but we knew we had to make discovering and joining Jams even easier.",
-      },
-      {body:
-        "Using principles from choice architecture and behavioural economics, we aligned on a strategy if proactively inviting prospective listening nearby - this became our growth engine: when one person started listening on a shared device, the people around them could join without needing to search, scan, or ask for a link. The interaction looked simple, but the initial invitation system was built on a series of complicated heuristics and signals."
-      },
-      {
-        body:
-          "Seamless joining only works if both hosts and guests feel in control. As we saw the proactive invitation strategy working, we knew we needed to upgrade it to make it more relevant and less interruptive. The current system builds on the first one that includes ML, social graphs, proximity, and user habits. We designed the privacy model around explicit consent, clear session boundaries, and host controls over who could join, contribute, or stay.",
+          "As a Staff Product Designer, I was responsible for the value framing and positioning of the early feature concept, designing a safe and seamless proactive nudging system that really helped it take off and find product-market-fit, working with other designers in the organization to adapt the mobile experience to other platforms like Car, Desktop, and TV, and growing the remote-use of the feature by desginig a co-ordination layer via Listening Activity and Messages so that remote users would know when friends are avaialble to listen and have a way to give eachother feedback to keep sessions engaging.",
+        bodyLink: {
+          label: "proactive nudging",
+          href: "https://en.wikipedia.org/wiki/Nudge_theory",
+        },
       },
       {
         body:
-          "Once we had strong product-market-fit for in-person listening, we focused on growing Jam for users who want to listen remotely. In person Jams have the benefit of allowing all participatns to communicate with eachother through language.  Remote Jams were missing a facilitation layer - who's available to listen? How do I know they're not busy? What to they want to listen to? I working across the organization to evolve Messaging, and Listening Activity to give people ways to notice, coordinate, and join one another when they were apart.",
+          "Jam is now a cornerstone of Spotify's new long-term multiplayer strategy.",
+        bodyLink: {
+          label: "multiplayer strategy",
+          href: "https://newsroom.spotify.com/2026-05-21/investor-day-recap/",
+        },
       },
     ],
     videoSrc: "/assets/jam.mp4",
@@ -103,28 +114,23 @@ export const caseStudies: CaseStudy[] = [
     slug: "seamless-strategy",
     title: "Seamless Strategy",
     thumbnailColor: "#F850C0",
-    blurb: "Taking Spotify beyond ubiquity",
+    blurb: "Taking Spotify beyond Ubiquity",
     overview:
-      "Racing an expiration date: the strategy that grew into a 100-person Product Area.",
+      "For years Spotify has held a competitive advantage through it's Ubiquity strategy - being available on any device you listen on whether it's a TV, a Smart Speaker, or a Fridge.  Now, the Ubiquity advantage is being challenged through new technologies and protocols such as Matter. As a Senior Product Designer, I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences.",
     facts: [
       { label: "Role", value: "Co-Creator, Design Lead\n2021 – 2022" },
       { label: "Scope", value: "Design Strategy, Product Strategy, Research" },
-      { label: "Impact", value: "New Product Area created · still an active core strategy four years later" },
+      { label: "Impact", value: "Co-created core business strategy that impacts over 500 million users" },
     ],
     sections: [
       {
         body:
-          "I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences.",
+          "During this project I was responsible for facilitated cross-organizational opportunity mapping workshops, co-authoring a data and insights informed bet list, helped define the three pillars of the strategy, align and socialize design principles, and helped define a multi-year roadmap that then turned into a new Product Area.",
       },
-      {
+     {
         body:
-          "Spotify had tried cross-device strategy before. The internal record was blunt about why it failed: no team was structured or resourced to own it.",
-        bullets: [
-          "I argued against a central team owning the whole proposition. Device teams kept ownership of their surfaces, while Seamless set shared principles.",
-          "I co-authored DIBBs, a confidence framework that funded high-confidence bets and staged unproven ideas for validation instead of shipping them on faith.",
-          "One staged bet, Enable People, became foundational research and later Jam. Adoption took time across six functions, but the strategy was still active four years later.",
-        ],
-      },
+          "The Seamless Strategy remains a core focus for the business and the Product Area now employs over 100 people."
+      },  
     ],
     media: [
       { alt: "Seamless strategy overview deck", span: "full" },
@@ -138,9 +144,9 @@ export const caseStudies: CaseStudy[] = [
     slug: "focals-by-north",
     title: "Focals by North",
     thumbnailColor: "#FFA52E",
-    blurb: "Defining how you'd navigate a computer that has no screen to speak of, before a single feature could be designed.",
+    blurb: "Designing an operating system that you're barely meant to use.",
     overview:
-      "Designing an operating system for a screen you can't look down at.",
+      "Before Meta made smartglasses creepy again, I was a Senior Product Designer at a stealth startup in Canada called North.  We had the mission of making createing the next mode of computer a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
     facts: [
       { label: "Role", value: "Interaction Design Lead\n2018 – 2019" },
       { label: "Scope", value: "0→1 interaction model, hardware-software co-design, information architecture" },
@@ -149,23 +155,25 @@ export const caseStudies: CaseStudy[] = [
     videoSrc: "/assets/focals.mp4",
     sections: [
       {
-        heading: "One feed, one ring, no app grid",
         body:
-          "Focals had no touchscreen and no keyboard. It had Loop, a physical ring with five inputs, and a transparent display roughly the size of a postage stamp.",
-        bullets: [
-          "A phone-style app grid did not fit the hardware. I led the core model: one priority-ordered feed of modules, navigated with Loop's five inputs.",
-          "The feed made real decisions. Modules reordered as their priority changed, so a calendar event could rise to the top as it got closer.",
-          "We prototyped a capacitive touch pad with a full gesture vocabulary, then chose the discrete ring. Lens Switcher peek was scoped out of v1.0 so the core could ship.",
-        ],
+          "I joined the company early on and as Interaction Design Lead and, as at any startup, the jobs I did varied.  I did foundational research, usability testing, service design in our physical stores in New York and Toronto, defined the device's input method, helped define the hero feature-set, created an intuitive interface for users that was discreet embodied the principles of humane tech, created a new product design process that allowed us to ideate, build, and ship in one week to quickly search for product-market-fit, and I designed the mobile sizing app so users could scan their heads to size the glasses at home instead of visiting a store.",
+        bodyLink: {
+          label: "created a new product design process",
+          href: "/archive/2019/pmf.html",
+        },
       },
       {
-        heading: "What had to work on five inputs",
         body:
-          "Every feature Focals shipped had to fit inside that interaction model.",
-        bullets: [
-          "Go, the heads-up navigation experience, moved through four rejected visual directions before landing on a turn-by-turn cue readable in under two seconds.",
-          "Alexa opened through a long press on Loop, without a wake word. Its tablet response templates had to be redesigned for the 110 by 110 pixel display.",
-          "The Focals Sizing App used face scanning to solve fit and return risk at home. Accuracy, trust, and how wrong is too wrong were all design problems.",
+          "In the end, Focals were not commercially successful but received strong positive reviews from Wired and TechCrunch. The company was acquired by Google in 2021, and it looks like the spirit of the glasses lives on.",
+        bodyLinks: [
+          {
+            label: "Wired",
+            href: "https://www.wired.com/review/focals-by-north-smart-glasses/",
+          },
+          {
+            label: "TechCrunch",
+            href: "https://www.youtube.com/watch?v=5eO-Y36_t08",
+          },
         ],
       },
     ],

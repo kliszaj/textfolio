@@ -123,7 +123,7 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: SKETCH_INK });
   expect(screen.getByTestId("scroll-hint")).toHaveStyle({
     color: SKETCH_INK,
-    fontSize: "clamp(2.5rem, 4.2vw, 5.4rem)",
+    fontSize: "5.4rem",
   });
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
@@ -207,6 +207,11 @@ test("reveals the complete tagline from blur to sharp focus", () => {
     offsetWidthSpy.mockRestore();
     scrollWidthSpy.mockRestore();
   }
+});
+
+test("uses the enlarged middle down-arrow size outside the sketch treatment", () => {
+  render(<Hero playIntro={false} fanProgress={0} />);
+  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ fontSize: "3.75rem" });
 });
 
 test("hands the tagline back to the line-boil filter once its focus reveal has finished", () => {

@@ -30,19 +30,13 @@ test("plays all five frames while the case-study header collapses", () => {
   expect(icon).toHaveAttribute("src", "/assets/home-animation-5.svg");
 });
 
-test("waits for the header to reopen before playing frames backwards", () => {
+test("rewinds with the header as it reopens", () => {
   const { rerender } = render(<HomeIconAnimation shrunk />);
   const icon = screen.getByTestId("case-study-home-label");
   expect(icon).toHaveAttribute("src", "/assets/home-animation-5.svg");
 
   rerender(<HomeIconAnimation shrunk={false} />);
-  act(() => jest.advanceTimersByTime(179));
-  expect(icon).toHaveAttribute("src", "/assets/home-animation-5.svg");
-
-  act(() => jest.advanceTimersByTime(1));
-  act(() => jest.advanceTimersByTime(79));
-  expect(icon).toHaveAttribute("src", "/assets/home-animation-5.svg");
-  act(() => jest.advanceTimersByTime(1));
+  act(() => jest.advanceTimersByTime(80));
   expect(icon).toHaveAttribute("src", "/assets/home-animation-4.svg");
   act(() => jest.advanceTimersByTime(80 * 3));
   expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
@@ -76,9 +70,9 @@ test("does not replay the hover wiggle for a pointer that was already sitting ov
   const icon = screen.getByTestId("case-study-home-label");
 
   rerender(<HomeIconAnimation shrunk={false} />);
-  // Still mid-rebuild: the reverse sequence's own delay plus four frame
-  // steps is 500ms; fire well inside that window.
-  act(() => jest.advanceTimersByTime(300));
+  // Still mid-rebuild: the reverse sequence takes 320ms; fire well inside
+  // that window.
+  act(() => jest.advanceTimersByTime(160));
   fireEvent.pointerEnter(icon);
   act(() => jest.advanceTimersByTime(80 * 8));
   // The wiggle never ran -- the icon settles on frame 1 purely from finishing

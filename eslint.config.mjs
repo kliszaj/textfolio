@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    // Restored static portfolio archive, kept verbatim outside the app source.
+    "public/archive/**",
     "next-env.d.ts",
   ]),
   {

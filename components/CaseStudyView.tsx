@@ -9,7 +9,7 @@ import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudyRoute } from "@/data/caseStudies";
 import { nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
-import type { CaseStudy, CaseStudyMedia } from "@/data/caseStudies";
+import type { CaseStudy, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
 
 type CaseStudyViewProps = {
   caseStudy: CaseStudy;
@@ -35,9 +35,38 @@ const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
   half: "col-span-1 row-span-1",
 };
 
+function renderLinkedCopy(
+  copy: string,
+  links?: CaseStudyOverviewLink | CaseStudyOverviewLink[]
+) {
+  const requestedLinks = Array.isArray(links) ? links : links ? [links] : [];
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+
+  for (const link of requestedLinks) {
+    const start = copy.indexOf(link.label, cursor);
+    if (start === -1) continue;
+
+    parts.push(copy.slice(cursor, start));
+    parts.push(
+      <a
+        key={`${link.href}-${start}`}
+        href={link.href}
+        target="_blank"
+        rel="noreferrer"
+        className="underline underline-offset-2 transition-opacity hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+      >
+        {link.label}
+      </a>
+    );
+    cursor = start + link.label.length;
+  }
+
+  return parts.length === 0 ? copy : <>{parts}{copy.slice(cursor)}</>;
+}
+
 export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
-  const { overview, facts = [], introImage, sections = [], media = [], videoSrc } = caseStudy;
-  const hasBlurb = Boolean(caseStudy.blurb);
+  const { overview, overviewLink, facts = [], introImage, sections = [], media = [], videoSrc } = caseStudy;
   const hasMedia = Boolean(videoSrc) || media.length > 0;
   const router = useRouter();
 
@@ -209,19 +238,8 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
               the rail reads as the intro it is, rather than a squeezed sidebar. */}
           <div
             data-testid="case-study-columns"
-            className="mx-auto grid w-full max-w-[100rem] gap-12 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-20"
+            className="mx-auto grid w-full max-w-[100rem] gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-x-20"
           >
-            {/* Its own grid item, not nested in case-study-detail, so it can
-                sit ahead of the facts on narrow screens (order-1) while
-                staying above the long read in the right-hand column at lg
-                (an explicit grid placement, since two column-2 rows need
-                declaring once a third item -- this -- shares the grid). */}
-            {hasBlurb && (
-              <h2 className="case-study-intro-title font-body font-bold order-1 lg:order-none lg:col-start-2 lg:row-start-1">
-                {caseStudy.blurb}
-              </h2>
-            )}
-
             <aside
               data-testid="case-study-overview"
               className="font-body order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-32 lg:self-start"
@@ -281,11 +299,13 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                 study document. */}
             <div
               data-testid="case-study-detail"
-              className={`font-body order-3 lg:order-none lg:col-start-2 ${
-                hasBlurb ? "lg:row-start-2" : "lg:row-start-1"
-              }`}
+              className="font-body font-medium order-3 lg:order-none lg:col-start-2 lg:row-start-1"
             >
-              {overview && <p className="case-study-copy case-study-intro-copy">{overview}</p>}
+              {overview && (
+                <p className="case-study-copy case-study-intro-copy mb-8">
+                  {renderLinkedCopy(overview, overviewLink)}
+                </p>
+              )}
               {sections.length > 0 ? (
                 <>
                 {visibleSections.map((section) => (
@@ -293,7 +313,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                     {section.heading && (
                       <h2 className="font-body font-bold text-2xl leading-none mb-3">{section.heading}</h2>
                     )}
-                    <p>{section.body}</p>
+                    <p>{renderLinkedCopy(section.body, section.bodyLinks ?? section.bodyLink)}</p>
                     {section.bullets && section.bullets.length > 0 && (
                       <ul className="mt-3 list-disc space-y-2 pl-5">
                         {section.bullets.map((bullet) => (
@@ -324,12 +344,13 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
             </div>
           </div>
 
-          {/* Evidence last, and wider than the reading columns: on a big screen
-              the space either side is better spent on the work than on margin. */}
+          {/* Evidence follows the reading columns on the same left and right
+              edges, so video and media feel part of the editorial page rather
+              than a separate full-width gallery. */}
           {hasMedia && (
             <section
               data-testid="case-study-media"
-              className="mx-auto mt-20 w-full max-w-[110rem]"
+              className="mx-auto mt-20 w-full max-w-[100rem]"
             >
               {videoSrc && (
                 <LazyVideo

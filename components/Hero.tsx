@@ -84,8 +84,10 @@ const RESTING_ACCENT_COLOR = "#878787";
 // their colour transition as one shared value so one cannot lag the others.
 const TREATMENT_COLOR_TRANSITION = "500ms ease-out";
 const TAGLINE_SIZE = "clamp(1.35rem, min(var(--tagline-vw), 6.2vh), 4.5rem)";
-const ARROW_SIZE = "clamp(2.1rem, 3.8vw, 4.6rem)";
-const SKETCH_ARROW_SIZE = "clamp(2.5rem, 4.2vw, 5.4rem)";
+// Two deliberate sizes only: the enlarged middle size holds across mobile and
+// small screens, while the pencil-sketch treatment gets its own larger mark.
+const ARROW_SIZE = "3.75rem";
+const SKETCH_ARROW_SIZE = "5.4rem";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;
 // A named constant rather than an inline string: useHeroReveal needs its

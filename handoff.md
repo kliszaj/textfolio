@@ -17,9 +17,31 @@ pushed. `data/caseStudies.ts` must not be marked `skip-worktree`; use ordinary
 Git status and review it like every other tracked source file.
 
 **Status (2026-09-06):** release-ready on `main`. The full suite is green
-(42 suites / 554 tests), as are `npx tsc --noEmit`, `npm run lint`, and
+(43 suites / 564 tests), as are `npx tsc --noEmit`, `npm run lint`, and
 `npm run build` (static export). The outstanding earlier notes below are
 historical unless they are repeated in a newer release note.
+
+## Release: case-study reading refinements and archive (2026-09-06)
+
+This release is explicitly approved for `origin/main`. It includes:
+
+- Case-study pagination now reveals over 250ms, holds for 400ms, then starts
+  the page lift. The home icon rewinds immediately during the matching 320ms
+  header expansion when scrolling back up.
+- Full case-study pages no longer repeat a card's preview blurb. The right
+  reading column uses the supplied 500-weight body face; the opening-to-body
+  gap is tighter and media/video share the text container's 100rem edges.
+- Spotify Jam's real copy now cites the Investor Day recap for `multiplayer
+  strategy` and Nudge Theory for `proactive nudging`.
+- The Focals case study links to the restored 2019 archive. Its static files
+  live in `public/archive/`; `data/legacyArchive.test.ts` guards the linked
+  entry point.
+- The hero down arrow uses two fixed sizes: 3.75rem normally (including
+  mobile/small screens) and 5.4rem for the sketch treatment.
+
+Run `npm test`, `npx tsc --noEmit`, `npm run lint`, and `npm run build` before
+any later publish. The restored 2019 archive is intentionally part of this
+release because the Focals case study links to it.
 
 ## Release: real portfolio data and interaction polish (2026-09-06)
 

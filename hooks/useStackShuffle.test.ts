@@ -52,9 +52,9 @@ test("uses a near-instant reveal before handing off to the page transition", () 
 
   frame(STACK_SHUFFLE_OPEN_MS + STACK_SHUFFLE_HOLD_MS);
   expect(onArrived).toHaveBeenCalledTimes(1);
-  expect(STACK_SHUFFLE_OPEN_MS).toBe(150);
-  expect(STACK_SHUFFLE_HOLD_MS).toBe(300);
-  expect(STACK_SHUFFLE_OPEN_MS + STACK_SHUFFLE_HOLD_MS).toBe(450);
+  expect(STACK_SHUFFLE_OPEN_MS).toBe(250);
+  expect(STACK_SHUFFLE_HOLD_MS).toBe(400);
+  expect(STACK_SHUFFLE_OPEN_MS + STACK_SHUFFLE_HOLD_MS).toBe(650);
 });
 
 test("tweens travel from the starting value toward the target", () => {

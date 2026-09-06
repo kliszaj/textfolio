@@ -11,6 +11,7 @@ beforeEach(() => {
 });
 
 import { CaseStudyView } from "./CaseStudyView";
+import { getCaseStudyBySlug } from "@/data/caseStudies";
 
 const caseStudy = {
   slug: "test-case",
@@ -28,21 +29,12 @@ const nextStudy = {
 
 const withVideo = { ...caseStudy, videoSrc: "/assets/jam.mp4" };
 
-test("puts the title in the header and the blurb at the head of the reading column", () => {
+test("keeps the title in the header but omits the preview blurb from the full page", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
   expect(screen.getByTestId("case-study-header")).toContainElement(
     screen.getByText("Test Case")
   );
-  // The header carries the project name and controls. The framing sentence
-  // is its own grid item -- not nested in case-study-detail -- specifically
-  // so it can reorder ahead of the facts rail on narrow screens; it belongs
-  // with the reading column's content either way, not the header or the rail.
-  expect(screen.getByTestId("case-study-columns")).toContainElement(
-    screen.getByText("A test blurb.")
-  );
-  expect(screen.getByTestId("case-study-overview")).not.toContainElement(
-    screen.getByText("A test blurb.")
-  );
+  expect(screen.queryByText("A test blurb.")).not.toBeInTheDocument();
 });
 
 test("carries the case study's colour through into the header", () => {
@@ -115,6 +107,19 @@ test("sets the overview column beside the in-depth column", () => {
   const columns = screen.getByTestId("case-study-columns");
   expect(columns).toContainElement(screen.getByTestId("case-study-overview"));
   expect(columns).toContainElement(screen.getByTestId("case-study-detail"));
+});
+
+test("uses the medium body face for the right-hand reading column", () => {
+  render(<CaseStudyView caseStudy={written} />);
+  expect(screen.getByTestId("case-study-detail")).toHaveClass("font-medium");
+});
+
+test("keeps the framing headline close to the first paragraph while preserving the wide columns", () => {
+  render(<CaseStudyView caseStudy={written} />);
+  expect(screen.getByTestId("case-study-columns")).toHaveClass(
+    "gap-y-8",
+    "lg:gap-x-20"
+  );
 });
 
 test("lists the at-a-glance facts in the overview column", () => {
@@ -191,6 +196,11 @@ test("collects all media below both columns, never between them", () => {
   expect(columns.compareDocumentPosition(media) & 4).toBeTruthy();
 });
 
+test("aligns video and media with the text container", () => {
+  render(<CaseStudyView caseStudy={written} />);
+  expect(screen.getByTestId("case-study-media")).toHaveClass("max-w-[100rem]");
+});
+
 test("keeps the placeholder note while a case study is still unwritten", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
   expect(screen.getByTestId("case-study-detail")).toHaveTextContent(/Placeholder body copy/);
@@ -201,6 +211,68 @@ test("does not add placeholder copy after a complete overview", () => {
   render(<CaseStudyView caseStudy={{ ...caseStudy, overview: "A complete overview." }} />);
   expect(screen.getByText("A complete overview.")).toBeInTheDocument();
   expect(screen.queryByText(/Placeholder body copy/)).not.toBeInTheDocument();
+});
+
+test("renders an overview source as a safe external link", () => {
+  render(
+    <CaseStudyView
+      caseStudy={{
+        ...caseStudy,
+        overview: "Jam is part of Spotify's multiplayer strategy.",
+        overviewLink: {
+          label: "multiplayer strategy",
+          href: "https://newsroom.spotify.com/2026-05-21/investor-day-recap/",
+        },
+      }}
+    />
+  );
+
+  const source = screen.getByRole("link", { name: "multiplayer strategy" });
+  expect(source).toHaveAttribute("href", "https://newsroom.spotify.com/2026-05-21/investor-day-recap/");
+  expect(source).toHaveAttribute("target", "_blank");
+  expect(source).toHaveAttribute("rel", "noreferrer");
+});
+
+test("renders a source inside a narrative paragraph", () => {
+  render(
+    <CaseStudyView
+      caseStudy={{
+        ...caseStudy,
+        sections: [
+          {
+            body: "Jam is part of Spotify's multiplayer strategy.",
+            bodyLink: {
+              label: "multiplayer strategy",
+              href: "https://newsroom.spotify.com/2026-05-21/investor-day-recap/",
+            },
+          },
+        ],
+      }}
+    />
+  );
+
+  expect(screen.getByRole("link", { name: "multiplayer strategy" })).toHaveAttribute(
+    "href",
+    "https://newsroom.spotify.com/2026-05-21/investor-day-recap/"
+  );
+});
+
+test("renders the Jam nudge-theory source on proactive nudging", () => {
+  const spotifyJam = getCaseStudyBySlug("spotify-jam");
+  expect(spotifyJam).toBeDefined();
+  render(<CaseStudyView caseStudy={spotifyJam!} />);
+
+  expect(screen.getByRole("link", { name: "proactive nudging" })).toHaveAttribute(
+    "href",
+    "https://en.wikipedia.org/wiki/Nudge_theory"
+  );
+});
+
+test("sets the overview apart from the following narrative paragraph", () => {
+  render(<CaseStudyView caseStudy={written} />);
+  expect(
+    screen.getByText("Rebuilding a retailer's identity system from the crest outward.")
+  ).toHaveClass("mb-8");
 });
 
 test("always sets the rail beside the long read, per the two-column brief", () => {
@@ -310,18 +382,16 @@ test("names the next project in the pill that opens out of the arrow", () => {
   expect(screen.getByTestId("case-study-next")).toHaveClass("case-study-next");
 });
 
-test("puts a project framing headline above the titled overview beats", () => {
+test("keeps the preview framing headline out of the detailed case-study page", () => {
   render(<CaseStudyView caseStudy={written} next={nextStudy} />);
   const columns = screen.getByTestId("case-study-columns");
   const detail = screen.getByTestId("case-study-detail");
 
-  // The headline is its own grid item now, not nested in case-study-detail --
-  // that's what lets it reorder ahead of the facts on narrow screens without
-  // duplicating markup. Only the two section headings live in detail.
+  // The two authored section headings are the only headings in the reading
+  // column; the card's preview blurb does not repeat on the case-study page.
   expect(detail.querySelectorAll("h2")).toHaveLength(2);
-  const headline = screen.getByText("A test blurb.");
-  expect(headline).toHaveClass("case-study-intro-title");
-  expect(headline.parentElement).toBe(columns);
+  expect(screen.queryByText("A test blurb.")).not.toBeInTheDocument();
+  expect(columns).toContainElement(detail);
   expect(screen.getByText("The problem")).toHaveClass("font-body", "font-bold");
   expect(
     screen.getByText("Inconsistent line work across applications.")

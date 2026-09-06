@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react";
 // The indicator should feel like a direct page-navigation control, not a
 // second interaction to wait through. A very quick reveal gives the selected
 // sheet one painted frame before its page transition takes over.
-export const STACK_SHUFFLE_OPEN_MS = 150;
-export const STACK_SHUFFLE_HOLD_MS = 300;
+export const STACK_SHUFFLE_OPEN_MS = 250;
+export const STACK_SHUFFLE_HOLD_MS = 400;
 
 // Drives the page-indicator's "find this case study in the stack, then lift
 // it out" sequence: tweens the stack's travel value from wherever it
