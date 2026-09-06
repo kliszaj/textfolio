@@ -6,6 +6,8 @@ import type { WarpTextConfig } from "@/lib/warpText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import type { FanSheetConfig } from "@/lib/fanSheet";
+import { INTRO_CUT_EFFECTS } from "@/lib/introCutEffect";
+import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
 
 type FanDebugPanelProps = {
   config: FanSheetConfig;
@@ -26,6 +28,10 @@ type FanDebugPanelProps = {
   onStrokeConfigChange: (config: StrokeTextConfig) => void;
   paperTextureConfig: PaperTextureConfig;
   onPaperTextureConfigChange: (config: PaperTextureConfig) => void;
+  cutEffect: IntroCutEffect;
+  onCutEffectChange: (effect: IntroCutEffect) => void;
+  rgbConfig: IntroCutRgbConfig;
+  onRgbConfigChange: (config: IntroCutRgbConfig) => void;
 };
 
 const BAND_LABELS = ["Case One", "Case Two", "Case Three", "Case Four", "Case Five"];
@@ -35,6 +41,11 @@ const TREATMENT_LABELS = {
   stroke: "Stroke Text",
   paper: "Paper Texture",
 } as const;
+const CUT_EFFECT_LABELS: Record<IntroCutEffect, string> = {
+  none: "None",
+  rgb: "RGB split",
+  noise: "Noise",
+};
 
 type TreatmentId = keyof typeof TREATMENT_LABELS;
 
@@ -57,6 +68,10 @@ export function FanDebugPanel({
   onStrokeConfigChange,
   paperTextureConfig,
   onPaperTextureConfigChange,
+  cutEffect,
+  onCutEffectChange,
+  rgbConfig,
+  onRgbConfigChange,
 }: FanDebugPanelProps) {
   const [open, setOpen] = useState(false);
   const [selectedTreatment, setSelectedTreatment] = useState<TreatmentId>("ascii");
@@ -82,6 +97,10 @@ export function FanDebugPanel({
     value: StrokeTextConfig[Key],
   ) {
     onStrokeConfigChange({ ...strokeConfig, [key]: value });
+  }
+
+  function updateRgb<Key extends keyof IntroCutRgbConfig>(key: Key, value: IntroCutRgbConfig[Key]) {
+    onRgbConfigChange({ ...rgbConfig, [key]: value });
   }
 
   function updatePaper<Key extends keyof PaperTextureConfig>(
@@ -137,6 +156,81 @@ export function FanDebugPanel({
           className="mt-1 w-full"
         />
       </label>
+
+      <section>
+        <span className="block border-b border-white/20 pb-1 uppercase tracking-wide opacity-60">
+          Intro cut effect
+        </span>
+        <div
+          data-testid="intro-cut-effect-settings"
+          className="mt-2 grid grid-cols-3 gap-1.5"
+          role="tablist"
+          aria-label="Intro cut effect"
+        >
+          {INTRO_CUT_EFFECTS.map((effect) => (
+            <button
+              key={effect}
+              type="button"
+              role="tab"
+              aria-selected={cutEffect === effect}
+              onClick={() => onCutEffectChange(effect)}
+              className={`rounded border px-2 py-1.5 text-center transition-colors duration-150 cursor-pointer active:scale-[0.98] ${
+                cutEffect === effect
+                  ? "bg-white text-black border-white"
+                  : "border-white/40 hover:border-white/75"
+              }`}
+            >
+              {CUT_EFFECT_LABELS[effect]}
+            </button>
+          ))}
+        </div>
+
+        {cutEffect === "rgb" && (
+          <div data-testid="intro-cut-rgb-settings" className="mt-2 grid grid-cols-1 gap-y-3">
+            <label className="block leading-tight" htmlFor="intro-cut-rgb-offset-x">
+              Split X: {rgbConfig.offsetX}px
+              <input
+                id="intro-cut-rgb-offset-x"
+                type="range"
+                min={0}
+                max={30}
+                step={1}
+                value={rgbConfig.offsetX}
+                onChange={(event) => updateRgb("offsetX", Number(event.target.value))}
+                className="mt-1 w-full"
+              />
+            </label>
+
+            <label className="block leading-tight" htmlFor="intro-cut-rgb-offset-y">
+              Split Y: {rgbConfig.offsetY}px
+              <input
+                id="intro-cut-rgb-offset-y"
+                type="range"
+                min={-30}
+                max={30}
+                step={1}
+                value={rgbConfig.offsetY}
+                onChange={(event) => updateRgb("offsetY", Number(event.target.value))}
+                className="mt-1 w-full"
+              />
+            </label>
+
+            <label className="block leading-tight" htmlFor="intro-cut-rgb-duration">
+              Flash duration: {rgbConfig.durationMs}ms
+              <input
+                id="intro-cut-rgb-duration"
+                type="range"
+                min={20}
+                max={400}
+                step={10}
+                value={rgbConfig.durationMs}
+                onChange={(event) => updateRgb("durationMs", Number(event.target.value))}
+                className="mt-1 w-full"
+              />
+            </label>
+          </div>
+        )}
+      </section>
 
       <div className="space-y-3">
       <section>

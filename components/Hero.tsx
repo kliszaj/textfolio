@@ -80,6 +80,9 @@ const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
 // The page at rest, before any treatment has been hovered.
 const RESTING_ACCENT_COLOR = "#878787";
+// The page, tagline, and arrow all change treatment together on hover. Keep
+// their colour transition as one shared value so one cannot lag the others.
+const TREATMENT_COLOR_TRANSITION = "500ms ease-out";
 const TAGLINE_SIZE = "clamp(1.35rem, min(var(--tagline-vw), 6.2vh), 4.5rem)";
 const ARROW_SIZE = "clamp(2.1rem, 3.8vw, 4.6rem)";
 const SKETCH_ARROW_SIZE = "clamp(2.5rem, 4.2vw, 5.4rem)";
@@ -105,7 +108,6 @@ type HeroProps = {
   // A return from a case study folds the stack back into place. Do not let the
   // cursor already resting on the name interrupt that transition.
   suppressHeadlineHover?: boolean;
-  onSelectCaseStudy?: (caseStudy: CaseStudy) => void;
   // From the page-indicator rail specifically -- shuffles the stack open to
   // find the case study before lifting, rather than lifting immediately
   // from wherever the dot itself was clicked. Direct clicks on an
@@ -120,6 +122,61 @@ type HeroProps = {
 
 type HeadlineEffect = "ascii" | "warp" | "stroke";
 const HEADLINE_EFFECT_SEQUENCE: HeadlineEffect[] = ["ascii", "warp", "stroke"];
+type MousePosition = { x: number; y: number };
+
+function AsciiWindowsCursor({
+  active,
+  lastMousePosition,
+}: {
+  active: boolean;
+  lastMousePosition: RefObject<MousePosition>;
+}) {
+  useEffect(() => {
+    if (!active) return;
+
+    const cursor = document.createElement("img");
+    cursor.setAttribute("data-testid", "ascii-windows-cursor");
+    cursor.setAttribute("src", "/cursors/win95-arrow.png");
+    cursor.setAttribute("alt", "");
+    cursor.setAttribute("aria-hidden", "true");
+    cursor.className = styles.asciiWindowsCursor;
+    Object.assign(cursor.style, {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      zIndex: "2147483647",
+      width: "32px",
+      height: "32px",
+      pointerEvents: "none",
+      userSelect: "none",
+      opacity: "1",
+      willChange: "transform",
+    });
+
+    // Chrome can retain a descendant cursor declaration over an inherited
+    // parent value. An ephemeral document-level rule is the only scope that
+    // wins decisively over canvases and utility classes alike.
+    const cursorRule = document.createElement("style");
+    cursorRule.textContent = "html, body, body * { cursor: none !important; }";
+    document.head.appendChild(cursorRule);
+    document.body.appendChild(cursor);
+
+    const placeCursor = ({ x, y }: MousePosition) => {
+      cursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    };
+    const moveCursor = (event: MouseEvent) => placeCursor({ x: event.clientX, y: event.clientY });
+
+    placeCursor(lastMousePosition.current);
+    window.addEventListener("mousemove", moveCursor, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", moveCursor);
+      cursor.remove();
+      cursorRule.remove();
+    };
+  }, [active, lastMousePosition]);
+
+  return null;
+}
 
 // A tiny generated static texture for the noise-burst cut effect. Not a pure,
 // tested helper like the rest of this codebase's timing math -- it draws to a
@@ -146,7 +203,6 @@ export function Hero({
   fanProgress,
   liftPercent = 0,
   subheaderRef,
-  onSelectCaseStudy,
   onJumpToCaseStudy,
   asciiConfig = DEFAULT_ASCII_TEXT_CONFIG,
   warpConfig = DEFAULT_WARP_TEXT_CONFIG,
@@ -158,6 +214,7 @@ export function Hero({
   rgbConfig = DEFAULT_INTRO_CUT_RGB_CONFIG,
 }: HeroProps) {
   const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
+  const lastMousePositionRef = useRef<MousePosition>({ x: -40, y: -40 });
   const intro = useHeadlineIntro(playIntro);
   const rgbSplitFilterId = useId();
   const [rgbFlash, setRgbFlash] = useState(false);
@@ -169,6 +226,13 @@ export function Hero({
   );
   const [noiseBursting, setNoiseBursting] = useState(false);
   const [noiseUrl, setNoiseUrl] = useState("");
+  useEffect(() => {
+    const rememberMousePosition = (event: MouseEvent) => {
+      lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+    };
+    window.addEventListener("mousemove", rememberMousePosition, { passive: true });
+    return () => window.removeEventListener("mousemove", rememberMousePosition);
+  }, []);
   // intro.phase only ever changes during the scripted intro (four times:
   // into sketch, ascii, warp, then final) and never again afterward -- a
   // later hover swap is driven by hoverEffect, a separate piece of state.
@@ -213,11 +277,10 @@ export function Hero({
   // could get close but never exactly as wide -- stretched instead, via
   // scaleX, to the headline's real measured width. Measured off a separate,
   // always-full-text invisible copy (taglineMetricsRef) rather than the
-  // visible, typing-out tagline itself: measuring the live node's own
-  // scrollWidth only once typing finished made the whole line visibly pop
-  // out to its final width on the very last character. Computing the ratio
-  // from the full string up front and applying it throughout means every
-  // character is already sized where it will end up as it's typed in.
+  // visible tagline itself: measuring the live node's own scrollWidth only
+  // once it had resolved made the whole line visibly pop out wider at the
+  // end. Computing the ratio from the full string up front keeps its final
+  // width stable for the entire soft-focus reveal.
   const taglineMetricsRef = useRef<HTMLParagraphElement>(null);
   // The node itself is state, not a ref read inside the effect below:
   // manually mutating a ref that an effect also reads is its own separate
@@ -234,6 +297,13 @@ export function Hero({
   // (playIntro false) and that visit should show everything at once, not
   // replay this too.
   const heroReveal = useHeroReveal(playIntro, intro.done, TAGLINE_TEXT.length, caseStudies.length + 1);
+  // Keep the complete subheader mounted and use the old typewriter's timing
+  // only as a continuous 0–1 reveal driver. The text now resolves as one
+  // piece of soft-focus lettering instead of arriving in individual keys.
+  const taglineFocusProgress =
+    heroReveal.phase === "hidden"
+      ? 0
+      : Math.min(1, heroReveal.subheaderChars / TAGLINE_TEXT.length);
   useEffect(() => {
     const measure = () => {
       // offsetWidth, not getBoundingClientRect().width: the hero sheet
@@ -347,28 +417,24 @@ export function Hero({
       // background alone still visibly dissolves between each stage's
       // colour while the headline on top of it hard-cuts.
       className={`relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center ${
-        intro.done ? "transition-[background-color] duration-500 ease-out" : ""
+        activeEffect === "ascii" ? styles.asciiCursor : ""
       }`}
       style={{
         backgroundColor: stageBackground,
+        transition: intro.done ? `background-color ${TREATMENT_COLOR_TRANSITION}` : undefined,
         // The sketch lettering, tagline, and arrow share blue-pencil ink;
         // the correction mark stays red to remain visibly distinct.
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
-        // A period Windows 95 arrow while the CRT desktop treatment is up.
-        // win95-arrow.cur is the original asset, but it's a legacy 1-bit/
-        // 2-colour cursor (an old AND/XOR mask format) rather than the
-        // modern 32-bit ARGB .cur most browsers' decoders actually expect,
-        // and it silently failed to render at all -- no error, just a quiet
-        // fall-through to auto. win95-arrow.png (the same art, hand-decoded
-        // from the .cur's own mask data and re-encoded as ordinary RGBA) is
-        // the reliable fallback; a hotspot has to be given explicitly for
-        // it since PNG carries none of its own, unlike .cur.
-        cursor:
-          activeEffect === "ascii"
-            ? "url(/cursors/win95-arrow.cur), url(/cursors/win95-arrow.png) 0 0, auto"
-            : undefined,
+        // This must be inline: the ASCII layer contains canvases and utility
+        // classes whose cursor declarations can otherwise outrank the hero.
+        // Its portal cursor is rendered separately above the whole viewport.
+        cursor: activeEffect === "ascii" ? "none" : undefined,
       }}
     >
+      <AsciiWindowsCursor
+        active={activeEffect === "ascii"}
+        lastMousePosition={lastMousePositionRef}
+      />
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
           enough for the two to overlap. */}
@@ -634,38 +700,28 @@ export function Hero({
           }}
           data-testid="hero-tagline"
           className="font-script"
+          aria-hidden={taglineFocusProgress === 0}
           style={{
             fontSize: TAGLINE_SIZE,
             lineHeight: 1.1,
             marginTop: TAGLINE_OFFSET,
             color: accentColor,
-            transition: "color 420ms ease",
-            // Stretched to exactly the headline's own measured width (see
-            // the effect above) -- centred so it grows or shrinks toward the
-            // same midline the headline itself sits on. Applied throughout
-            // typing, not just once it finishes, so each character lands
-            // already at its final size instead of the whole line popping
-            // out wider on the last one.
+            transition: `color ${TREATMENT_COLOR_TRANSITION}`,
+            // The full sentence fades through a soft focus rather than
+            // typing in. Its baseline stays fixed throughout the reveal.
+            // Once sharp, remove the inline filter altogether so the global
+            // line-boil filter can take over; blur(0px) would otherwise win
+            // the CSS cascade and freeze the handwriting treatment.
+            opacity: taglineFocusProgress,
+            filter:
+              taglineFocusProgress < 1
+                ? `blur(${(1 - taglineFocusProgress) * 10}px)`
+                : undefined,
             transform: `scaleX(${taglineScaleX})`,
             transformOrigin: "center",
           }}
         >
-          {TAGLINE_TEXT.slice(0, heroReveal.subheaderChars)}
-          {heroReveal.phase === "typing" && (
-            // Always the same ink, not accentColor: typing happens right as
-            // the resting treatment settles in, and the resting tagline's
-            // own grey read as too faint for a cursor to blink in. PP Neue
-            // Montreal (the body face), not the tagline's script font: a
-            // pipe drawn in a cursive face comes out slanted and barely
-            // reads as a cursor.
-            <span
-              aria-hidden="true"
-              className="typewriter-cursor"
-              style={{ color: DEFAULT_INK_COLOR, fontFamily: "var(--font-pp-neue-montreal)" }}
-            >
-              |
-            </span>
-          )}
+          {TAGLINE_TEXT}
         </p>
       </div>
       <div
@@ -680,7 +736,7 @@ export function Hero({
           opacity: arrowOpacity * heroReveal.arrowProgress,
           color: arrowColor,
           fontSize: activeEffect === "stroke" ? SKETCH_ARROW_SIZE : ARROW_SIZE,
-          transition: "color 420ms ease",
+          transition: `color ${TREATMENT_COLOR_TRANSITION}`,
         }}
       >
         ↓

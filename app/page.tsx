@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFanProgress } from "@/hooks/useFanProgress";
-import { useStackCollapse } from "@/hooks/useStackCollapse";
+import { peekReturningFromSlug, useStackCollapse } from "@/hooks/useStackCollapse";
+import { useStackShuffle } from "@/hooks/useStackShuffle";
 import { usePointerType } from "@/hooks/usePointerType";
 import { PaperStack } from "@/components/PaperStack";
 import { useIntroOnce } from "@/hooks/useIntroOnce";
@@ -14,7 +15,14 @@ import { DEFAULT_FOCUS_VARIANT_ID } from "@/lib/focusVariants";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
-import { FAN_SMOOTHING_MS, FAN_SPLIT, FAN_THRESHOLD_PX, splitTravel } from "@/lib/fanProgress";
+import {
+  combineTravel,
+  FAN_SMOOTHING_MS,
+  FAN_SPLIT,
+  FAN_THRESHOLD_PX,
+  splitTravel,
+  travelForDepth,
+} from "@/lib/fanProgress";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
@@ -24,6 +32,14 @@ import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
+import {
+  DEFAULT_INTRO_CUT_RGB_CONFIG,
+  INTRO_CUT_EFFECT_STORAGE_KEY,
+  INTRO_CUT_RGB_CONFIG_STORAGE_KEY,
+  isIntroCutEffect,
+  sanitizeIntroCutRgbConfig,
+} from "@/lib/introCutEffect";
+import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
 
 const DEFAULT_CONFIG: FanSheetConfig = {
   mechanic: "bottom",
@@ -45,6 +61,45 @@ const DEFAULT_TRANSITION_MS = 0;
 // Tuning controls are a development tool, not something visitors should meet.
 const SHOW_DEBUG_PANEL = process.env.NODE_ENV !== "production";
 
+// The intro only plays once per page load, so trying a cut effect means
+// picking it in the settings panel, then reloading to actually watch it --
+// plain useState would lose the pick on exactly the reload that's the point.
+function readStoredCutEffect(): IntroCutEffect {
+  if (typeof window === "undefined") return "none";
+  try {
+    const stored = window.localStorage.getItem(INTRO_CUT_EFFECT_STORAGE_KEY);
+    return isIntroCutEffect(stored) ? stored : "none";
+  } catch {
+    // Storage can be unavailable (private browsing, disabled cookies); the
+    // picker just falls back to its default rather than breaking the page.
+    return "none";
+  }
+}
+
+// Same reasoning as readStoredCutEffect above, for the rgb split's own
+// sliders: without this, tuning them would need the exact reload that's the
+// only way to see the result, which would also throw the tuning away.
+function readStoredRgbConfig(): IntroCutRgbConfig {
+  if (typeof window === "undefined") return DEFAULT_INTRO_CUT_RGB_CONFIG;
+  try {
+    const stored = window.localStorage.getItem(INTRO_CUT_RGB_CONFIG_STORAGE_KEY);
+    return stored ? sanitizeIntroCutRgbConfig(JSON.parse(stored)) : DEFAULT_INTRO_CUT_RGB_CONFIG;
+  } catch {
+    return DEFAULT_INTRO_CUT_RGB_CONFIG;
+  }
+}
+
+// Resolve the departing page into the travel value that put that sheet at its
+// emphasis peak. This stays here, rather than in useStackCollapse, so the
+// generic hook never needs to know about portfolio data.
+function returningHomeStartTravel(fanSplit: number): number {
+  const slug = peekReturningFromSlug();
+  if (!slug) return 1;
+  const allSheets = [...caseStudies, ABOUT_PAGE];
+  const depth = allSheets.findIndex((caseStudy) => caseStudy.slug === slug) + 1;
+  return depth > 0 ? travelForDepth(depth, allSheets.length, fanSplit) : 1;
+}
+
 export default function HomePage() {
   const router = useRouter();
   // The story is a first-arrival thing. Coming back from a case study is a
@@ -65,6 +120,25 @@ export default function HomePage() {
   const [paperTextureConfig, setPaperTextureConfig] = useState<PaperTextureConfig>(
     DEFAULT_PAPER_TEXTURE_CONFIG
   );
+  const [cutEffect, setCutEffectState] = useState<IntroCutEffect>(readStoredCutEffect);
+  function setCutEffect(effect: IntroCutEffect) {
+    setCutEffectState(effect);
+    try {
+      window.localStorage.setItem(INTRO_CUT_EFFECT_STORAGE_KEY, effect);
+    } catch {
+      // Same unavailable-storage boundary as the read above; the picker
+      // still works for the current page view either way.
+    }
+  }
+  const [rgbConfig, setRgbConfigState] = useState<IntroCutRgbConfig>(readStoredRgbConfig);
+  function setRgbConfig(next: IntroCutRgbConfig) {
+    setRgbConfigState(next);
+    try {
+      window.localStorage.setItem(INTRO_CUT_RGB_CONFIG_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Same unavailable-storage boundary as setCutEffect above.
+    }
+  }
   const pointerType = usePointerType();
   const isMobileLayout = pointerType === "coarse";
   // Touch drives the same stack by scrolling rather than getting a different
@@ -73,9 +147,14 @@ export default function HomePage() {
   // Coming back from a case study, the stack starts open where it was left and
   // folds shut. Run through the same split as a real gesture, so the collapse
   // is the reveal played backwards rather than a separate animation.
-  const collapseTravel = useStackCollapse();
+  const collapseTravel = useStackCollapse(returningHomeStartTravel(fanSplit));
+  const shuffle = useStackShuffle();
   const { fanProgress, sweepProgress } =
-    collapseTravel === null ? pointerFan : splitTravel(collapseTravel, fanSplit);
+    shuffle.travel !== null
+      ? splitTravel(shuffle.travel, fanSplit)
+      : collapseTravel === null
+        ? pointerFan
+        : splitTravel(collapseTravel, fanSplit);
   // A phone is tall and narrow, so the revealed stack can afford more of it.
   const activeConfig = isMobileLayout
     ? {
@@ -106,6 +185,28 @@ export default function HomePage() {
     setLifting({ caseStudy, origin });
   }
 
+  // The page-indicator rail finds the destination sheet in the stack before
+  // lifting it. Direct clicks on an already exposed sheet still lift at once.
+  function jumpToCaseStudy(caseStudy: CaseStudy) {
+    const allSheets = [...caseStudies, ABOUT_PAGE];
+    const depth = allSheets.findIndex((sheet) => sheet.slug === caseStudy.slug) + 1;
+    if (depth <= 0) return;
+
+    const fromTravel = combineTravel(fanProgress, sweepProgress, fanSplit);
+    const toTravel = travelForDepth(depth, allSheets.length, fanSplit);
+    shuffle.shuffleTo(fromTravel, toTravel, () => {
+      const sheet = document.querySelector(`[data-testid="paper-sheet-${depth}"]`);
+      const rect = sheet?.getBoundingClientRect();
+      const origin = rect
+        ? {
+            xPercent: ((rect.left + rect.width / 2) / window.innerWidth) * 100,
+            yPercent: ((rect.top + rect.height / 2) / window.innerHeight) * 100,
+          }
+        : focusOriginRef.current;
+      liftCaseStudy(caseStudy, origin);
+    });
+  }
+
   return (
     <>
       <div className="fixed inset-0 overflow-hidden" onClickCapture={rememberOrigin}>
@@ -119,9 +220,11 @@ export default function HomePage() {
           warpConfig={warpConfig}
           strokeConfig={strokeConfig}
           paperTextureConfig={paperTextureConfig}
-          suppressHeadlineHover={collapseTravel !== null}
+          cutEffect={cutEffect}
+          rgbConfig={rgbConfig}
+          suppressHeadlineHover={collapseTravel !== null || shuffle.travel !== null}
           onSelectCaseStudy={liftCaseStudy}
-
+          onJumpToCaseStudy={jumpToCaseStudy}
         />
       </div>
       {/* The stack is fixed, so touch needs something to actually scroll
@@ -157,6 +260,10 @@ export default function HomePage() {
         onStrokeConfigChange={setStrokeConfig}
         paperTextureConfig={paperTextureConfig}
         onPaperTextureConfigChange={setPaperTextureConfig}
+        cutEffect={cutEffect}
+        onCutEffectChange={setCutEffect}
+        rgbConfig={rgbConfig}
+        onRgbConfigChange={setRgbConfig}
       />
       )}
     </>

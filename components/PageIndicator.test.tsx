@@ -165,3 +165,36 @@ describe("Enter selects whichever page is highlighted", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 });
+
+describe("revealedCount", () => {
+  test("defaults to showing every dot at once", () => {
+    render(<PageIndicator caseStudies={studies} />);
+    for (const hitArea of screen.getAllByTestId("page-indicator-hit-area")) {
+      expect(hitArea).toHaveAttribute("data-revealed", "true");
+    }
+  });
+
+  test("hides dots past the revealed count, top to bottom", () => {
+    render(<PageIndicator caseStudies={studies} revealedCount={1} />);
+    const [firstHitArea, secondHitArea] = screen.getAllByTestId("page-indicator-hit-area");
+    expect(firstHitArea).toHaveAttribute("data-revealed", "true");
+    expect(secondHitArea).toHaveAttribute("data-revealed", "false");
+    expect(secondHitArea).toHaveStyle({ pointerEvents: "none" });
+
+    // The pop-in itself (opacity, scale) lives on the dot, not the wide hit
+    // area -- a scale on the hit area grows from that whole rectangle's own
+    // centre, which pulled the dot sideways as it grew instead of popping
+    // it in place.
+    const [, secondDot] = screen.getAllByTestId("page-indicator-dot");
+    expect(secondDot).toHaveStyle({ opacity: "0" });
+    expect(secondDot.style.transform).toContain("0.5");
+  });
+
+  test("a dot not yet revealed can't be clicked to navigate", () => {
+    const onSelect = jest.fn();
+    render(<PageIndicator caseStudies={studies} revealedCount={1} onSelect={onSelect} />);
+    const [, second] = screen.getAllByTestId("page-indicator-hit-area");
+    fireEvent.click(second);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});

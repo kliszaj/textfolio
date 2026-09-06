@@ -1,4 +1,4 @@
-import { HEADLINE_HIT_PADDING_SHARE, isOverHeadline } from "./headlineHit";
+import { HEADLINE_HIT_PADDING_SHARE, isOverHeadline, unionBox } from "./headlineHit";
 
 // A word 400px wide and 100px tall, centred in a much wider frame.
 const word = { left: 300, right: 700, top: 200, bottom: 300 };
@@ -43,4 +43,22 @@ test("treats an unmeasured word as the whole frame, so hover still works", () =>
   // Before layout there is nothing to hit-test against; falling back to the
   // old behaviour beats making the headline dead.
   expect(isOverHeadline({ x: 500, y: 250 }, { left: 0, right: 0, top: 0, bottom: 0 })).toBe(true);
+});
+
+describe("unionBox", () => {
+  test("combines two boxes into their bounding rectangle", () => {
+    const tagline = { left: 250, right: 750, top: 320, bottom: 360 };
+    expect(unionBox(word, tagline)).toEqual({ left: 250, right: 750, top: 200, bottom: 360 });
+  });
+
+  test("returns the first box unchanged when there is no second one", () => {
+    expect(unionBox(word, undefined)).toEqual(word);
+  });
+
+  test("a point only inside the second box counts as over the union", () => {
+    const tagline = { left: 250, right: 750, top: 320, bottom: 360 };
+    const box = unionBox(word, tagline);
+    // y: 340 sits inside the tagline's own range but well outside the word's.
+    expect(isOverHeadline({ x: 500, y: 340 }, box)).toBe(true);
+  });
 });

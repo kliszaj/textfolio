@@ -26,6 +26,29 @@
   mix-blend-mode: multiply;
 }
 
+/* The desktop illusion owns the pointer as well as the background. Hide the
+   browser cursor across every nested control; .asciiWindowsCursor is a real
+   viewport overlay rather than a cursor URL, whose legacy decoding differs
+   across browsers. */
+.asciiCursor,
+.asciiCursor * {
+  cursor: none !important;
+}
+
+.asciiWindowsCursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transform: translate3d(-40px, -40px, 0);
+  will-change: transform;
+}
+
 .asciiDesktopIcons {
   position: absolute;
   inset: 0;

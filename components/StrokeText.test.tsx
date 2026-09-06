@@ -43,6 +43,40 @@ test("renders the finished sketch outright when animation is off", () => {
   });
 });
 
+test("keeps the corrected final N hatch at the page-wide pencil angle", () => {
+  const getBBox = () => ({ x: 100, y: 40, width: 300, height: 80 }) as DOMRect;
+  const getExtentOfChar = () => ({ x: 340, y: 40, width: 40, height: 80 }) as DOMRect;
+  (SVGElement.prototype as unknown as { getBBox: () => DOMRect }).getBBox = getBBox;
+  (
+    SVGElement.prototype as unknown as { getExtentOfChar: (index: number) => DOMRect }
+  ).getExtentOfChar = getExtentOfChar;
+  try {
+    render(<StrokeText text="ADRIAN" animate={false} fillMode="hatch" correctionIndex={5} />);
+    const root = screen.getByTestId("stroke-text");
+    const correction = root.querySelector('[data-testid="stroke-text-correction"]')!;
+    const mirroredGlyph = correction.querySelector("g[transform]")!;
+    const hatch = correction.querySelector('[data-testid="stroke-text-correction-hatch-fill"]')!;
+    const mainHatch = screen.getByTestId("stroke-text-hatch-fill");
+    const hatchMask = screen.getByTestId("stroke-text-hatch-mask");
+
+    expect(mirroredGlyph.getAttribute("transform")).toContain("scale(-1, 1)");
+    expect(hatch).toBeInTheDocument();
+    expect(hatch.querySelectorAll("[data-correction-hatch-stroke]")).not.toHaveLength(0);
+    expect(mirroredGlyph.contains(hatch)).toBe(false);
+    const firstHatchStroke = hatch.querySelector<SVGLineElement>("[data-correction-hatch-stroke]")!;
+    expect(Number(firstHatchStroke.getAttribute("x1"))).toBeLessThan(
+      Number(firstHatchStroke.getAttribute("x2"))
+    );
+    expect(Number(firstHatchStroke.getAttribute("y1"))).toBeGreaterThan(
+      Number(firstHatchStroke.getAttribute("y2"))
+    );
+    expect(mainHatch).toHaveAttribute("mask", `url(#${hatchMask.id})`);
+  } finally {
+    delete (SVGElement.prototype as unknown as { getBBox?: unknown }).getBBox;
+    delete (SVGElement.prototype as unknown as { getExtentOfChar?: unknown }).getExtentOfChar;
+  }
+});
+
 describe("the outline reveals itself independently of stroke-dasharray, on Firefox", () => {
   // Firefox does not animate stroke-dasharray/stroke-dashoffset set through an
   // inline style on SVG text at all: the letters render fully stroked from

@@ -28,3 +28,16 @@ export function isOverHeadline(
     point.y <= word.bottom + pad
   );
 }
+
+// The subheader shares the headline's own touch target: hovering either one
+// answers to the cursor the same way, so this is what feeds isOverHeadline
+// once both boxes are known.
+export function unionBox(a: WordBox, b: WordBox | undefined): WordBox {
+  if (!b) return a;
+  return {
+    left: Math.min(a.left, b.left),
+    right: Math.max(a.right, b.right),
+    top: Math.min(a.top, b.top),
+    bottom: Math.max(a.bottom, b.bottom),
+  };
+}

@@ -191,7 +191,7 @@ export const DEFAULT_ASCII_TEXT_CONFIG: ASCIITextConfig = {
   planeScale: 1,
   // Keep the depth as a quiet edge rather than a stack of noisy offset glyphs.
   extrudeDepth: 0.06,
-  tiltStrength: 0.3,
+  tiltStrength: 0.6,
   crtCurvature: 0.32,
   randomizeGlyphColors: true,
   randomizeStageColor: false,

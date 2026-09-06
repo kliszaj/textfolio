@@ -5,7 +5,7 @@ import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { SKETCH_INK } from "@/lib/strokeText";
 import { HEADLINE_TREATMENT_DURATION_MS } from "@/lib/headlineIntro";
 import { INTRO_CUT_NOISE_BURST_MS, INTRO_CUT_RGB_FLASH_MS } from "@/lib/introCutEffect";
-import { TAGLINE_TYPE_MS_PER_CHAR, TYPE_START_DELAY_MS } from "@/lib/heroReveal";
+import { SUBHEADER_REVEAL_START_DELAY_MS, TAGLINE_FOCUS_MS } from "@/lib/heroReveal";
 import { caseStudies } from "@/data/caseStudies";
 import styles from "./Hero.module.css";
 import { Hero, TAGLINE_OFFSET } from "./Hero";
@@ -64,17 +64,25 @@ test("starts the hover cycle with ASCII text", () => {
   expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "false");
   expect(hero).toHaveStyle({ backgroundColor: "#05AEAE" });
   expect(hero).toHaveStyle({ color: "#FFFFFF" });
+  expect(hero).toHaveStyle({ cursor: "none" });
 
-  // .cur first, but a PNG fallback with an explicit hotspot too -- the
-  // legacy 1-bit .cur silently fails to decode in most browsers, so the
-  // PNG is what actually renders in practice.
-  expect(hero.style.cursor).toContain("win95-arrow.cur");
-  expect(hero.style.cursor).toContain("win95-arrow.png");
+  expect(hero.className).toContain("asciiCursor");
+  expect(screen.getByTestId("ascii-windows-cursor")).toHaveAttribute(
+    "src",
+    "/cursors/win95-arrow.png"
+  );
+  fireEvent.mouseMove(window, { clientX: 320, clientY: 180 });
+  expect(screen.getByTestId("ascii-windows-cursor")).toHaveStyle({
+    transform: "translate3d(320px, 180px, 0)",
+    opacity: "1",
+  });
 
   fireEvent.pointerLeave(headline);
   expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
   expect(hero.style.cursor).toBe("");
+  expect(hero.className).not.toContain("asciiCursor");
+  expect(screen.queryByTestId("ascii-windows-cursor")).not.toBeInTheDocument();
 });
 
 test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries", () => {
@@ -157,11 +165,10 @@ test("scales the tagline up toward the headline while keeping a readable floor",
   });
 });
 
-test("stretches the tagline to its final width from the first typed character, not just once it finishes", () => {
-  // Measured off a dedicated always-full-text copy (tagline-width-metrics),
-  // not the visible, still-typing tagline itself -- otherwise the ratio (and
-  // so the visible width) would only be right once typing finished, and the
-  // whole line would visibly pop out wider on the very last character.
+test("reveals the complete tagline from blur to sharp focus", () => {
+  // The width is still measured off a dedicated full-text copy. The visible
+  // line now stays complete and is driven through opacity and blur instead
+  // of revealing individual characters.
   // offsetWidth, not getBoundingClientRect: the real effect reads
   // offsetWidth specifically so a rotated ancestor (the hero sheet, mid
   // stack-collapse on a return visit) can't skew the measurement.
@@ -183,25 +190,32 @@ test("stretches the tagline to its final width from the first typed character, n
         jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS);
       });
     }
-    const typingTarget = TYPE_START_DELAY_MS + TAGLINE_TYPE_MS_PER_CHAR * 3 + 50;
-    for (let elapsed = 0; elapsed < typingTarget; elapsed += 50) {
+    const focusTarget = SUBHEADER_REVEAL_START_DELAY_MS + TAGLINE_FOCUS_MS * 0.35 + 50;
+    for (let elapsed = 0; elapsed < focusTarget; elapsed += 50) {
       act(() => {
         jest.advanceTimersByTime(50);
       });
     }
     const tagline = screen.getByTestId("hero-tagline");
-    // Still mid-type (only a few characters in) but already stretched to the
-    // full-text ratio (500 / 250 = 2), not left at 1 until the last letter.
-    expect(tagline.textContent!.length).toBeGreaterThan(0);
-    expect(tagline.textContent!.length).toBeLessThan(
-      "Designer, tinkerer, zero-to-one builder".length
-    );
-    expect(tagline.style.transform).toBe("scaleX(2)");
+    expect(tagline).toHaveTextContent("Designer, tinkerer, zero-to-one builder");
+    expect(Number(tagline.style.opacity)).toBeGreaterThan(0);
+    expect(Number(tagline.style.opacity)).toBeLessThan(1);
+    expect(tagline.style.filter).not.toBe("blur(0px)");
+    expect(tagline.style.transform).toContain("scaleX(2)");
   } finally {
     jest.useRealTimers();
     offsetWidthSpy.mockRestore();
     scrollWidthSpy.mockRestore();
   }
+});
+
+test("hands the tagline back to the line-boil filter once its focus reveal has finished", () => {
+  render(<Hero playIntro={false} fanProgress={0} />);
+
+  const tagline = screen.getByTestId("hero-tagline");
+  expect(tagline).toHaveClass("font-script");
+  // An inline blur(0px) would override the global .font-script boil filter.
+  expect(tagline.style.filter).toBe("");
 });
 
 test("the tagline sits in the same place whatever treatment is active", () => {
@@ -223,6 +237,15 @@ test("tagline and arrow take the yellow accent under the ASCII treatment", () =>
   fireEvent.pointerEnter(screen.getByTestId("hero-headline"));
   expect(tagline).toHaveStyle({ color: ASCII_INK_LIME });
   expect(arrow).toHaveStyle({ color: ASCII_INK_LIME });
+});
+
+test("keeps the background, tagline, and arrow colour changes in sync", () => {
+  render(<Hero fanProgress={0} playIntro={false} />);
+
+  const hero = screen.getByTestId("hero-headline").parentElement!;
+  expect(hero.style.transition).toBe("background-color 500ms ease-out");
+  expect(screen.getByTestId("hero-tagline").style.transition).toBe("color 500ms ease-out");
+  expect(screen.getByTestId("scroll-hint").style.transition).toBe("color 500ms ease-out");
 });
 
 test("the resting page keeps the tagline quiet but inks the sketchy arrow black", () => {
@@ -374,14 +397,12 @@ test("includes About alongside the case studies in the page indicator", () => {
   expect(within(indicator).getByRole("button", { name: "About Me" })).toBeInTheDocument();
 });
 
-test("routes the page indicator through onJumpToCaseStudy, not onSelectCaseStudy", () => {
-  const onSelectCaseStudy = jest.fn();
+test("routes the page indicator through onJumpToCaseStudy", () => {
   const onJumpToCaseStudy = jest.fn();
   render(
     <Hero
       playIntro={false}
       fanProgress={0}
-      onSelectCaseStudy={onSelectCaseStudy}
       onJumpToCaseStudy={onJumpToCaseStudy}
     />
   );
@@ -389,7 +410,6 @@ test("routes the page indicator through onJumpToCaseStudy, not onSelectCaseStudy
   fireEvent.click(screen.getByRole("button", { name: caseStudies[0].title }));
 
   expect(onJumpToCaseStudy).toHaveBeenCalledWith(caseStudies[0]);
-  expect(onSelectCaseStudy).not.toHaveBeenCalled();
 });
 
 describe("the intro's cut effect", () => {

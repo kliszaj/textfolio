@@ -2,14 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// The indicator should feel like a direct page-navigation control, not a
+// second interaction to wait through. A very quick reveal gives the selected
+// sheet one painted frame before its page transition takes over.
+export const STACK_SHUFFLE_OPEN_MS = 150;
+export const STACK_SHUFFLE_HOLD_MS = 300;
+
 // Drives the page-indicator's "find this case study in the stack, then lift
 // it out" sequence: tweens the stack's travel value from wherever it
 // currently sits to the value that reveals a target depth (see
-// travelForDepth in lib/fanProgress.ts), holds there briefly so the found
-// sheet actually registers, then hands back control via onArrived.
+// travelForDepth in lib/fanProgress.ts), gives the found sheet a single brief
+// beat, then hands back control via onArrived.
 export function useStackShuffle(
-  openMs: number = 700,
-  holdMs: number = 180
+  openMs: number = STACK_SHUFFLE_OPEN_MS,
+  holdMs: number = STACK_SHUFFLE_HOLD_MS
 ): {
   travel: number | null;
   shuffleTo: (fromTravel: number, toTravel: number, onArrived: () => void) => void;

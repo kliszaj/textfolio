@@ -8,6 +8,24 @@
   --font-body: var(--font-pp-neue-montreal);
 }
 
+/* The hero headline's own vw-based scale (see HEADLINE_SIZE / TAGLINE_SIZE
+   in Hero.tsx). Below lg, the page-indicator rail is gone (see
+   PageIndicator's own lg:flex) and there is no side rail to leave room for,
+   so the name and subheader are allowed to scale up more aggressively with
+   the viewport and read as monumental rather than a scaled-down desktop
+   layout. */
+:root {
+  --headline-vw: 18vw;
+  --tagline-vw: 7vw;
+}
+
+@media (max-width: 1023.98px) {
+  :root {
+    --headline-vw: 24vw;
+    --tagline-vw: 9vw;
+  }
+}
+
 /* Line boil: the Adrian handwriting is redrawn with a slightly different
    turbulence displacement on each frame, the way hand-inked line art shivers
    between cels. LineBoil cycles data-line-boil-frame on <html>. */

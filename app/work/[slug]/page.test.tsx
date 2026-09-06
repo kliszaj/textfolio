@@ -16,7 +16,8 @@ test("renders the case study title and its overview for a known slug", async () 
   expect(screen.getByText(caseStudies[0].title)).toBeInTheDocument();
   // The rail leads with the overview once one is written; the blurb is the
   // fallback for a study that has none, and the home stack's subheading.
-  expect(screen.getByText(caseStudies[0].overview!)).toBeInTheDocument();
+  const overview = document.querySelector(".case-study-intro-copy");
+  expect(overview).toHaveTextContent(caseStudies[0].overview!.split(/\s{2,}/)[0]);
 });
 
 test("sends the last case study's next arrow to About, not back to Jam", async () => {

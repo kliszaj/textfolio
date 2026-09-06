@@ -71,7 +71,11 @@ function colorVector(color: string) {
 }
 
 function drawTextCanvas(container: HTMLDivElement, props: DrawProps) {
-  const rect = container.getBoundingClientRect();
+  // offsetWidth/Height, not getBoundingClientRect: the hero sheet this sits
+  // in rotates during a return visit's stack-collapse animation, and
+  // getBoundingClientRect would return that rotated on-screen box instead
+  // of the container's real, unrotated layout size.
+  const rect = { width: container.offsetWidth, height: container.offsetHeight };
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
@@ -213,7 +217,9 @@ export function WarpText({
       const startedAt = performance.now();
       const render = () => renderer.render({ scene: mesh });
       const resize = () => {
-        const rect = container.getBoundingClientRect();
+        // Same reason as drawTextCanvas above: offsetWidth/Height, not the
+        // rotation-sensitive getBoundingClientRect.
+        const rect = { width: container.offsetWidth, height: container.offsetHeight };
         if (!rect.width || !rect.height) return;
         renderer.setSize(rect.width, rect.height);
         program.uniforms.uResolution.value.set([gl.drawingBufferWidth, gl.drawingBufferHeight]);

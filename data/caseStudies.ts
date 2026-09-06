@@ -25,6 +25,16 @@ export type CaseStudyMedia = {
   span?: "full" | "tall" | "half";
 };
 
+// An editorial portrait that belongs beside the introduction rather than in
+// the evidence gallery below it. Dimensions keep the layout stable while the
+// local image loads.
+export type CaseStudyIntroImage = {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+};
+
 export type CaseStudy = {
   slug: string;
   title: string;
@@ -35,176 +45,155 @@ export type CaseStudy = {
   // Left column: what the work was, read in a glance.
   overview?: string;
   facts?: CaseStudyFact[];
+  introImage?: CaseStudyIntroImage;
   // Right column: the long read, in order.
   sections?: CaseStudySection[];
   // Bottom of the page: the evidence, after both columns.
   media?: CaseStudyMedia[];
 };
 
-// Placeholder copy: real employer/client work is not cleared for public
-// viewing yet. This keeps every entry's shape (fact/section/media counts)
-// identical to the real content it stands in for, so the layout renders the
-// same way once the real write-ups go back in. See handoff.md.
+// Post-it brights: each sheet in the fanned stack reads as a stuck note, and
+// the same colour carries through to that case study's own page. These are
+// deliberately independent of the letterTreatments bgColors -- the name-hover
+// palette and the paper-stack palette are separate systems.
 export const caseStudies: CaseStudy[] = [
   {
-    slug: "case-study-one",
-    title: "Case Study One",
+    slug: "spotify-jam",
+    title: "Spotify Jam",
     thumbnailColor: "#15FF76",
-    blurb: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    blurb: "Making music multiplayer: the road the 50M monthly users.",
     overview:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+      "Spotify Jam is a simple-to-use experience for listening together with friends, anywhere in the world, on any device.  Jam is now one of Spotify's fastest growing features with 50 million monthly active users and over 100 million monthly listening hours.  Jam is now a cornerstone of Spotify's 10 year multplayer strategy that was announted a Investor Days 2026.",
     facts: [
-      { label: "Role", value: "Placeholder Role\n2021 – present" },
-      { label: "Scope", value: "Placeholder, Placeholder, Placeholder" },
+      { label: "Role", value: "Lead Designer\n2023 – present" },
+      { label: "Scope", value: "Design Strategy, Product Strategy" },
       {
         label: "Impact",
-        value: ["Placeholder metric one", "Placeholder metric two"],
+        value: ["<5M to 50M monthly users", "100M+ monthly listening hours"],
       },
     ],
     sections: [
       {
         body:
-          "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+          "Jam started as a set of fragmented beta listneing together features that user's weren't understading how to use or why they would use them.  The value proposition at the time was around shared control of devices and users didn't see much value in that. We used mixed-methods insights to consoldiate the disparate features into one holsitic experience that was focused around people - listening together and sharing a social moment powered by music with those who matter most. We also advoated to give the feature a branded name, something that they could remember and talk about together - 'Let's start a Jam'. I was the design lead for the core mobile experience but I worked closely with platform designers to adapt it to Car, Desktop, and TV. After launch, Jam found some product-market fit in shared physical spaces such as living rooms and cars but we knew we had to make discovering and joining Jams even easier.",
+      },
+      {body:
+        "Using principles from choice architecture and behavioural economics, we aligned on a strategy if proactively inviting prospective listening nearby - this became our growth engine: when one person started listening on a shared device, the people around them could join without needing to search, scan, or ask for a link. The interaction looked simple, but the initial invitation system was built on a series of complicated heuristics and signals."
       },
       {
         body:
-          "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.",
+          "Seamless joining only works if both hosts and guests feel in control. As we saw the proactive invitation strategy working, we knew we needed to upgrade it to make it more relevant and less interruptive. The current system builds on the first one that includes ML, social graphs, proximity, and user habits. We designed the privacy model around explicit consent, clear session boundaries, and host controls over who could join, contribute, or stay.",
       },
       {
         body:
-          "Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.",
+          "Once we had strong product-market-fit for in-person listening, we focused on growing Jam for users who want to listen remotely. In person Jams have the benefit of allowing all participatns to communicate with eachother through language.  Remote Jams were missing a facilitation layer - who's available to listen? How do I know they're not busy? What to they want to listen to? I working across the organization to evolve Messaging, and Listening Activity to give people ways to notice, coordinate, and join one another when they were apart.",
       },
     ],
+    videoSrc: "/assets/jam.mp4",
     media: [
-      { alt: "Placeholder image one", span: "full" },
-      { alt: "Placeholder image two", span: "tall" },
-      { alt: "Placeholder image three", span: "half" },
-      { alt: "Placeholder image four", span: "half" },
-      { alt: "Placeholder image five", span: "half" },
-      { alt: "Placeholder image six", span: "tall" },
+      { alt: "Jam session across devices", span: "full" },
+      { alt: "Shake to Jam prototype", span: "tall" },
+      { alt: "Joining mechanisms explored", span: "half" },
+      { alt: "Free user experience", span: "half" },
+      { alt: "Listen Along in Messages", span: "half" },
+      { alt: "Jam in car", span: "tall" },
     ],
   },
   {
-    slug: "case-study-two",
-    title: "Case Study Two",
+    slug: "seamless-strategy",
+    title: "Seamless Strategy",
     thumbnailColor: "#F850C0",
-    blurb: "Sed ut perspiciatis unde omnis iste natus error sit voluptatem.",
-    overview: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    blurb: "Taking Spotify beyond ubiquity",
+    overview:
+      "Racing an expiration date: the strategy that grew into a 100-person Product Area.",
     facts: [
-      { label: "Role", value: "Placeholder Role\n2020 – 2021" },
-      { label: "Scope", value: "Placeholder, Placeholder, Placeholder, Placeholder" },
-      { label: "Impact", value: "Placeholder outcome statement" },
+      { label: "Role", value: "Co-Creator, Design Lead\n2021 – 2022" },
+      { label: "Scope", value: "Design Strategy, Product Strategy, Research" },
+      { label: "Impact", value: "New Product Area created · still an active core strategy four years later" },
     ],
     sections: [
       {
-        heading: "Placeholder heading one",
         body:
-          "At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.",
-        bullets: [
-          "Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga.",
-          "Et harum quidem rerum facilis est et expedita distinctio, nam libero tempore.",
-          "Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet.",
-        ],
+          "I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences.",
       },
       {
-        heading: "Placeholder heading two",
         body:
-          "Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.",
+          "Spotify had tried cross-device strategy before. The internal record was blunt about why it failed: no team was structured or resourced to own it.",
         bullets: [
-          "Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.",
-          "Vel illum qui dolorem eum fugiat quo voluptas nulla pariatur, at vero eos et accusamus.",
-          "Et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti.",
+          "I argued against a central team owning the whole proposition. Device teams kept ownership of their surfaces, while Seamless set shared principles.",
+          "I co-authored DIBBs, a confidence framework that funded high-confidence bets and staged unproven ideas for validation instead of shipping them on faith.",
+          "One staged bet, Enable People, became foundational research and later Jam. Adoption took time across six functions, but the strategy was still active four years later.",
         ],
       },
     ],
     media: [
-      { alt: "Placeholder image one", span: "full" },
-      { alt: "Placeholder image two", span: "half" },
-      { alt: "Placeholder image three", span: "half" },
-      { alt: "Placeholder image four", span: "half" },
-      { alt: "Placeholder image five", span: "half" },
+      { alt: "Seamless strategy overview deck", span: "full" },
+      { alt: "Cross-device opportunity mapping workshop", span: "half" },
+      { alt: "DIBBs confidence-rated hypotheses", span: "half" },
+      { alt: "Three pillars: Enable Devices, Moments, People", span: "half" },
+      { alt: "Cross-Platform WAU metrics framework", span: "half" },
     ],
   },
   {
-    slug: "case-study-three",
-    title: "Case Study Three",
+    slug: "focals-by-north",
+    title: "Focals by North",
     thumbnailColor: "#FFA52E",
-    blurb: "Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis.",
-    overview: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    blurb: "Defining how you'd navigate a computer that has no screen to speak of, before a single feature could be designed.",
+    overview:
+      "Designing an operating system for a screen you can't look down at.",
     facts: [
-      { label: "Role", value: "Placeholder Role\n2018 – 2019" },
-      { label: "Scope", value: "Placeholder, Placeholder, Placeholder" },
-      { label: "Impact", value: "Placeholder outcome statement" },
+      { label: "Role", value: "Interaction Design Lead\n2018 – 2019" },
+      { label: "Scope", value: "0→1 interaction model, hardware-software co-design, information architecture" },
+      { label: "Impact", value: "Alexa on Focals certified by Amazon, late 2018" },
     ],
+    videoSrc: "/assets/focals.mp4",
     sections: [
       {
-        heading: "Placeholder heading one",
+        heading: "One feed, one ring, no app grid",
         body:
-          "Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est.",
+          "Focals had no touchscreen and no keyboard. It had Loop, a physical ring with five inputs, and a transparent display roughly the size of a postage stamp.",
         bullets: [
-          "Omnis dolor repellendus temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus.",
-          "Saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae.",
-          "Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores.",
+          "A phone-style app grid did not fit the hardware. I led the core model: one priority-ordered feed of modules, navigated with Loop's five inputs.",
+          "The feed made real decisions. Modules reordered as their priority changed, so a calendar event could rise to the top as it got closer.",
+          "We prototyped a capacitive touch pad with a full gesture vocabulary, then chose the discrete ring. Lens Switcher peek was scoped out of v1.0 so the core could ship.",
         ],
       },
       {
-        heading: "Placeholder heading two",
-        body: "Alias consequatur aut perferendis doloribus asperiores repellat.",
+        heading: "What had to work on five inputs",
+        body:
+          "Every feature Focals shipped had to fit inside that interaction model.",
         bullets: [
-          "Placeholder bullet describing a design decision.",
-          "Placeholder bullet describing a constraint.",
-          "Placeholder bullet describing an outcome.",
+          "Go, the heads-up navigation experience, moved through four rejected visual directions before landing on a turn-by-turn cue readable in under two seconds.",
+          "Alexa opened through a long press on Loop, without a wake word. Its tablet response templates had to be redesigned for the 110 by 110 pixel display.",
+          "The Focals Sizing App used face scanning to solve fit and return risk at home. Accuracy, trust, and how wrong is too wrong were all design problems.",
         ],
       },
     ],
     media: [
-      { alt: "Placeholder image one", span: "full" },
-      { alt: "Placeholder image two", span: "tall" },
-      { alt: "Placeholder image three", span: "half" },
-      { alt: "Placeholder image four", span: "half" },
-      { alt: "Placeholder image five", span: "half" },
-      { alt: "Placeholder image six", span: "tall" },
+      { alt: "Focals home screen module feed", span: "full" },
+      { alt: "Loop ring controller, five-input model", span: "tall" },
+      { alt: "Lens Switcher: Message and Explore", span: "half" },
+      { alt: "Go navigation heads-up display", span: "half" },
+      { alt: "Alexa on Focals, 110x110px templates", span: "half" },
+      { alt: "Early capacitive touch pad interaction model", span: "tall" },
     ],
   },
   {
-    slug: "case-study-four",
-    title: "Case Study Four",
+    slug: "projects-and-experiments",
+    title: "Projects & Experiments",
     thumbnailColor: "#219EFA",
-    blurb: "Similique sunt in culpa qui officia deserunt mollitia animi.",
-    overview: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    blurb: "Personal projects, small experiments, and the things I tinker with on evenings and weekends.",
+    overview:
+      "A growing collection of things made for curiosity, practice, and the satisfaction of finding out whether an idea works.",
     facts: [
-      { label: "Role", value: "Placeholder Role\n2014 – 2016" },
-      { label: "Scope", value: "Placeholder, Placeholder" },
-      { label: "Impact", value: "Placeholder outcome statement" },
+      { label: "Type", value: "Personal projects & experiments" },
+      { label: "When", value: "Evenings & weekends" },
+      { label: "Status", value: "Ongoing" },
     ],
     sections: [
       {
-        heading: "Placeholder heading one",
-        body:
-          "Et harum quidem rerum facilis est et expedita distinctio, nam libero tempore cum soluta nobis est eligendi optio.",
-        bullets: [
-          "Placeholder bullet describing a design decision.",
-          "Placeholder bullet describing a testing method.",
-          "Placeholder bullet describing an outcome.",
-        ],
+        body: "Personal projects, small experiments, and the things I tinker with on evenings and weekends.",
       },
-      {
-        heading: "Placeholder heading two",
-        body: "Cumque nihil impedit quo minus id quod maxime placeat facere possimus.",
-        bullets: [
-          "Placeholder bullet describing product line one.",
-          "Placeholder bullet describing product line two.",
-          "Placeholder bullet describing the combined result.",
-        ],
-      },
-    ],
-    media: [
-      { alt: "Placeholder image one", span: "full" },
-      { alt: "Placeholder image two", span: "tall" },
-      { alt: "Placeholder image three", span: "half" },
-      { alt: "Placeholder image four", span: "half" },
-      { alt: "Placeholder image five", span: "half" },
-      { alt: "Placeholder image six", span: "tall" },
     ],
   },
 ];

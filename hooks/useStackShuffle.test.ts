@@ -1,5 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
-import { useStackShuffle } from "./useStackShuffle";
+import {
+  STACK_SHUFFLE_HOLD_MS,
+  STACK_SHUFFLE_OPEN_MS,
+  useStackShuffle,
+} from "./useStackShuffle";
 
 let now = 0;
 let pending: FrameRequestCallback | null = null;
@@ -33,6 +37,24 @@ afterEach(() => jest.restoreAllMocks());
 test("sits idle until a shuffle is triggered", () => {
   const { result } = renderHook(() => useStackShuffle(700, 180));
   expect(result.current.travel).toBeNull();
+});
+
+test("uses a near-instant reveal before handing off to the page transition", () => {
+  const onArrived = jest.fn();
+  const { result } = renderHook(() => useStackShuffle());
+  act(() => {
+    result.current.shuffleTo(0.1, 0.9, onArrived);
+  });
+
+  frame(STACK_SHUFFLE_OPEN_MS);
+  expect(result.current.travel).toBe(0.9);
+  expect(onArrived).not.toHaveBeenCalled();
+
+  frame(STACK_SHUFFLE_OPEN_MS + STACK_SHUFFLE_HOLD_MS);
+  expect(onArrived).toHaveBeenCalledTimes(1);
+  expect(STACK_SHUFFLE_OPEN_MS).toBe(150);
+  expect(STACK_SHUFFLE_HOLD_MS).toBe(300);
+  expect(STACK_SHUFFLE_OPEN_MS + STACK_SHUFFLE_HOLD_MS).toBe(450);
 });
 
 test("tweens travel from the starting value toward the target", () => {

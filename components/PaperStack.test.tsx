@@ -49,8 +49,11 @@ const LAST = caseStudies.length - 1;
 // sweep 0.5 puts the peak at depth 1 + (SHEET_COUNT-1)/2
 const MID = (SHEET_COUNT - 1) / 2;
 
-function blurbOpacity(text: string): number {
-  return parseFloat(screen.getByText(text).style.opacity);
+function blurbOpacity(depth: number): number {
+  const sheet = screen.getByTestId(`paper-sheet-${depth}`);
+  const blurb = sheet.querySelector("button span.font-body") as HTMLSpanElement | null;
+  if (!blurb) throw new Error(`Missing preview blurb for sheet ${depth}.`);
+  return parseFloat(blurb.style.opacity);
 }
 
 test("renders the hero as depth 0 and one sheet per case study behind it", () => {
@@ -83,8 +86,8 @@ test("z-indices never change as the sweep advances", () => {
 
 test("the first case study holds the emphasis at the start of the sweep", () => {
   renderStack(1, 0);
-  expect(blurbOpacity(caseStudies[0].blurb)).toBe(1);
-  expect(blurbOpacity(caseStudies[LAST].blurb)).toBe(0);
+  expect(blurbOpacity(1)).toBe(1);
+  expect(blurbOpacity(LAST + 1)).toBe(0);
 });
 
 test("the emphasis hands off to the About sheet by the end of the sweep", () => {
@@ -92,16 +95,16 @@ test("the emphasis hands off to the About sheet by the end of the sweep", () => 
   // study no longer takes full emphasis at the end of a full sweep -- About
   // does.
   renderStack(1, 1);
-  expect(blurbOpacity(caseStudies[0].blurb)).toBe(0);
-  expect(blurbOpacity(caseStudies[LAST].blurb)).toBe(0);
-  expect(blurbOpacity(ABOUT_PAGE.blurb)).toBe(1);
+  expect(blurbOpacity(1)).toBe(0);
+  expect(blurbOpacity(LAST + 1)).toBe(0);
+  expect(blurbOpacity(SHEET_COUNT)).toBe(1);
 });
 
 test("the middle case study holds the emphasis halfway through the sweep", () => {
   renderStack(1, 0.5);
-  expect(blurbOpacity(caseStudies[MID].blurb)).toBe(1);
-  expect(blurbOpacity(caseStudies[0].blurb)).toBe(0);
-  expect(blurbOpacity(caseStudies[LAST].blurb)).toBe(0);
+  expect(blurbOpacity(MID + 1)).toBe(1);
+  expect(blurbOpacity(1)).toBe(0);
+  expect(blurbOpacity(LAST + 1)).toBe(0);
 });
 
 test("an emphasised sheet claims a thicker band than its neighbours", () => {
@@ -128,10 +131,10 @@ test("hovering a sheet changes nothing", () => {
   renderStack(1, 0);
   const sheet = screen.getByTestId("paper-sheet-2");
   const before = sheet.getAttribute("style");
-  const blurbBefore = blurbOpacity(caseStudies[1].blurb);
+  const blurbBefore = blurbOpacity(2);
   fireEvent.mouseEnter(sheet);
   expect(sheet.getAttribute("style")).toBe(before);
-  expect(blurbOpacity(caseStudies[1].blurb)).toBe(blurbBefore);
+  expect(blurbOpacity(2)).toBe(blurbBefore);
   fireEvent.mouseLeave(sheet);
   expect(sheet.getAttribute("style")).toBe(before);
 });

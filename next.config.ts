@@ -8,6 +8,18 @@ const nextConfig: NextConfig = {
   images: {
     // The static export has no image optimisation server behind it.
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "m.media-amazon.com",
+        pathname: "/images/I/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.studentapan.se",
+        pathname: "/images/**",
+      },
+    ],
   },
 };
 

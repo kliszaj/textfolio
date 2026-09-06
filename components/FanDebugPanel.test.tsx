@@ -1,10 +1,11 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { FanDebugPanel } from "./FanDebugPanel";
 import type { FanSheetConfig } from "@/lib/fanSheet";
 import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
+import { DEFAULT_INTRO_CUT_RGB_CONFIG } from "@/lib/introCutEffect";
 
 const config: FanSheetConfig = {
   mechanic: "bottom",
@@ -27,6 +28,8 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
   const onWarpConfigChange = jest.fn();
   const onStrokeConfigChange = jest.fn();
   const onPaperTextureConfigChange = jest.fn();
+  const onCutEffectChange = jest.fn();
+  const onRgbConfigChange = jest.fn();
   render(
     <FanDebugPanel
       config={config}
@@ -47,6 +50,10 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
       onStrokeConfigChange={onStrokeConfigChange}
       paperTextureConfig={DEFAULT_PAPER_TEXTURE_CONFIG}
       onPaperTextureConfigChange={onPaperTextureConfigChange}
+      cutEffect="none"
+      onCutEffectChange={onCutEffectChange}
+      rgbConfig={DEFAULT_INTRO_CUT_RGB_CONFIG}
+      onRgbConfigChange={onRgbConfigChange}
       {...overrides}
     />
   );
@@ -62,6 +69,8 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
     onWarpConfigChange,
     onStrokeConfigChange,
     onPaperTextureConfigChange,
+    onCutEffectChange,
+    onRgbConfigChange,
   };
 }
 
@@ -86,6 +95,10 @@ function renderClosed() {
       onStrokeConfigChange={jest.fn()}
       paperTextureConfig={DEFAULT_PAPER_TEXTURE_CONFIG}
       onPaperTextureConfigChange={jest.fn()}
+      cutEffect="none"
+      onCutEffectChange={jest.fn()}
+      rgbConfig={DEFAULT_INTRO_CUT_RGB_CONFIG}
+      onRgbConfigChange={jest.fn()}
     />
   );
 }
@@ -138,7 +151,7 @@ test("uses the requested ASCII defaults", () => {
     textFontSize: 340,
     planeScale: 1,
     extrudeDepth: 0.06,
-    tiltStrength: 0.3,
+    tiltStrength: 0.6,
     crtCurvature: 0.32,
     randomizeGlyphColors: true,
     // The stage holds one colour so it matches the reference; only the glyph
@@ -329,5 +342,58 @@ test("exposes the stroke sketch style, defaulting to pencil", () => {
   expect(onStrokeConfigChange).toHaveBeenCalledWith({
     ...DEFAULT_STROKE_TEXT_CONFIG,
     sketchStyle: "clean",
+  });
+});
+
+describe("the intro cut effect picker", () => {
+  test("offers none, rgb split, and noise -- not tear", () => {
+    renderPanel();
+    const picker = screen.getByTestId("intro-cut-effect-settings");
+    expect(within(picker).getByRole("tab", { name: "None" })).toBeInTheDocument();
+    expect(within(picker).getByRole("tab", { name: "RGB split" })).toBeInTheDocument();
+    expect(within(picker).getByRole("tab", { name: "Noise" })).toBeInTheDocument();
+    expect(within(picker).queryByRole("tab", { name: /tear/i })).not.toBeInTheDocument();
+  });
+
+  test("marks the current effect selected and reports a change", () => {
+    const { onCutEffectChange } = renderPanel({ cutEffect: "rgb" });
+    expect(screen.getByRole("tab", { name: "RGB split" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByRole("tab", { name: "None" })).toHaveAttribute("aria-selected", "false");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Noise" }));
+    expect(onCutEffectChange).toHaveBeenCalledWith("noise");
+  });
+
+  test("keeps the rgb sliders out of the way unless rgb split is picked", () => {
+    renderPanel({ cutEffect: "none" });
+    expect(screen.queryByTestId("intro-cut-rgb-settings")).not.toBeInTheDocument();
+
+    renderPanel({ cutEffect: "noise" });
+    expect(screen.queryAllByTestId("intro-cut-rgb-settings")).toHaveLength(0);
+  });
+
+  test("exposes split x/y and flash duration, each reporting a full config back", () => {
+    const { onRgbConfigChange } = renderPanel({ cutEffect: "rgb" });
+
+    fireEvent.change(screen.getByLabelText(/Split X/i), { target: { value: "12" } });
+    expect(onRgbConfigChange).toHaveBeenCalledWith({
+      ...DEFAULT_INTRO_CUT_RGB_CONFIG,
+      offsetX: 12,
+    });
+
+    fireEvent.change(screen.getByLabelText(/Split Y/i), { target: { value: "-8" } });
+    expect(onRgbConfigChange).toHaveBeenCalledWith({
+      ...DEFAULT_INTRO_CUT_RGB_CONFIG,
+      offsetY: -8,
+    });
+
+    fireEvent.change(screen.getByLabelText(/Flash duration/i), { target: { value: "150" } });
+    expect(onRgbConfigChange).toHaveBeenCalledWith({
+      ...DEFAULT_INTRO_CUT_RGB_CONFIG,
+      durationMs: 150,
+    });
   });
 });

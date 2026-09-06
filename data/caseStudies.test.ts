@@ -5,6 +5,16 @@ test("has at least 3 case studies", () => {
   expect(caseStudies.length).toBeGreaterThanOrEqual(3);
 });
 
+test("ends with an ongoing personal Projects & Experiments page", () => {
+  const projects = caseStudies[caseStudies.length - 1];
+  expect(projects).toMatchObject({
+    slug: "projects-and-experiments",
+    title: "Projects & Experiments",
+    blurb: expect.stringMatching(/evenings and weekends/i),
+  });
+  expect(projects.sections?.[0]?.body).toMatch(/personal projects, small experiments/i);
+});
+
 test("all slugs are unique", () => {
   const slugs = caseStudies.map((c) => c.slug);
   expect(new Set(slugs).size).toBe(slugs.length);

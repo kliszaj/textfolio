@@ -5,6 +5,7 @@ import { usePointerType } from "@/hooks/usePointerType";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import { markReturningHome, resetReturningHomeForTests } from "@/hooks/useStackCollapse";
+import { STACK_SHUFFLE_HOLD_MS, STACK_SHUFFLE_OPEN_MS } from "@/hooks/useStackShuffle";
 
 jest.mock("@/hooks/useFanProgress");
 jest.mock("@/hooks/usePointerType");
@@ -26,9 +27,10 @@ beforeEach(() => {
 
 test("renders the hero and all case study sheets", () => {
   render(<HomePage />);
-  // The headline flips through default -> sketch -> ascii -> warp -> default
-  // on load, so assert the frame is present rather than one particular
-  // treatment. Warp is always mounted regardless of which is active.
+  // The headline flips through sketch -> ascii -> warp -> final (the resting
+  // look) on load, so assert the frame is present rather than one
+  // particular treatment. Warp is always mounted regardless of which is
+  // active.
   expect(screen.getByTestId("hero-headline")).toBeInTheDocument();
   expect(screen.getByTestId("warp-text")).toHaveAttribute("aria-label", "ADRIAN");
   caseStudies.forEach((cs) => {
@@ -138,7 +140,7 @@ test("opens fanned and folds shut when the reader has just come back", () => {
   // The pointer says the stack is closed; the return says it should start open
   // and collapse. The return has to win, or the fold is never seen.
   mockUseFanProgress.mockReturnValue({ fanProgress: 0, sweepProgress: 0 });
-  markReturningHome();
+  markReturningHome(ABOUT_PAGE.slug);
 
   render(<HomePage />);
   const sheet = screen.getByTestId("paper-sheet-1");
@@ -147,10 +149,102 @@ test("opens fanned and folds shut when the reader has just come back", () => {
   resetReturningHomeForTests();
 });
 
+test("collapses a lighter distance when returning from a case study near the top of the stack", () => {
+  mockUseFanProgress.mockReturnValue({ fanProgress: 0, sweepProgress: 0 });
+
+  markReturningHome(caseStudies[0].slug);
+  const { unmount } = render(<HomePage />);
+  const shallowBottom = parseFloat(screen.getByTestId("paper-sheet-1").style.bottom);
+  unmount();
+  resetReturningHomeForTests();
+
+  markReturningHome(ABOUT_PAGE.slug);
+  render(<HomePage />);
+  const fullBottom = parseFloat(screen.getByTestId("paper-sheet-1").style.bottom);
+  resetReturningHomeForTests();
+
+  expect(shallowBottom).toBeLessThan(fullBottom);
+});
+
+test("shuffles the stack open to a case study clicked in the page-indicator rail, then lifts from its real position", () => {
+  jest.useFakeTimers();
+  mockUseFanProgress.mockReturnValue({ fanProgress: 0, sweepProgress: 0 });
+  render(<HomePage />);
+
+  const target = caseStudies[1];
+  const depth = caseStudies.findIndex((caseStudy) => caseStudy.slug === target.slug) + 1;
+  const sheet = screen.getByTestId(`paper-sheet-${depth}`);
+  jest.spyOn(sheet, "getBoundingClientRect").mockReturnValue({
+    left: 100,
+    top: 200,
+    width: 300,
+    height: 50,
+    right: 400,
+    bottom: 250,
+  } as DOMRect);
+  Object.defineProperty(window, "innerWidth", { value: 1000, configurable: true });
+  Object.defineProperty(window, "innerHeight", { value: 1000, configurable: true });
+
+  fireEvent.click(screen.getByRole("button", { name: target.title }));
+
+  for (
+    let elapsed = 0;
+    elapsed < STACK_SHUFFLE_OPEN_MS + STACK_SHUFFLE_HOLD_MS + 50;
+    elapsed += 50
+  ) {
+    act(() => {
+      jest.advanceTimersByTime(50);
+    });
+  }
+
+  const overlay = screen.getByTestId("case-study-focus");
+  expect(overlay).toHaveAttribute("data-variant", "lift");
+  expect(overlay.style.getPropertyValue("--focus-x")).toBe("25%");
+  expect(overlay.style.getPropertyValue("--focus-y")).toBe("22.5%");
+  jest.useRealTimers();
+});
+
 test("leaves the stack to the pointer on an ordinary visit", () => {
   resetReturningHomeForTests();
   mockUseFanProgress.mockReturnValue({ fanProgress: 0, sweepProgress: 0 });
 
   render(<HomePage />);
   expect(screen.getByTestId("paper-sheet-1").style.bottom).toBe("0%");
+});
+
+describe("the intro cut effect picker survives a reload", () => {
+  // The intro only plays once per page load (useIntroOnce), so trying an
+  // effect out means picking it, then reloading to actually see it -- a
+  // picker that forgot the pick on exactly that reload would be unusable.
+  beforeEach(() => window.localStorage.clear());
+
+  test("remembers a picked effect across a fresh mount", () => {
+    const { unmount } = render(<HomePage />);
+    fireEvent.click(screen.getByTestId("fan-debug-toggle"));
+    fireEvent.click(screen.getByRole("tab", { name: "RGB split" }));
+    unmount();
+
+    // A page reload is a fresh mount of the same module-level component,
+    // reading whatever got left in storage -- not a rerender of the one
+    // still holding the picked value in memory.
+    render(<HomePage />);
+    fireEvent.click(screen.getByTestId("fan-debug-toggle"));
+    expect(screen.getByRole("tab", { name: "RGB split" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+  });
+
+  test("defaults to none when nothing has been picked yet", () => {
+    render(<HomePage />);
+    fireEvent.click(screen.getByTestId("fan-debug-toggle"));
+    expect(screen.getByRole("tab", { name: "None" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("ignores a corrupted or outdated stored value rather than crashing", () => {
+    window.localStorage.setItem("textfolio:intro-cut-effect", "tear");
+    render(<HomePage />);
+    fireEvent.click(screen.getByTestId("fan-debug-toggle"));
+    expect(screen.getByRole("tab", { name: "None" })).toHaveAttribute("aria-selected", "true");
+  });
 });

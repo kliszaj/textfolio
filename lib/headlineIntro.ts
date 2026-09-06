@@ -3,8 +3,10 @@
 // seconds. It now flips through the three finished treatments instead: a
 // quick reel proving the range exists, not a narrative watching it arrive.
 // Nine seconds of watching a word draw itself in, every single page load,
-// was a lot to ask of a returning visitor.
-export type HeadlineIntroPhase = "default" | "sketch" | "ascii" | "warp" | "final";
+// was a lot to ask of a returning visitor. It used to open on a brief
+// resting beat before the reel started; per direct request that beat is
+// gone too, so the reel starts straight on sketch.
+export type HeadlineIntroPhase = "sketch" | "ascii" | "warp" | "final";
 
 // How long the headline fades down and back up around each treatment change.
 // 0 per direct request -- a hard cut, not a crossfade, so the flip-through
@@ -19,13 +21,8 @@ export const HEADLINE_HANDOVER_MS = 0;
 
 // Every treatment gets the same beat to be seen before handing over to the
 // next.
-export const HEADLINE_TREATMENT_DURATION_MS = 350;
+export const HEADLINE_TREATMENT_DURATION_MS = 300;
 
-// A brief beat on the plain resting treatment before the flip-through
-// starts, so the page doesn't launch straight into it. Shares the other
-// treatments' beat rather than a duration of its own, now that the intro is
-// a hard-cut flip-through rather than a narrative that lingers on open.
-export const DEFAULT_INTRO_DURATION_MS = HEADLINE_TREATMENT_DURATION_MS;
 export const HEADLINE_INTRO_DEMO_MS =
   HEADLINE_TREATMENT_DURATION_MS - HEADLINE_HANDOVER_MS / 2;
 
@@ -36,10 +33,10 @@ export const ASCII_INTRO_DEMO_MS =
   ASCII_INTRO_DURATION_MS - HEADLINE_HANDOVER_MS / 2;
 
 export const HEADLINE_INTRO_STEPS: { phase: HeadlineIntroPhase; durationMs: number }[] = [
-  { phase: "default", durationMs: DEFAULT_INTRO_DURATION_MS },
-  // Shown drawn, filled, and corrected already -- no draw-in here. Sketch's
-  // whole appeal is the finished hand-inked look, which a still frame shows
-  // just as well as watching it arrive, in a fraction of the time.
+  // The reel opens here now, not on a resting beat first -- shown drawn,
+  // filled, and corrected already, no draw-in. Sketch's whole appeal is the
+  // finished hand-inked look, which a still frame shows just as well as
+  // watching it arrive, in a fraction of the time.
   { phase: "sketch", durationMs: HEADLINE_TREATMENT_DURATION_MS },
   // Ascii and warp keep a small scripted motion (a lean, a circle) -- unlike
   // sketch, their whole effect is invisible without something moving.

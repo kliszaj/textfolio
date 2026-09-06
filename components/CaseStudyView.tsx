@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HomeIconAnimation } from "@/components/HomeIconAnimation";
@@ -35,7 +36,8 @@ const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
 };
 
 export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
-  const { overview, facts = [], sections = [], media = [], videoSrc } = caseStudy;
+  const { overview, facts = [], introImage, sections = [], media = [], videoSrc } = caseStudy;
+  const hasBlurb = Boolean(caseStudy.blurb);
   const hasMedia = Boolean(videoSrc) || media.length > 0;
   const router = useRouter();
 
@@ -214,14 +216,31 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                 staying above the long read in the right-hand column at lg
                 (an explicit grid placement, since two column-2 rows need
                 declaring once a third item -- this -- shares the grid). */}
-            <h2 className="case-study-intro-title font-body font-bold order-1 lg:order-none lg:col-start-2 lg:row-start-1">
-              {caseStudy.blurb}
-            </h2>
+            {hasBlurb && (
+              <h2 className="case-study-intro-title font-body font-bold order-1 lg:order-none lg:col-start-2 lg:row-start-1">
+                {caseStudy.blurb}
+              </h2>
+            )}
 
             <aside
               data-testid="case-study-overview"
               className="font-body order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-32 lg:self-start"
             >
+              {introImage && (
+                <figure
+                  data-testid="case-study-intro-image"
+                  className="mb-8 overflow-hidden rounded-2xl bg-ink/10"
+                >
+                  <Image
+                    src={introImage.src}
+                    alt={introImage.alt}
+                    width={introImage.width}
+                    height={introImage.height}
+                    sizes="(min-width: 1024px) 22rem, calc(100vw - 3rem)"
+                    className="h-auto w-full"
+                  />
+                </figure>
+              )}
               {facts.length > 0 && (
                 <dl className="case-study-facts">
                   {facts.map((fact) => (
@@ -262,7 +281,9 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                 study document. */}
             <div
               data-testid="case-study-detail"
-              className="font-body order-3 lg:order-none lg:col-start-2 lg:row-start-2"
+              className={`font-body order-3 lg:order-none lg:col-start-2 ${
+                hasBlurb ? "lg:row-start-2" : "lg:row-start-1"
+              }`}
             >
               {overview && <p className="case-study-copy case-study-intro-copy">{overview}</p>}
               {sections.length > 0 ? (

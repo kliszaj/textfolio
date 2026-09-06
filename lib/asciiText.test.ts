@@ -186,10 +186,10 @@ describe("matching the original font size", () => {
     );
   });
 
-  test("the tilt is present but well short of the original swing", () => {
+  test("the tilt is present but short of the original swing", () => {
     // The old behaviour was 0.9 rad across the host.
     expect(DEFAULT_ASCII_TEXT_CONFIG.tiltStrength).toBeGreaterThan(0);
-    expect(DEFAULT_ASCII_TEXT_CONFIG.tiltStrength).toBeLessThan(0.9 / 2);
+    expect(DEFAULT_ASCII_TEXT_CONFIG.tiltStrength).toBeLessThan(0.9);
   });
 });
 

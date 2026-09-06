@@ -212,6 +212,8 @@ export function StrokeText({
   const hatchId = `stroke-text-hatch-${safeId}`;
   const hatchMirrorId = `stroke-text-hatch-mirror-${safeId}`;
   const hatchClipId = `stroke-text-hatch-clip-${safeId}`;
+  const hatchMaskId = `stroke-text-hatch-mask-${safeId}`;
+  const correctionHatchClipId = `stroke-text-correction-hatch-clip-${safeId}`;
   // Re-seeded turbulence on the shared boil beat, so the drawn line is redrawn
   // a few times a second instead of holding perfectly still.
   const boilFrame = useLineBoilFrame(SKETCH_BOIL_SEEDS.length);
@@ -340,7 +342,11 @@ export function StrokeText({
     const root = rootRef.current;
     if (!root || typeof ResizeObserver === "undefined") return;
     const read = () => {
-      const rect = root.getBoundingClientRect();
+      // offsetWidth/Height, not getBoundingClientRect: the hero sheet this
+      // sits in rotates during a return visit's stack-collapse animation,
+      // and getBoundingClientRect would return that rotated on-screen box
+      // instead of the root's real, unrotated layout size.
+      const rect = { width: root.offsetWidth, height: root.offsetHeight };
       if (!rect.width || !rect.height) return;
       setHostSize((previous) =>
         previous &&
@@ -375,7 +381,9 @@ export function StrokeText({
     const fills = normalFills
       .map((fill, index) => (index === correctionIndex && correctionFill ? correctionFill : fill))
       .filter((fill) => fill.getAttribute("fill") !== "none");
-    const hatchLines = Array.from(root.querySelectorAll<SVGLineElement>("[data-hatch-stroke]"));
+    const hatchLines = Array.from(
+      root.querySelectorAll<SVGLineElement>("[data-hatch-stroke], [data-correction-hatch-stroke]")
+    );
     const correctionCrosses = Array.from(
       root.querySelectorAll<SVGPathElement>("[data-correction-cross]")
     );
@@ -621,11 +629,63 @@ export function StrokeText({
             </clipPath>
           )}
           {useHatchFill && (
-            <clipPath id={hatchClipId} clipPathUnits="userSpaceOnUse">
+            <clipPath id={hatchClipId} data-testid="stroke-text-hatch-clip" clipPathUnits="userSpaceOnUse">
               <text x={centreX} y={centreY} textAnchor="middle" dominantBaseline="central" style={fontStyle}>
                 {characters.map((character, index) => (
-                  <tspan key={`hatch-clip-${index}`}>{character}</tspan>
+                  <tspan key={`hatch-clip-${index}`}>
+                    {character}
+                  </tspan>
                 ))}
+              </text>
+            </clipPath>
+          )}
+          {useHatchFill && box && markBox && correctionIndex !== undefined && (
+            // SVG text inside a clipPath does not consistently honour a
+            // display:none tspan in Chrome. Mask the corrected glyph out of
+            // the full-word hatch instead, so it can only receive the one
+            // correction pencil layer below.
+            <mask
+              id={hatchMaskId}
+              data-testid="stroke-text-hatch-mask"
+              maskUnits="userSpaceOnUse"
+              maskContentUnits="userSpaceOnUse"
+              x={box.x - strokeWidth}
+              y={box.y - strokeWidth}
+              width={box.width + strokeWidth * 2}
+              height={box.height + strokeWidth * 2}
+            >
+              <rect
+                x={box.x - strokeWidth}
+                y={box.y - strokeWidth}
+                width={box.width + strokeWidth * 2}
+                height={box.height + strokeWidth * 2}
+                fill="white"
+              />
+              <rect
+                x={markBox.x - strokeWidth}
+                y={markBox.y - strokeWidth}
+                width={markBox.width + strokeWidth * 2}
+                height={markBox.height + strokeWidth * 2}
+                fill="black"
+              />
+            </mask>
+          )}
+          {useHatchFill && markBox && correctionIndex !== undefined && (
+            <clipPath
+              id={correctionHatchClipId}
+              data-testid="stroke-text-correction-hatch-clip"
+              clipPathUnits="userSpaceOnUse"
+            >
+              {/* The clipping glyph is backwards with the outline, while the
+                  hatch strokes themselves stay in the page's normal direction. */}
+              <text
+                x={markBox.x}
+                y={centreY}
+                dominantBaseline="central"
+                style={fontStyle}
+                transform={mirrorAboutBox(markBox)}
+              >
+                {characters[correctionIndex]}
               </text>
             </clipPath>
           )}
@@ -741,7 +801,11 @@ export function StrokeText({
         </text>
 
           {useHatchFill && (
-            <g data-testid="stroke-text-hatch-fill" clipPath={`url(#${hatchClipId})`}>
+            <g
+              data-testid="stroke-text-hatch-fill"
+              clipPath={`url(#${hatchClipId})`}
+              mask={markBox && correctionIndex !== undefined ? `url(#${hatchMaskId})` : undefined}
+            >
               {hatchStrokes.map((stroke, index) => (
                 <line
                   key={`hatch-stroke-${index}`}
@@ -763,9 +827,7 @@ export function StrokeText({
 
           {markBox && correctionIndex !== undefined && (
             <g data-testid="stroke-text-correction">
-              {/* The letter drawn back to front in its own place -- outline
-                  and shading together, or the hatching would stay the right
-                  way round inside a reversed outline. */}
+              {/* The letter drawn back to front in its own place. */}
               <g transform={mirrorAboutBox(markBox)}>
                 <text
                   data-correction-fill
@@ -797,6 +859,33 @@ export function StrokeText({
                   {characters[correctionIndex]}
                 </text>
               </g>
+
+              {useHatchFill && (
+                // Keep the strokes at the same page-wide slope as every
+                // other letter. Only the clip is mirrored to fit the
+                // backwards N.
+                <g
+                  data-testid="stroke-text-correction-hatch-fill"
+                  clipPath={`url(#${correctionHatchClipId})`}
+                >
+                  {hatchStrokes.map((stroke, index) => (
+                    <line
+                      key={`correction-hatch-stroke-${index}`}
+                      data-correction-hatch-stroke
+                      x1={stroke.x1}
+                      y1={stroke.y1}
+                      x2={stroke.x2}
+                      y2={stroke.y2}
+                      stroke={inked.fillColor}
+                      strokeWidth={stroke.strokeWidth}
+                      strokeLinecap="round"
+                      opacity={stroke.opacity}
+                      strokeDasharray={UNMEASURED_DASH_LENGTH}
+                      strokeDashoffset={UNMEASURED_DASH_LENGTH}
+                    />
+                  ))}
+                </g>
+              )}
 
               {/* Red pen, drawn on after the letters have been sketched.
                   Dasharray/dashoffset here are only the pre-mount fallback --

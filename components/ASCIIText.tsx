@@ -116,7 +116,11 @@ export function ASCIIText({
 
     void import("three").then((THREE) => {
       if (disposed) return;
-      const rect = host.getBoundingClientRect();
+      // offsetWidth/Height, not getBoundingClientRect: the hero sheet this
+      // sits in rotates during a return visit's stack-collapse animation,
+      // and getBoundingClientRect would return that rotated on-screen box
+      // instead of the host's real, unrotated layout size.
+      const rect = { width: host.offsetWidth, height: host.offsetHeight };
       if (!rect.width || !rect.height) return;
 
       const textCanvas = document.createElement("canvas");
@@ -188,7 +192,9 @@ export function ASCIIText({
       // clamp -- so the ratio between them is not constant.
       const applyPlaneScale = () => {
         if (!mesh) return;
-        const size = host.getBoundingClientRect();
+        // Same reason as above: offsetWidth/Height, not the
+        // rotation-sensitive getBoundingClientRect.
+        const size = { width: host.offsetWidth, height: host.offsetHeight };
         const targetFontSize = measureTargetFontSize();
         // Nothing measurable yet -- mid-layout, or before the face has loaded.
         // Keep whatever scale is already on the mesh rather than dropping to a
@@ -283,7 +289,9 @@ export function ASCIIText({
       };
 
       const resize = () => {
-        const size = host.getBoundingClientRect();
+        // Same reason as above: offsetWidth/Height, not the
+        // rotation-sensitive getBoundingClientRect.
+        const size = { width: host.offsetWidth, height: host.offsetHeight };
         if (!size.width || !size.height) return;
         renderer.setSize(size.width, size.height);
         camera.aspect = size.width / size.height;
@@ -310,8 +318,9 @@ export function ASCIIText({
         const pixels = sampleContext.getImageData(0, 0, width, height).data;
         let output = "";
         if (randomizeGlyphColors) {
-          const bounds = host.getBoundingClientRect();
-          outputContext.clearRect(0, 0, bounds.width, bounds.height);
+          // Same reason as above: offsetWidth/Height, not the
+          // rotation-sensitive getBoundingClientRect.
+          outputContext.clearRect(0, 0, host.offsetWidth, host.offsetHeight);
         }
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
