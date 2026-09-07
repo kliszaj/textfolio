@@ -2,6 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { AboutNow } from "./AboutNow";
 
 const now = {
+  portrait: {
+    src: "https://example.com/adrian.jpg",
+    alt: "Portrait of Adrian",
+  },
   books: [
     {
       title: "Loonshots",
@@ -42,4 +46,17 @@ test("shows current books as linked covers and embeds the current playlist", () 
   const playlist = screen.getByTitle("sept '26 on Spotify");
   expect(playlist).toHaveAttribute("src", now.playlist.embedSrc);
   expect(playlist).toHaveClass("h-[352px]");
+});
+
+test("puts the portrait in its own column alongside reading and listening", () => {
+  render(<AboutNow now={now} />);
+
+  const portrait = screen.getByRole("img", { name: "Portrait of Adrian" });
+  expect(portrait).toHaveAttribute("src", now.portrait.src);
+
+  // All three ingredients of the bento share one grid, not three separate
+  // sections stacked on top of each other.
+  const grid = screen.getByText("Currently reading").closest("section")?.parentElement;
+  expect(grid).toContainElement(portrait);
+  expect(grid).toContainElement(screen.getByText("Currently listening"));
 });

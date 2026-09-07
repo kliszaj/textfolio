@@ -54,6 +54,10 @@ export type CaseStudy = {
   // Left column: what the work was, read in a glance.
   overview?: string;
   overviewLink?: CaseStudyOverviewLink;
+  // Rendered at the bottom of the overview text block itself, not in the
+  // at-a-glance rail -- for a page with nothing else worth a dedicated
+  // rail (About), contact details still need a tappable home.
+  overviewContactLinks?: CaseStudyFactLink[];
   facts?: CaseStudyFact[];
   introImage?: CaseStudyIntroImage;
   // Right column: the long read, in order.
@@ -116,7 +120,7 @@ export const caseStudies: CaseStudy[] = [
     thumbnailColor: "#F850C0",
     blurb: "Taking Spotify beyond Ubiquity",
     overview:
-      "For years Spotify has held a competitive advantage through it's Ubiquity strategy - being available on any device you listen on whether it's a TV, a Smart Speaker, or a Fridge.  Now, the Ubiquity advantage is being challenged through new technologies and protocols such as Matter. As a Senior Product Designer, I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences.",
+      "For years Spotify has held a competitive advantage through it's Ubiquity strategy - being available on any device you listen on whether it's a TV, a Smart Speaker, or a Fridge.  Now, the Ubiquity advantage is being challenged through new technologies and new connectivity standards such as Matter. As a Senior Product Designer, I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences.",
     facts: [
       { label: "Role", value: "Co-Creator, Design Lead\n2021 – 2022" },
       { label: "Scope", value: "Design Strategy, Product Strategy, Research" },

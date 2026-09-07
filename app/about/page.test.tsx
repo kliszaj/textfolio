@@ -7,19 +7,29 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 
-test("puts Adrian's portrait first and keeps the biography free of a redundant header", () => {
+test("keeps the biography free of a redundant header or a repeated portrait", () => {
   render(<AboutPage />);
   expect(screen.getByText(ABOUT_PAGE.title)).toBeInTheDocument();
   expect(
     screen.getByText(/I'm Adrian, a Staff Product Designer currently working at Spotify/)
   ).toBeInTheDocument();
-  expect(screen.getByRole("img", { name: "Portrait of Adrian" })).toBeInTheDocument();
-  expect(screen.getByTestId("case-study-overview").firstElementChild).toHaveAttribute(
-    "data-testid",
-    "case-study-intro-image"
+  // The portrait now lives once, in the Now bento below -- not at the top
+  // of the write-up's own rail (see the AboutNow test for that).
+  expect(screen.getAllByRole("img", { name: "Portrait of Adrian" })).toHaveLength(1);
+  expect(screen.queryByTestId("case-study-intro-image")).not.toBeInTheDocument();
+  // Based in / From aren't their own facts any more -- the bio already
+  // says both, so the dedicated rail (and its now-unused space) is gone.
+  expect(screen.queryByTestId("case-study-overview")).not.toBeInTheDocument();
+  expect(screen.getByText(/originally from Canada/)).toBeInTheDocument();
+  // Contact links moved to the bottom of the text block instead.
+  expect(screen.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute(
+    "href",
+    "mailto:hello@adrianklisz.com"
   );
-  expect(screen.getByText("From")).toBeInTheDocument();
-  expect(screen.getByText("Toronto, Canada")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "LinkedIn" })).toHaveAttribute(
+    "href",
+    "https://www.linkedin.com/in/adrianklisz/"
+  );
   expect(screen.queryByText("Currently")).not.toBeInTheDocument();
   expect(
     screen.queryByText("A Staff Product Designer at Spotify, based in Stockholm and originally from Canada.")

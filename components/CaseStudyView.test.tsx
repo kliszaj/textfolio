@@ -233,6 +233,58 @@ test("renders an overview source as a safe external link", () => {
   expect(source).toHaveAttribute("rel", "noreferrer");
 });
 
+test("colors an inline link preview with the NEXT case study's color, not this one's own", () => {
+  render(
+    <CaseStudyView
+      caseStudy={{
+        ...caseStudy,
+        overview: "Jam is part of Spotify's multiplayer strategy.",
+        overviewLink: {
+          label: "multiplayer strategy",
+          href: "https://newsroom.spotify.com/2026-05-21/investor-day-recap/",
+        },
+      }}
+      next={nextStudy}
+    />
+  );
+
+  fireEvent.pointerEnter(screen.getByRole("link", { name: "multiplayer strategy" }), {
+    pointerType: "mouse",
+  });
+  const preview = screen.getByTestId("inline-link-preview");
+  // nextStudy is pink (#F850C0); this case study's own color is green
+  // (#15FF76) -- the preview should read as a bridge to what's next, not
+  // restate the color of the page the reader is already on.
+  expect(preview.style.getPropertyValue("--preview-color")).toBe(nextStudy.thumbnailColor);
+});
+
+test("puts contact links at the bottom of the text block, not in a separate rail", () => {
+  render(
+    <CaseStudyView
+      caseStudy={{
+        ...caseStudy,
+        overview: "A complete overview.",
+        overviewContactLinks: [
+          { label: "hello@adrianklisz.com", href: "mailto:hello@adrianklisz.com" },
+          { label: "LinkedIn", href: "https://www.linkedin.com/in/adrianklisz/" },
+        ],
+      }}
+    />
+  );
+
+  const email = screen.getByRole("link", { name: "hello@adrianklisz.com" });
+  expect(email).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
+  const linkedIn = screen.getByRole("link", { name: "LinkedIn" });
+  expect(linkedIn).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
+
+  const detail = screen.getByTestId("case-study-detail");
+  expect(detail).toContainElement(email);
+  expect(detail).toContainElement(linkedIn);
+  // After the overview text, not before it.
+  const overview = screen.getByText("A complete overview.");
+  expect(overview.compareDocumentPosition(email) & 4).toBeTruthy();
+});
+
 test("renders a source inside a narrative paragraph", () => {
   render(
     <CaseStudyView
@@ -275,10 +327,20 @@ test("sets the overview apart from the following narrative paragraph", () => {
   ).toHaveClass("mb-8");
 });
 
-test("always sets the rail beside the long read, per the two-column brief", () => {
-  render(<CaseStudyView caseStudy={caseStudy} />);
+test("sets the rail beside the long read once there's something in it", () => {
+  render(<CaseStudyView caseStudy={written} />);
   expect(screen.getByTestId("case-study-overview")).toBeInTheDocument();
   expect(screen.getByTestId("case-study-columns")).toHaveClass(
+    "lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
+  );
+});
+
+test("drops the rail and runs the text full width when there are no facts and no portrait", () => {
+  // About has neither: a dedicated rail column with nothing in it just
+  // leaves the reading column narrower than it needs to be for no reason.
+  render(<CaseStudyView caseStudy={caseStudy} />);
+  expect(screen.queryByTestId("case-study-overview")).not.toBeInTheDocument();
+  expect(screen.getByTestId("case-study-columns")).not.toHaveClass(
     "lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
   );
 });

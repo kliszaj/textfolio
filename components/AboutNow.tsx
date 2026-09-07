@@ -1,6 +1,10 @@
 import Image from "next/image";
 
 export type AboutNowData = {
+  portrait: {
+    src: string;
+    alt: string;
+  };
   books: Array<{
     title: string;
     author: string;
@@ -30,9 +34,9 @@ export function AboutNow({ now }: AboutNowProps) {
   return (
     <section
       aria-labelledby="about-now-heading"
-      className="bg-cream px-6 pb-20 pt-4 md:px-10 md:pb-28 2xl:px-14"
+      className="bg-cream px-6 pb-20 md:px-10 md:pb-28 2xl:px-14"
     >
-      <div className="mx-auto w-full max-w-[100rem] border-t border-ink/25 pt-8 md:pt-10">
+      <div className="mx-auto w-full max-w-[100rem]">
         <h2
           id="about-now-heading"
           className="font-display text-3xl leading-none md:text-4xl"
@@ -40,7 +44,24 @@ export function AboutNow({ now }: AboutNowProps) {
           Now
         </h2>
 
-        <div className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] lg:gap-20">
+        <div className="mt-8 grid gap-8 lg:grid-cols-3 lg:gap-10">
+          {/* aspect-[16/10] gives the portrait a sensible height on its own
+              when stacked on mobile; at lg it drops out in favour of the
+              grid's own row-stretch, so the photo fills to match whichever
+              of reading/listening ends up taller (listening, in practice --
+              the Spotify embed is the tallest of the three). */}
+          <div
+            data-testid="about-now-portrait"
+            className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-ink/10 lg:aspect-auto"
+          >
+            <Image
+              src={now.portrait.src}
+              alt={now.portrait.alt}
+              fill
+              sizes="(min-width: 1024px) 33vw, 100vw"
+              className="object-cover"
+            />
+          </div>
           <section aria-labelledby="currently-reading-heading">
             <p
               id="currently-reading-heading"
@@ -118,7 +139,7 @@ export function AboutNow({ now }: AboutNowProps) {
           </section>
 
           {now.game && (
-            <section aria-labelledby="currently-playing-heading" className="lg:col-span-2">
+            <section aria-labelledby="currently-playing-heading" className="lg:col-span-3">
               <p
                 id="currently-playing-heading"
                 className="font-body text-xs font-medium uppercase tracking-[0.08em]"

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HomeIconAnimation } from "@/components/HomeIconAnimation";
+import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudyRoute } from "@/data/caseStudies";
 import { nextHeaderShrunk } from "@/lib/stickyHeader";
@@ -37,7 +38,10 @@ const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
 
 function renderLinkedCopy(
   copy: string,
-  links?: CaseStudyOverviewLink | CaseStudyOverviewLink[]
+  links?: CaseStudyOverviewLink | CaseStudyOverviewLink[],
+  // The NEXT case study's color -- previews read as a bridge onward, not a
+  // restatement of the page the reader is already on.
+  accentColor?: string
 ) {
   const requestedLinks = Array.isArray(links) ? links : links ? [links] : [];
   const parts: React.ReactNode[] = [];
@@ -49,15 +53,11 @@ function renderLinkedCopy(
 
     parts.push(copy.slice(cursor, start));
     parts.push(
-      <a
+      <InlineLinkPreview
         key={`${link.href}-${start}`}
-        href={link.href}
-        target="_blank"
-        rel="noreferrer"
-        className="underline underline-offset-2 transition-opacity hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
-      >
-        {link.label}
-      </a>
+        link={link}
+        accentColor={accentColor}
+      />
     );
     cursor = start + link.label.length;
   }
@@ -66,8 +66,22 @@ function renderLinkedCopy(
 }
 
 export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
-  const { overview, overviewLink, facts = [], introImage, sections = [], media = [], videoSrc } = caseStudy;
+  const {
+    overview,
+    overviewLink,
+    overviewContactLinks,
+    facts = [],
+    introImage,
+    sections = [],
+    media = [],
+    videoSrc,
+  } = caseStudy;
   const hasMedia = Boolean(videoSrc) || media.length > 0;
+  // A dedicated rail column with nothing in it (About has neither facts nor
+  // a portrait, once both moved elsewhere) just leaves the reading column
+  // narrower than it needs to be for no reason -- drop it and let the text
+  // run full width instead of reserving empty space beside it.
+  const hasRail = Boolean(introImage) || facts.length > 0;
   const router = useRouter();
 
   const [shrunk, setShrunk] = useState(false);
@@ -133,7 +147,13 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
       <main
         data-testid="case-study-view"
         data-exiting={exiting}
-        className="min-h-screen bg-cream text-ink"
+        // Not min-h-screen: a short page (About, with no media) doesn't
+        // need padding out to a full viewport, and the fixed cream layer
+        // just above already covers the screen regardless of this
+        // element's real height -- min-h-screen here only ever pushed
+        // whatever follows (AboutNow) down into empty space nobody sees a
+        // reason for.
+        className="bg-cream text-ink"
         style={{
           transform: exiting ? "translateY(100vh)" : undefined,
           transition: exiting
@@ -238,8 +258,11 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
               the rail reads as the intro it is, rather than a squeezed sidebar. */}
           <div
             data-testid="case-study-columns"
-            className="mx-auto grid w-full max-w-[100rem] gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-x-20"
+            className={`mx-auto grid w-full max-w-[100rem] gap-x-12 gap-y-8${
+              hasRail ? " lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-x-20" : ""
+            }`}
           >
+            {hasRail && (
             <aside
               data-testid="case-study-overview"
               className="font-body order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-32 lg:self-start"
@@ -292,6 +315,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                 </dl>
               )}
             </aside>
+            )}
 
             {/* The page is wide, prose is not: the measure stays readable even
                 when the gallery below runs the full width. Short titled beats
@@ -299,11 +323,13 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                 study document. */}
             <div
               data-testid="case-study-detail"
-              className="font-body font-medium order-3 lg:order-none lg:col-start-2 lg:row-start-1"
+              className={`font-body font-medium order-3 lg:order-none lg:row-start-1${
+                hasRail ? " lg:col-start-2" : ""
+              }`}
             >
               {overview && (
                 <p className="case-study-copy case-study-intro-copy mb-8">
-                  {renderLinkedCopy(overview, overviewLink)}
+                  {renderLinkedCopy(overview, overviewLink, next?.thumbnailColor)}
                 </p>
               )}
               {sections.length > 0 ? (
@@ -313,7 +339,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                     {section.heading && (
                       <h2 className="font-body font-bold text-2xl leading-none mb-3">{section.heading}</h2>
                     )}
-                    <p>{renderLinkedCopy(section.body, section.bodyLinks ?? section.bodyLink)}</p>
+                    <p>{renderLinkedCopy(section.body, section.bodyLinks ?? section.bodyLink, next?.thumbnailColor)}</p>
                     {section.bullets && section.bullets.length > 0 && (
                       <ul className="mt-3 list-disc space-y-2 pl-5">
                         {section.bullets.map((bullet) => (
@@ -341,6 +367,21 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                   here: process, decisions, and the work itself.
                 </p>
               ) : null}
+              {overviewContactLinks && overviewContactLinks.length > 0 && (
+                <p className="case-study-copy mt-8">
+                  {overviewContactLinks.map((link, index) => (
+                    <span key={link.href}>
+                      {index > 0 && " · "}
+                      <a
+                        href={link.href}
+                        className="underline underline-offset-2 hover:opacity-70"
+                      >
+                        {link.label}
+                      </a>
+                    </span>
+                  ))}
+                </p>
+              )}
             </div>
           </div>
 

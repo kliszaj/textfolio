@@ -17,29 +17,28 @@ I started out as a UX researcher, straight out of my master's — which is proba
 Outside of work I forage in the woods near where I live, ferment the results into hot sauce under my own label, shoot everything on film, and occasionally get far too deep into a game of Magic: The Gathering.
 
 I care about setting a high bar for craft, and about staying close enough to the work to help others raise theirs too.`,
-  facts: [
-    { label: "Based in", value: "Stockholm, Sweden" },
-    { label: "From", value: "Toronto, Canada" },
-    {
-      label: "Say hi",
-      value: [
-        { label: "hello@adrianklisz.com", href: "mailto:hello@adrianklisz.com" },
-        { label: "LinkedIn", href: "https://www.linkedin.com/in/adrianklisz/" },
-      ],
-    },
+  // Based in / From aren't repeated here as their own facts -- the bio
+  // above already says both. Only the contact details actually need a
+  // tappable home, so they're all that's left: rendered at the bottom of
+  // the text block itself (see overviewContactLinks on CaseStudy) rather
+  // than in a dedicated rail with nothing else in it.
+  overviewContactLinks: [
+    { label: "hello@adrianklisz.com", href: "mailto:hello@adrianklisz.com" },
+    { label: "LinkedIn", href: "https://www.linkedin.com/in/adrianklisz/" },
   ],
-  introImage: {
-    src: "/assets/adrian.jpeg",
-    alt: "Portrait of Adrian",
-    width: 1200,
-    height: 1600,
-  },
 };
 
 // Update this small record whenever the current shelf changes. The game is
 // intentionally optional: it only appears when there is something Adrian is
 // actively playing, rather than shipping a stale placeholder.
 export const ABOUT_NOW: AboutNowData = {
+  // Moved here from ABOUT_PAGE.introImage: it now sits in the Now bento
+  // alongside reading and listening, rather than at the top of the
+  // write-up's own rail -- the two used to show the same photo twice.
+  portrait: {
+    src: "/assets/adrian.jpeg",
+    alt: "Portrait of Adrian",
+  },
   books: [
     {
       title: "Loonshots",
