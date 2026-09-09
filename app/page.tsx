@@ -34,6 +34,7 @@ import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import {
   DEFAULT_INTRO_CUT_RGB_CONFIG,
+  DEFAULT_INTRO_CUT_EFFECT,
   INTRO_CUT_EFFECT_STORAGE_KEY,
   INTRO_CUT_RGB_CONFIG_STORAGE_KEY,
   isIntroCutEffect,
@@ -68,11 +69,11 @@ function readStoredCutEffect(): IntroCutEffect {
   if (typeof window === "undefined") return "none";
   try {
     const stored = window.localStorage.getItem(INTRO_CUT_EFFECT_STORAGE_KEY);
-    return isIntroCutEffect(stored) ? stored : "none";
+    return isIntroCutEffect(stored) ? stored : DEFAULT_INTRO_CUT_EFFECT;
   } catch {
     // Storage can be unavailable (private browsing, disabled cookies); the
     // picker just falls back to its default rather than breaking the page.
-    return "none";
+    return DEFAULT_INTRO_CUT_EFFECT;
   }
 }
 

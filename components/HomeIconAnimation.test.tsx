@@ -40,9 +40,10 @@ test("rewinds with the header as it reopens", () => {
   expect(icon).toHaveAttribute("src", "/assets/home-animation-4.svg");
   act(() => jest.advanceTimersByTime(80 * 3));
   expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
+
 });
 
-test("plays once on hover and returns to the first frame", () => {
+test("holds after the explosion, then rebuilds the house from the original frames", () => {
   render(<HomeIconAnimation shrunk={false} />);
   const icon = screen.getByTestId("case-study-home-label");
 
@@ -50,14 +51,24 @@ test("plays once on hover and returns to the first frame", () => {
   // hover well after the icon settled, not one caused by it just appearing.
   act(() => jest.advanceTimersByTime(600));
   fireEvent.pointerEnter(icon);
-  act(() => jest.advanceTimersByTime(80 * 4));
+  act(() => jest.advanceTimersByTime(100 * 4));
+  expect(icon).toHaveAttribute("src", "/assets/home-explosion-5.svg");
+
+  act(() => jest.advanceTimersByTime(100));
+  expect(icon).toHaveAttribute("src", "/assets/home-explosion-6.svg");
+
+  act(() => jest.advanceTimersByTime(499));
+  expect(icon).toHaveAttribute("src", "/assets/home-explosion-6.svg");
+
+  act(() => jest.advanceTimersByTime(1));
   expect(icon).toHaveAttribute("src", "/assets/home-animation-5.svg");
 
-  act(() => jest.advanceTimersByTime(80 * 4));
+  act(() => jest.advanceTimersByTime(80));
+  expect(icon).toHaveAttribute("src", "/assets/home-animation-4.svg");
+
+  act(() => jest.advanceTimersByTime(80 * 3));
   expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
 
-  act(() => jest.advanceTimersByTime(80 * 5));
-  expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
 });
 
 test("does not replay the hover wiggle for a pointer that was already sitting over it when the header reopened", () => {
@@ -82,6 +93,31 @@ test("does not replay the hover wiggle for a pointer that was already sitting ov
   // A genuine hover once it has well and truly settled still works.
   act(() => jest.advanceTimersByTime(600));
   fireEvent.pointerEnter(icon);
-  act(() => jest.advanceTimersByTime(80 * 4));
+  act(() => jest.advanceTimersByTime(100 * 4));
+  expect(icon).toHaveAttribute("src", "/assets/home-explosion-5.svg");
+});
+
+test("cancels an active explosion and uses only the original frames when scrolling back up", () => {
+  const { rerender } = render(<HomeIconAnimation shrunk={false} />);
+  const icon = screen.getByTestId("case-study-home-label");
+
+  act(() => jest.advanceTimersByTime(600));
+  fireEvent.pointerEnter(icon);
+  act(() => jest.advanceTimersByTime(100 * 4));
+  expect(icon).toHaveAttribute("src", "/assets/home-explosion-5.svg");
+
+  rerender(<HomeIconAnimation shrunk />);
+  expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
+  act(() => jest.advanceTimersByTime(55 * 4));
   expect(icon).toHaveAttribute("src", "/assets/home-animation-5.svg");
+
+  rerender(<HomeIconAnimation shrunk={false} />);
+  act(() => jest.advanceTimersByTime(80));
+  expect(icon).toHaveAttribute("src", "/assets/home-animation-4.svg");
+  act(() => jest.advanceTimersByTime(80 * 3));
+  expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
+
+  // No cancelled hover timer wakes up after the scroll rebuild has settled.
+  act(() => jest.advanceTimersByTime(1200));
+  expect(icon).toHaveAttribute("src", "/assets/home-animation-1.svg");
 });

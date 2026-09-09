@@ -1,6 +1,7 @@
 import {
   ASCII_INTRO_DEMO_MS,
   ASCII_INTRO_DURATION_MS,
+  HEADLINE_DEFAULT_DURATION_MS,
   HEADLINE_HANDOVER_MS,
   HEADLINE_INTRO_DEMO_MS,
   HEADLINE_INTRO_BOUNDARIES_MS,
@@ -12,27 +13,28 @@ import {
   introStateAt,
 } from "./headlineIntro";
 
-const [sketch, ascii, warp] = HEADLINE_INTRO_STEPS;
+const [opening, sketch, ascii, warp] = HEADLINE_INTRO_STEPS;
 
-test("opens directly on sketch, already finished -- no resting beat first", () => {
-  expect(introStateAt(0).phase).toBe("sketch");
-  expect(introStateAt(sketch.durationMs - 1).phase).toBe("sketch");
+test("opens on the default treatment for a short resting beat", () => {
+  expect(introStateAt(0).phase).toBe("default");
+  expect(introStateAt(opening.durationMs - 1).phase).toBe("default");
 });
 
-test("hands over to ascii once the sketch has had its turn", () => {
-  expect(introStateAt(sketch.durationMs).phase).toBe("ascii");
+test("hands over to sketch after the default beat", () => {
+  expect(introStateAt(opening.durationMs).phase).toBe("sketch");
 });
 
-test("hands over to warp once ascii has had its turn", () => {
-  expect(introStateAt(sketch.durationMs + ascii.durationMs).phase).toBe("warp");
+test("hands over to ascii and warp after their authored beats", () => {
+  expect(introStateAt(opening.durationMs + sketch.durationMs).phase).toBe("ascii");
+  expect(introStateAt(opening.durationMs + sketch.durationMs + ascii.durationMs).phase).toBe("warp");
 });
 
-test("runs all four stages of the flip-through", () => {
+test("runs all five stages of the flip-through", () => {
   const seen = new Set<string>();
   for (let t = 0; t <= HEADLINE_INTRO_DURATION_MS + 100; t += 10) {
     seen.add(introStateAt(t).phase);
   }
-  expect([...seen]).toEqual(["sketch", "ascii", "warp", "final"]);
+  expect([...seen]).toEqual(["default", "sketch", "ascii", "warp", "final"]);
 });
 
 test("settles back on the plain resting treatment and stays there", () => {
@@ -46,7 +48,7 @@ test("settles back on the plain resting treatment and stays there", () => {
 });
 
 test("the phases run forwards only, never back a step", () => {
-  const order = ["sketch", "ascii", "warp", "final"];
+  const order = ["default", "sketch", "ascii", "warp", "final"];
   let previous = 0;
   for (let t = 0; t <= HEADLINE_INTRO_DURATION_MS + 500; t += 50) {
     const index = order.indexOf(introStateAt(t).phase);
@@ -56,8 +58,8 @@ test("the phases run forwards only, never back a step", () => {
 });
 
 test("survives nonsense elapsed values", () => {
-  expect(introStateAt(-500).phase).toBe("sketch");
-  expect(introStateAt(NaN).phase).toBe("sketch");
+  expect(introStateAt(-500).phase).toBe("default");
+  expect(introStateAt(NaN).phase).toBe("default");
 });
 
 describe("sketch shows the finished, corrected word -- no draw-in", () => {
@@ -91,6 +93,13 @@ describe("ascii and warp keep a small scripted motion, since they need it to rea
     expect(HEADLINE_INTRO_DEMO_MS).toBeLessThanOrEqual(warp.durationMs);
     expect(ASCII_INTRO_DEMO_MS).toBeLessThanOrEqual(ascii.durationMs);
   });
+});
+
+test("uses the requested 450ms default and 350ms treatment cadence", () => {
+  expect(opening).toEqual({ phase: "default", durationMs: 450 });
+  expect(HEADLINE_DEFAULT_DURATION_MS).toBe(450);
+  expect(HEADLINE_TREATMENT_DURATION_MS).toBe(350);
+  expect([sketch.durationMs, ascii.durationMs, warp.durationMs]).toEqual([350, 350, 350]);
 });
 
 describe("glitchFlicker -- the shape of the fade, independent of whether it's in use", () => {
@@ -141,8 +150,8 @@ describe("handing over between stages -- a hard cut, per direct request", () => 
       expect(handoverOpacityAt(boundary)).toBe(1);
     }
     expect(handoverOpacityAt(0)).toBe(1);
-    const [, sketchEnd] = HEADLINE_INTRO_BOUNDARIES_MS;
-    expect(handoverOpacityAt(sketchEnd / 2)).toBe(1);
+    const [, defaultEnd] = HEADLINE_INTRO_BOUNDARIES_MS;
+    expect(handoverOpacityAt(defaultEnd / 2)).toBe(1);
   });
 
   test("the story is over exactly at the total duration -- no extra fade-in wait", () => {
@@ -156,11 +165,9 @@ describe("handing over between stages -- a hard cut, per direct request", () => 
 
 test("runs the whole flip-through in well under the old nine-second story", () => {
   // A quick reel proving the range exists, not a narrative watching it
-  // arrive -- the exact beat lengths have already moved once since this was
-  // first built (leaner immediately after landing, then lengthened again on
-  // request, then the opening resting beat dropped entirely so the reel
-  // starts straight on sketch), so this pins the composition, not a
-  // specific total.
-  expect(HEADLINE_INTRO_DURATION_MS).toBe(HEADLINE_TREATMENT_DURATION_MS * 3);
+  // arrive. Pin the authored composition as well as the broad upper bound.
+  expect(HEADLINE_INTRO_DURATION_MS).toBe(
+    HEADLINE_DEFAULT_DURATION_MS + HEADLINE_TREATMENT_DURATION_MS * 3
+  );
   expect(HEADLINE_INTRO_DURATION_MS).toBeLessThan(6000);
 });

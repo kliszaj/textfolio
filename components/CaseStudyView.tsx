@@ -36,6 +36,17 @@ const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
   half: "col-span-1 row-span-1",
 };
 
+const SEQUENCE_SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
+  full: "col-span-2",
+  tall: "col-span-1",
+  half: "col-span-1",
+};
+
+const ASPECT_CLASS: Record<NonNullable<CaseStudyMedia["aspect"]>, string> = {
+  landscape: "aspect-video",
+  portrait: "aspect-[9/16]",
+};
+
 function renderLinkedCopy(
   copy: string,
   links?: CaseStudyOverviewLink | CaseStudyOverviewLink[],
@@ -74,6 +85,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
     introImage,
     sections = [],
     media = [],
+    mediaLayout = "mosaic",
     videoSrc,
   } = caseStudy;
   const hasMedia = Boolean(videoSrc) || media.length > 0;
@@ -407,15 +419,25 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
                 />
               )}
               {media.length > 0 && (
-                <div className="mt-8 grid grid-cols-2 auto-rows-[11rem] gap-4 md:auto-rows-[16rem] md:gap-6">
+                <div
+                  data-testid="case-study-media-grid"
+                  data-layout={mediaLayout}
+                  className={`mt-8 grid grid-cols-2 gap-4 md:gap-6 ${
+                    mediaLayout === "mosaic" ? "auto-rows-[11rem] md:auto-rows-[16rem]" : ""
+                  }`}
+                >
                   {media.map((item, index) => {
                     const span = item.span ?? "half";
+                    const tileLayout = mediaLayout === "sequence"
+                      ? `${SEQUENCE_SPAN_CLASS[span]} ${item.aspect ? ASPECT_CLASS[item.aspect] : ""}`
+                      : SPAN_CLASS[span];
                     return (
                       <figure
                         key={item.src ?? `${item.alt}-${index}`}
                         data-testid="case-study-tile"
                         data-span={span}
-                        className={`${SPAN_CLASS[span]} overflow-hidden rounded-2xl bg-ink/20`}
+                        data-aspect={item.aspect}
+                        className={`${tileLayout} overflow-hidden rounded-2xl bg-ink/20`}
                       >
                         {item.src ? (
                           item.kind === "video" ? (

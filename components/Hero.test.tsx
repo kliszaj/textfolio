@@ -3,8 +3,16 @@ import { createRef } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { SKETCH_INK } from "@/lib/strokeText";
-import { HEADLINE_TREATMENT_DURATION_MS } from "@/lib/headlineIntro";
-import { INTRO_CUT_NOISE_BURST_MS, INTRO_CUT_RGB_FLASH_MS } from "@/lib/introCutEffect";
+import {
+  HEADLINE_DEFAULT_DURATION_MS,
+  HEADLINE_INTRO_STEPS,
+  HEADLINE_TREATMENT_DURATION_MS,
+} from "@/lib/headlineIntro";
+import {
+  INTRO_CUT_CHANNEL_BURST_MS,
+  INTRO_CUT_NOISE_BURST_MS,
+  INTRO_CUT_RGB_FLASH_MS,
+} from "@/lib/introCutEffect";
 import { SUBHEADER_REVEAL_START_DELAY_MS, TAGLINE_FOCUS_MS } from "@/lib/heroReveal";
 import { caseStudies } from "@/data/caseStudies";
 import styles from "./Hero.module.css";
@@ -185,9 +193,9 @@ test("reveals the complete tagline from blur to sharp focus", () => {
     // requestAnimationFrame needs to actually process the intro's own three
     // treatment beats before the reveal's separate rAF loop can even start
     // (same lesson as the cut-effect tests above).
-    for (let i = 0; i < 3; i += 1) {
+    for (const step of HEADLINE_INTRO_STEPS) {
       act(() => {
-        jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS);
+        jest.advanceTimersByTime(step.durationMs);
       });
     }
     const focusTarget = SUBHEADER_REVEAL_START_DELAY_MS + TAGLINE_FOCUS_MS * 0.35 + 50;
@@ -443,11 +451,10 @@ describe("the intro's cut effect", () => {
   test("flashes the rgb-split filter on, then off, at every cut -- but never once settled", () => {
     render(<Hero playIntro fanProgress={0} cutEffect="rgb" />);
 
-    // The reel opens directly on sketch (no resting beat first), so the
-    // first real cut is sketch -> ascii, one treatment beat in. Comfortably
-    // before it: not yet flashing.
+    // The first real cut is default -> sketch. Comfortably before it: not
+    // yet flashing.
     act(() => {
-      jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS - 50);
+      jest.advanceTimersByTime(HEADLINE_DEFAULT_DURATION_MS - 50);
     });
     expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
 
@@ -466,7 +473,7 @@ describe("the intro's cut effect", () => {
     });
     expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
 
-    // Comfortably into the second cut's own flash window (ascii -> warp,
+    // Comfortably into the second cut's own flash window (sketch -> ascii,
     // one treatment beat later): fires again, not just the first time.
     act(() => {
       jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS - INTRO_CUT_RGB_FLASH_MS - 20);
@@ -495,7 +502,7 @@ describe("the intro's cut effect", () => {
     render(<Hero playIntro fanProgress={0} cutEffect="noise" />);
 
     act(() => {
-      jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS - 50);
+      jest.advanceTimersByTime(HEADLINE_DEFAULT_DURATION_MS - 50);
     });
     expect(screen.queryByTestId("intro-cut-noise")).not.toBeInTheDocument();
 
@@ -513,9 +520,39 @@ describe("the intro's cut effect", () => {
   test("defaults to no cut effect at all", () => {
     render(<Hero playIntro fanProgress={0} />);
     act(() => {
-      jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS + 1);
+      jest.advanceTimersByTime(HEADLINE_DEFAULT_DURATION_MS + 1);
     });
     expect(screen.queryByTestId("intro-cut-rgb")).not.toBeInTheDocument();
     expect(screen.queryByTestId("intro-cut-noise")).not.toBeInTheDocument();
+  });
+
+  test("channel-changes into sketch, ascii, and warp, then hard-cuts back to default", () => {
+    render(<Hero playIntro fanProgress={0} cutEffect="channel" />);
+
+    act(() => {
+      jest.advanceTimersByTime(HEADLINE_DEFAULT_DURATION_MS - 50);
+    });
+    expect(screen.queryByTestId("intro-cut-channel")).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(70);
+    });
+    expect(screen.getByTestId("treatment-mount")).toHaveClass(styles.channelChanging);
+    expect(screen.queryByTestId("intro-cut-channel")).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(INTRO_CUT_CHANNEL_BURST_MS + 50);
+    });
+    expect(screen.queryByTestId("intro-cut-channel")).not.toBeInTheDocument();
+
+    // Walk through the two remaining effected cuts and then the final cut.
+    // The last one intentionally gets no static or tracking tear.
+    for (let i = 0; i < 3; i += 1) {
+      act(() => {
+        jest.advanceTimersByTime(HEADLINE_TREATMENT_DURATION_MS);
+      });
+    }
+    expect(screen.queryByTestId("intro-cut-channel")).not.toBeInTheDocument();
+    expect(screen.getByTestId("treatment-mount")).toHaveAttribute("data-treatment", "warp");
   });
 });

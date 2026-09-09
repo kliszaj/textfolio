@@ -20,6 +20,19 @@ test("all slugs are unique", () => {
   expect(new Set(slugs).size).toBe(slugs.length);
 });
 
+test("orders the Spotify Jam media as one full-width flow, two portrait choices, then desktop and TV", () => {
+  const spotifyJam = getCaseStudyBySlug("spotify-jam");
+
+  expect(spotifyJam?.mediaLayout).toBe("sequence");
+  expect(spotifyJam?.media).toEqual([
+    expect.objectContaining({ src: "/assets/jam-main-flow.mp4", span: "full", aspect: "landscape" }),
+    expect.objectContaining({ src: "/assets/jam-host.mp4", span: "half", aspect: "portrait" }),
+    expect.objectContaining({ src: "/assets/jam-two-choice.mp4", span: "half", aspect: "portrait" }),
+    expect.objectContaining({ src: "/assets/jam-desktop.png", span: "full", aspect: "landscape" }),
+    expect.objectContaining({ src: "/assets/jam-tv.png", span: "full", aspect: "landscape" }),
+  ]);
+});
+
 test("work overview body copy avoids em dashes", () => {
   for (const caseStudy of caseStudies) {
     for (const section of caseStudy.sections ?? []) {

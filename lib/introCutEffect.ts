@@ -3,18 +3,24 @@
 // transients that fire exactly at the cut instant and clear with no
 // transition of their own, so a plain instant cut can read as "glitch"
 // instead of just "abrupt". "tear" was prototyped but not built here.
-export type IntroCutEffect = "none" | "rgb" | "noise";
+export type IntroCutEffect = "none" | "rgb" | "noise" | "channel";
 
-export const INTRO_CUT_EFFECTS: IntroCutEffect[] = ["none", "rgb", "noise"];
+export const INTRO_CUT_EFFECTS: IntroCutEffect[] = ["channel", "none", "rgb", "noise"];
+export const DEFAULT_INTRO_CUT_EFFECT: IntroCutEffect = "rgb";
 
 // How long the chromatic-aberration flash holds before snapping back to
 // normal. Short enough to read as a flash, not a fade -- there is no
 // transition on the filter itself, only this hard on/off window.
-export const INTRO_CUT_RGB_FLASH_MS = 70;
+export const INTRO_CUT_RGB_FLASH_MS = 50;
 
 // How long one frame of static stays up. A single visible frame's worth at
 // a typical refresh rate, not a sustained overlay.
 export const INTRO_CUT_NOISE_BURST_MS = 45;
+
+// Long enough for two or three deliberately stepped horizontal tracking
+// poses before the new treatment locks in. The cut underneath remains
+// instantaneous.
+export const INTRO_CUT_CHANNEL_BURST_MS = 55;
 
 // Tunable knobs for the rgb-split filter itself (see the feColorMatrix /
 // feOffset / feBlend recipe in Hero.tsx). offsetX/offsetY are px: red shifts
@@ -33,7 +39,7 @@ export type IntroCutRgbConfig = {
 };
 
 export const DEFAULT_INTRO_CUT_RGB_CONFIG: IntroCutRgbConfig = {
-  offsetX: 4,
+  offsetX: 2,
   offsetY: 0,
   durationMs: INTRO_CUT_RGB_FLASH_MS,
 };
@@ -45,10 +51,9 @@ export const INTRO_CUT_RGB_MIN_Y_MAGNITUDE = 10;
 
 // Each intro cut alternates the split's vertical component between positive
 // and negative, per direct request, rather than holding one fixed value --
-// three real cuts in a row (into ascii, into warp, into final) each land on
-// a different sign this way, without needing to know which treatment is
-// which. `sign` is whatever the caller is alternating between calls (1 or
-// -1); this only owns the floor on magnitude.
+// successive cuts each land on a different sign this way, without needing to
+// know which treatment is which. `sign` is whatever the caller is alternating
+// between calls (1 or -1); this only owns the floor on magnitude.
 export function alternatingRgbOffsetY(configuredOffsetY: number, sign: 1 | -1): number {
   return sign * Math.max(INTRO_CUT_RGB_MIN_Y_MAGNITUDE, Math.abs(configuredOffsetY));
 }

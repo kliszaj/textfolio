@@ -1,5 +1,7 @@
 import {
   INTRO_CUT_EFFECTS,
+  DEFAULT_INTRO_CUT_EFFECT,
+  INTRO_CUT_CHANNEL_BURST_MS,
   INTRO_CUT_RGB_FLASH_MS,
   INTRO_CUT_NOISE_BURST_MS,
   INTRO_CUT_RGB_MIN_Y_MAGNITUDE,
@@ -9,13 +11,15 @@ import {
   sanitizeIntroCutRgbConfig,
 } from "./introCutEffect";
 
-test("the three real options are none, rgb, and noise -- tear was prototyped, not built", () => {
-  expect(INTRO_CUT_EFFECTS).toEqual(["none", "rgb", "noise"]);
+test("offers the channel change alongside the original cut experiments", () => {
+  expect(INTRO_CUT_EFFECTS).toEqual(["channel", "none", "rgb", "noise"]);
+  expect(DEFAULT_INTRO_CUT_EFFECT).toBe("rgb");
 });
 
 test("both effects clear themselves well within a single treatment beat", () => {
   expect(INTRO_CUT_RGB_FLASH_MS).toBeGreaterThan(0);
   expect(INTRO_CUT_NOISE_BURST_MS).toBeGreaterThan(0);
+  expect(INTRO_CUT_CHANNEL_BURST_MS).toBeGreaterThan(INTRO_CUT_NOISE_BURST_MS);
 });
 
 test("every field of the rgb split config has a default, so it can be spread as props", () => {
@@ -23,13 +27,11 @@ test("every field of the rgb split config has a default, so it can be spread as 
   expect(keys).toEqual(["durationMs", "offsetX", "offsetY"]);
 });
 
-test("the rgb config defaults to a pure horizontal split, matching the original fixed filter", () => {
-  // Locks the default in against what shipped un-tunable: a 4px split, no
-  // vertical component, cleared after INTRO_CUT_RGB_FLASH_MS -- so exposing
-  // the sliders can't silently change the out-of-the-box look.
-  expect(DEFAULT_INTRO_CUT_RGB_CONFIG.offsetX).toBe(4);
+test("the rgb config defaults to the selected restrained horizontal split", () => {
+  expect(DEFAULT_INTRO_CUT_RGB_CONFIG.offsetX).toBe(2);
   expect(DEFAULT_INTRO_CUT_RGB_CONFIG.offsetY).toBe(0);
   expect(DEFAULT_INTRO_CUT_RGB_CONFIG.durationMs).toBe(INTRO_CUT_RGB_FLASH_MS);
+  expect(INTRO_CUT_RGB_FLASH_MS).toBe(50);
 });
 
 describe("isIntroCutEffect", () => {

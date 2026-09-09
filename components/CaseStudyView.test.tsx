@@ -413,6 +413,26 @@ test("lays each media tile out at its authored span", () => {
   expect(tiles[2]).toHaveAttribute("data-span", "half");
 });
 
+test("preserves authored media proportions in a sequential gallery", () => {
+  const sequenced = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: [
+      { src: "/wide.mp4", alt: "Wide", kind: "video" as const, span: "full" as const, aspect: "landscape" as const },
+      { src: "/left.mp4", alt: "Left", kind: "video" as const, span: "half" as const, aspect: "portrait" as const },
+      { src: "/right.mp4", alt: "Right", kind: "video" as const, span: "half" as const, aspect: "portrait" as const },
+    ],
+  };
+
+  render(<CaseStudyView caseStudy={sequenced} next={nextStudy} />);
+
+  expect(screen.getByTestId("case-study-media-grid")).toHaveAttribute("data-layout", "sequence");
+  const tiles = screen.getAllByTestId("case-study-tile");
+  expect(tiles[0]).toHaveClass("col-span-2", "aspect-video");
+  expect(tiles[1]).toHaveClass("col-span-1", "aspect-[9/16]");
+  expect(tiles[2]).toHaveClass("col-span-1", "aspect-[9/16]");
+});
+
 test("renders a placeholder tile for media that has no asset yet", () => {
   const tiled = { ...caseStudy, media: [{ alt: "Coming soon" }] };
   render(<CaseStudyView caseStudy={tiled} next={nextStudy} />);

@@ -42,6 +42,7 @@ const TREATMENT_LABELS = {
   paper: "Paper Texture",
 } as const;
 const CUT_EFFECT_LABELS: Record<IntroCutEffect, string> = {
+  channel: "Channel",
   none: "None",
   rgb: "RGB split",
   noise: "Noise",
@@ -163,7 +164,7 @@ export function FanDebugPanel({
         </span>
         <div
           data-testid="intro-cut-effect-settings"
-          className="mt-2 grid grid-cols-3 gap-1.5"
+          className="mt-2 grid grid-cols-2 gap-1.5"
           role="tablist"
           aria-label="Intro cut effect"
         >

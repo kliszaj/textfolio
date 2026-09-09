@@ -235,16 +235,16 @@ describe("the intro cut effect picker survives a reload", () => {
     );
   });
 
-  test("defaults to none when nothing has been picked yet", () => {
+  test("defaults to the selected RGB split when nothing has been picked yet", () => {
     render(<HomePage />);
     fireEvent.click(screen.getByTestId("fan-debug-toggle"));
-    expect(screen.getByRole("tab", { name: "None" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "RGB split" })).toHaveAttribute("aria-selected", "true");
   });
 
   test("ignores a corrupted or outdated stored value rather than crashing", () => {
     window.localStorage.setItem("textfolio:intro-cut-effect", "tear");
     render(<HomePage />);
     fireEvent.click(screen.getByTestId("fan-debug-toggle"));
-    expect(screen.getByRole("tab", { name: "None" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "RGB split" })).toHaveAttribute("aria-selected", "true");
   });
 });

@@ -8,18 +8,38 @@ const FRAME_DURATION_MS = 55;
 // Four reverse steps at 80ms match the header's 320ms expansion, so the house
 // rebuilds in lockstep as scrolling upward brings the full header back.
 const REBUILD_FRAME_DURATION_MS = 80;
-const HOVER_FRAMES = [1, 2, 3, 4, 5, 4, 3, 2, 1];
-const HOVER_FRAME_DURATION_MS = 80;
+const HOVER_FRAMES = [1, 2, 3, 4, 5, 6];
+const HOVER_FRAME_DURATION_MS = 100;
+const HOVER_REBUILD_DELAY_MS = 500;
+
+type HoverPhase = "idle" | "exploding" | "waiting" | "rebuilding";
 
 function frameSource(frame: number) {
   return `/assets/home-animation-${frame}.svg`;
 }
 
+function hoverFrameSource(frame: number) {
+  return `/assets/home-explosion-${frame}.svg`;
+}
+
 export function HomeIconAnimation({ shrunk }: { shrunk: boolean }) {
   const targetFrame = shrunk ? LAST_FRAME : FIRST_FRAME;
   const [frame, setFrame] = useState(targetFrame);
+  const [hoverFrame, setHoverFrame] = useState(FIRST_FRAME);
   const [hoverRun, setHoverRun] = useState(0);
-  const [isHoverAnimating, setIsHoverAnimating] = useState(false);
+  const [hoverPhase, setHoverPhase] = useState<HoverPhase>("idle");
+  const isHoverAnimating = hoverPhase !== "idle";
+  const handledHoverRunRef = useRef(0);
+  const [previousShrunk, setPreviousShrunk] = useState(shrunk);
+
+  // A scroll-state change owns the icon immediately. If it interrupts a hover
+  // explosion, clear that separate animation before this render commits so it
+  // cannot reappear when the header opens again.
+  if (shrunk !== previousShrunk) {
+    setPreviousShrunk(shrunk);
+    setHoverPhase("idle");
+    setHoverFrame(FIRST_FRAME);
+  }
   // The icon is pointer-events:none while collapsed, so the moment scrolling
   // back to the top flips it to auto, a cursor that already happens to be
   // sitting over its on-screen position is treated as freshly entering it --
@@ -69,31 +89,49 @@ export function HomeIconAnimation({ shrunk }: { shrunk: boolean }) {
   }, [frame, isHoverAnimating, shrunk, targetFrame]);
 
   useEffect(() => {
-    if (hoverRun === 0 || shrunk) return;
+    if (hoverRun === 0 || shrunk || handledHoverRunRef.current === hoverRun) return;
+    handledHoverRunRef.current = hoverRun;
 
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       const settleImmediately = window.setTimeout(() => setFrame(FIRST_FRAME), 0);
       return () => window.clearTimeout(settleImmediately);
     }
 
-    let animation: number | undefined;
+    let explosionAnimation: number | undefined;
+    let rebuildDelay: number | undefined;
+    let rebuildAnimation: number | undefined;
     const start = window.setTimeout(() => {
-      setIsHoverAnimating(true);
-      setFrame(FIRST_FRAME);
+      setHoverPhase("exploding");
+      setHoverFrame(FIRST_FRAME);
       let index = 1;
-      animation = window.setInterval(() => {
-        setFrame(HOVER_FRAMES[index]);
+      explosionAnimation = window.setInterval(() => {
+        setHoverFrame(HOVER_FRAMES[index]);
         index += 1;
         if (index === HOVER_FRAMES.length) {
-          window.clearInterval(animation);
-          setIsHoverAnimating(false);
+          window.clearInterval(explosionAnimation);
+          setHoverPhase("waiting");
+          rebuildDelay = window.setTimeout(() => {
+            setHoverPhase("rebuilding");
+            setHoverFrame(LAST_FRAME);
+            let rebuildFrame = LAST_FRAME;
+            rebuildAnimation = window.setInterval(() => {
+              rebuildFrame -= 1;
+              setHoverFrame(rebuildFrame);
+              if (rebuildFrame === FIRST_FRAME) {
+                window.clearInterval(rebuildAnimation);
+                setHoverPhase("idle");
+              }
+            }, REBUILD_FRAME_DURATION_MS);
+          }, HOVER_REBUILD_DELAY_MS);
         }
       }, HOVER_FRAME_DURATION_MS);
     }, 0);
 
     return () => {
       window.clearTimeout(start);
-      if (animation !== undefined) window.clearInterval(animation);
+      if (explosionAnimation !== undefined) window.clearInterval(explosionAnimation);
+      if (rebuildDelay !== undefined) window.clearTimeout(rebuildDelay);
+      if (rebuildAnimation !== undefined) window.clearInterval(rebuildAnimation);
     };
   }, [hoverRun, shrunk]);
 
@@ -106,7 +144,13 @@ export function HomeIconAnimation({ shrunk }: { shrunk: boolean }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       data-testid="case-study-home-label"
-      src={frameSource(frame)}
+      src={
+        !shrunk && (hoverPhase === "exploding" || hoverPhase === "waiting")
+          ? hoverFrameSource(hoverFrame)
+          : !shrunk && hoverPhase === "rebuilding"
+            ? frameSource(hoverFrame)
+            : frameSource(frame)
+      }
       alt=""
       className="case-study-home-icon boil-line block"
       onPointerEnter={replayOnHover}

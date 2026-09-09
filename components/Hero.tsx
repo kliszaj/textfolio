@@ -21,6 +21,7 @@ import { useHeroReveal } from "@/hooks/useHeroReveal";
 import { ASCII_INTRO_DEMO_MS, HEADLINE_INTRO_DEMO_MS } from "@/lib/headlineIntro";
 import {
   DEFAULT_INTRO_CUT_RGB_CONFIG,
+  INTRO_CUT_CHANNEL_BURST_MS,
   INTRO_CUT_NOISE_BURST_MS,
   alternatingRgbOffsetY,
 } from "@/lib/introCutEffect";
@@ -227,6 +228,7 @@ export function Hero({
     alternatingRgbOffsetY(rgbConfig.offsetY, 1)
   );
   const [noiseBursting, setNoiseBursting] = useState(false);
+  const [channelChanging, setChannelChanging] = useState(false);
   const [noiseUrl, setNoiseUrl] = useState("");
   useEffect(() => {
     const rememberMousePosition = (event: MouseEvent) => {
@@ -269,6 +271,14 @@ export function Hero({
       const timer = setTimeout(() => setNoiseBursting(false), INTRO_CUT_NOISE_BURST_MS);
       return () => clearTimeout(timer);
     }
+    if (
+      cutEffect === "channel" &&
+      (intro.phase === "sketch" || intro.phase === "ascii" || intro.phase === "warp")
+    ) {
+      setChannelChanging(true);
+      const timer = setTimeout(() => setChannelChanging(false), INTRO_CUT_CHANNEL_BURST_MS);
+      return () => clearTimeout(timer);
+    }
   }, [intro.phase, cutEffect, rgbConfig.durationMs, rgbConfig.offsetY]);
   // An invisible copy of the word, laid out at the headline's own size, so the
   // hit area follows the real glyph metrics at every viewport. Also the
@@ -299,6 +309,10 @@ export function Hero({
   // (playIntro false) and that visit should show everything at once, not
   // replay this too.
   const heroReveal = useHeroReveal(playIntro, intro.done, TAGLINE_TEXT.length, caseStudies.length + 1);
+  // Keep transitions disabled through the final hard cut back to default.
+  // They switch on once the following reveal starts, when the colours are
+  // already settled and enabling them cannot create a delayed dissolve.
+  const colorTransitionsReady = !playIntro || heroReveal.phase !== "hidden";
   // Keep the complete subheader mounted and use the old typewriter's timing
   // only as a continuous 0–1 reveal driver. The text now resolves as one
   // piece of soft-focus lettering instead of arriving in individual keys.
@@ -423,7 +437,9 @@ export function Hero({
       }`}
       style={{
         backgroundColor: stageBackground,
-        transition: intro.done ? `background-color ${TREATMENT_COLOR_TRANSITION}` : undefined,
+        transition: colorTransitionsReady
+          ? `background-color ${TREATMENT_COLOR_TRANSITION}`
+          : undefined,
         // The sketch lettering, tagline, and arrow share blue-pencil ink;
         // the correction mark stays red to remain visibly distinct.
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
@@ -561,7 +577,7 @@ export function Hero({
           <div
             data-testid="treatment-mount"
             data-treatment={treatment}
-            className={styles.treatmentMount}
+            className={`${styles.treatmentMount} ${channelChanging ? styles.channelChanging : ""}`}
             style={rgbFlash ? { filter: `url(#${rgbSplitFilterId})` } : undefined}
           >
           {rgbFlash && (

@@ -346,9 +346,10 @@ test("exposes the stroke sketch style, defaulting to pencil", () => {
 });
 
 describe("the intro cut effect picker", () => {
-  test("offers none, rgb split, and noise -- not tear", () => {
+  test("offers channel, none, rgb split, and noise -- not tear", () => {
     renderPanel();
     const picker = screen.getByTestId("intro-cut-effect-settings");
+    expect(within(picker).getByRole("tab", { name: "Channel" })).toBeInTheDocument();
     expect(within(picker).getByRole("tab", { name: "None" })).toBeInTheDocument();
     expect(within(picker).getByRole("tab", { name: "RGB split" })).toBeInTheDocument();
     expect(within(picker).getByRole("tab", { name: "Noise" })).toBeInTheDocument();

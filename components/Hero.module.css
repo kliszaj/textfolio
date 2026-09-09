@@ -140,3 +140,34 @@
      instead: stroke holds opacity until it has measured, and the ascii
      fallback stays hidden until its renderer is ready. */
 }
+
+/* A channel change is not a transition between two composed images. The new
+   treatment lands immediately, then spends a few stepped frames finding
+   horizontal lock through a displaced scan band and a final snap. */
+.channelChanging {
+  animation: channel-lock 55ms steps(3, end) both;
+  transform-origin: center;
+}
+
+@keyframes channel-lock {
+  0% {
+    clip-path: inset(42% 0 42% 0);
+    filter: contrast(2.2) brightness(1.5);
+    transform: translateX(-10px) scaleX(1.035);
+  }
+  34% {
+    clip-path: inset(8% 0 58% 0);
+    filter: contrast(1.8) brightness(0.8);
+    transform: translateX(8px) scaleX(0.985);
+  }
+  67% {
+    clip-path: inset(0);
+    filter: contrast(1.25);
+    transform: translateX(-3px) scaleX(1.01);
+  }
+  100% {
+    clip-path: inset(0);
+    filter: none;
+    transform: none;
+  }
+}

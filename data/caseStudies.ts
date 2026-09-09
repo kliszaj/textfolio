@@ -25,6 +25,7 @@ export type CaseStudyMedia = {
   alt: string;
   kind?: "image" | "video";
   span?: "full" | "tall" | "half";
+  aspect?: "landscape" | "portrait";
 };
 
 // An editorial portrait that belongs beside the introduction rather than in
@@ -64,6 +65,9 @@ export type CaseStudy = {
   sections?: CaseStudySection[];
   // Bottom of the page: the evidence, after both columns.
   media?: CaseStudyMedia[];
+  // Sequence keeps authored aspect ratios instead of using the placeholder
+  // mosaic's fixed-height rows.
+  mediaLayout?: "mosaic" | "sequence";
 };
 
 // Post-it brights: each sheet in the fanned stack reads as a stuck note, and
@@ -105,13 +109,41 @@ export const caseStudies: CaseStudy[] = [
       },
     ],
     videoSrc: "/assets/jam.mp4",
+    mediaLayout: "sequence",
     media: [
-      { alt: "Jam session across devices", span: "full" },
-      { alt: "Shake to Jam prototype", span: "tall" },
-      { alt: "Joining mechanisms explored", span: "half" },
-      { alt: "Free user experience", span: "half" },
-      { alt: "Listen Along in Messages", span: "half" },
-      { alt: "Jam in car", span: "tall" },
+      {
+        src: "/assets/jam-main-flow.mp4",
+        alt: "Spotify Jam main flow",
+        kind: "video",
+        span: "full",
+        aspect: "landscape",
+      },
+      {
+        src: "/assets/jam-host.mp4",
+        alt: "Hosting a Spotify Jam",
+        kind: "video",
+        span: "half",
+        aspect: "portrait",
+      },
+      {
+        src: "/assets/jam-two-choice.mp4",
+        alt: "Choosing how to join a Spotify Jam",
+        kind: "video",
+        span: "half",
+        aspect: "portrait",
+      },
+      {
+        src: "/assets/jam-desktop.png",
+        alt: "Spotify Jam desktop experience",
+        span: "full",
+        aspect: "landscape",
+      },
+      {
+        src: "/assets/jam-tv.png",
+        alt: "Spotify Jam TV experience",
+        span: "full",
+        aspect: "landscape",
+      },
     ],
   },
   {
