@@ -24,6 +24,13 @@ export type ASCIITextConfig = {
 // chips are weighted far heavier.
 export const ASCII_INK_BLUE = "#3A1AF0";
 export const ASCII_INK_LIME = "#C6F03F";
+export const ASCII_RAIN_BACKGROUND = "#FF5A36";
+export const ASCII_RAIN_FOREGROUND = "#18122B";
+export const ASCII_RAIN_PALETTE = [
+  { background: "#FF5A36", foreground: "#18122B" },
+  { background: "#35E2DA", foreground: "#17183D" },
+  { background: "#D9007F", foreground: "#FFF8ED" },
+] as const;
 
 export type AsciiColorChip = {
   foreground: string;
@@ -44,6 +51,105 @@ export const ASCII_DEPTH_RAMP: AsciiColorChip[] = [
   { background: "#6B2244", foreground: ASCII_INK_LIME }, // shadow
   { background: "#1E5334", foreground: ASCII_INK_LIME }, // deepest
 ];
+
+export type AsciiRainState = "idle" | "trail" | "head";
+
+export type AsciiRainSample = {
+  state: AsciiRainState;
+  intensity: number;
+  layer: number;
+};
+
+// One column of the interactive rain. Each column receives its own seeded
+// delay and speed, so the selected letter breaks into separate droplets
+// instead of descending as one solid horizontal pile.
+export function asciiRainSampleAt(
+  columnHash: number,
+  rowProgress: number,
+  elapsedMs: number
+): AsciiRainSample {
+  if (
+    !Number.isFinite(columnHash) ||
+    !Number.isFinite(rowProgress) ||
+    !Number.isFinite(elapsedMs) ||
+    elapsedMs < 0
+  ) return { state: "idle", intensity: 0, layer: 0 };
+  const hash = Math.min(1, Math.max(0, columnHash));
+  const row = Math.min(1, Math.max(0, rowProgress));
+  const secondaryNoise = Math.sin(hash * 91.713 + 17.13) * 43758.5453;
+  const secondary = secondaryNoise - Math.floor(secondaryNoise);
+  const gateNoise = Math.sin(hash * 143.91 + 9.17) * 24634.6345;
+  const gate = gateNoise - Math.floor(gateNoise);
+  // Nearly every lane gets rain, but its release is spread across a much
+  // wider window. This restores a heavy volume without rebuilding the old
+  // synchronized pulse across the whole letter.
+  if (gate < 0.015) return { state: "idle", intensity: 0, layer: 0 };
+  const delay = hash * 1050 + gate * 250;
+  const travelMs = 800 + secondary * 300;
+  const localElapsed = elapsedMs - delay;
+  if (localElapsed < 0) return { state: "idle", intensity: 0, layer: 0 };
+  const head = (localElapsed / travelMs) * 1.18 - 0.05;
+  const distanceBehindHead = head - row;
+  const trailLength = 0.17 + secondary * 0.14;
+  if (distanceBehindHead < 0 || distanceBehindHead > trailLength) {
+    return { state: "idle", intensity: 0, layer: 0 };
+  }
+  // No binary on/off edge: a cell gently brightens behind the drop head,
+  // softly flickers, then fades through its short trail.
+  const rise = Math.min(1, distanceBehindHead / 0.065);
+  const fade = Math.min(1, (trailLength - distanceBehindHead) / Math.max(0.065, trailLength - 0.065));
+  const shimmer = 0.86 + Math.sin(elapsedMs * 0.011 + hash * 31.7 + row * 9.3) * 0.14;
+  return {
+    state: distanceBehindHead < 0.075 ? "head" : "trail",
+    intensity: Math.min(1, Math.max(0, rise * fade * shimmer)),
+    layer: 0,
+  };
+}
+
+export function asciiRainStateAt(
+  columnHash: number,
+  rowProgress: number,
+  elapsedMs: number
+): AsciiRainState {
+  return asciiRainSampleAt(columnHash, rowProgress, elapsedMs).state;
+}
+
+// Two offset showers overlap during a held interaction. A single shower has
+// an intentional sparse lead-in, which becomes a noticeable pause when the
+// cycle loops; interleaving another seeded pass keeps droplets arriving
+// continuously without synchronizing their columns.
+export function asciiContinuousRainSampleAt(
+  columnHash: number,
+  rowProgress: number,
+  elapsedMs: number,
+  cycleMs: number
+): AsciiRainSample {
+  if (!Number.isFinite(cycleMs) || cycleMs <= 0) {
+    return { state: "idle", intensity: 0, layer: 0 };
+  }
+  const phase = ((elapsedMs % cycleMs) + cycleMs) % cycleMs;
+  const offsets = [
+    { hash: 0, phase: 0 },
+    { hash: 0.217, phase: 0.23 },
+    { hash: 0.417, phase: 0.47 },
+    { hash: 0.613, phase: 0.69 },
+    { hash: 0.811, phase: 0.86 },
+  ];
+  return offsets.reduce<AsciiRainSample>((strongest, offset, layer) => {
+    const sample = asciiRainSampleAt(
+      (columnHash + offset.hash) % 1,
+      rowProgress,
+      (phase + cycleMs * offset.phase) % cycleMs
+    );
+    return sample.intensity > strongest.intensity ? { ...sample, layer } : strongest;
+  }, { state: "idle", intensity: 0, layer: 0 });
+}
+
+export function followAsciiRainCursor(current: number, target: number): number {
+  const safeCurrent = Number.isFinite(current) ? current : 0.5;
+  const safeTarget = Number.isFinite(target) ? Math.min(1, Math.max(0, target)) : safeCurrent;
+  return safeCurrent + (safeTarget - safeCurrent) * 0.14;
+}
 
 // How many ramp steps an edge cell may be nudged by its jitter, so the shadow
 // colours scatter along the edges instead of banding into clean stripes.

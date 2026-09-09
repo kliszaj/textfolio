@@ -5,6 +5,8 @@ import {
   ASCII_CAMERA_DISTANCE,
   ASCII_CAMERA_FOV_DEG,
   ASCII_EXTRUDE_LAYERS,
+  ASCII_DEPTH_RAMP,
+  ASCII_RAIN_PALETTE,
   asciiCellStateAt,
   asciiJunkGlyph,
   ASCII_EXTRUDE_RISE,
@@ -14,6 +16,8 @@ import {
   DEFAULT_ASCII_TEXT_CONFIG,
   chipForBrightness,
   asciiFontSizeForHost,
+  asciiContinuousRainSampleAt,
+  followAsciiRainCursor,
   planeHeightForFontSize,
   textTextureLayout,
 } from "@/lib/asciiText";
@@ -76,7 +80,23 @@ type ASCIITextProps = Partial<ASCIITextConfig> & {
   demoTiltMs?: number;
   // 0-1 type-in progress. 1 means fully typed, which is the resting state.
   typeProgress?: number;
+  // Enables a click-triggered rain burst over the selected letter. Hero keeps
+  // this off until its scripted intro has finished.
+  interactive?: boolean;
 };
+
+const MATRIX_RAIN_MS = 2450;
+
+function mixRgb(fromHex: string, toHex: string, amount: number) {
+  const channels = (value: string) => {
+    const hex = value.replace("#", "");
+    return [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+  };
+  const from = channels(fromHex);
+  const to = channels(toHex);
+  const mix = (index: number) => Math.round(from[index] + (to[index] - from[index]) * amount);
+  return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
+}
 
 export function ASCIIText({
   text,
@@ -90,8 +110,16 @@ export function ASCIIText({
   randomizeGlyphColors = DEFAULT_ASCII_TEXT_CONFIG.randomizeGlyphColors,
   demoTiltMs = 0,
   typeProgress = 1,
+  interactive = true,
 }: ASCIITextProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const rainBurstRef = useRef<{
+    targetX: number;
+    currentX: number;
+    startedAt: number;
+  } | null>(null);
+  const rainPointerRef = useRef<number | null>(null);
+  const rainClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Held in a ref, not a dependency: rebuilding the WebGL context because a
   // number changed would be catastrophic.
   const demoTiltRef = useRef(demoTiltMs);
@@ -310,17 +338,35 @@ export function ASCIIText({
         applyPlaneScale();
       };
 
-      const asciify = () => {
+      const asciify = (now: number) => {
         const width = sampleCanvas.width;
         const height = sampleCanvas.height;
         sampleContext.clearRect(0, 0, width, height);
         sampleContext.drawImage(renderer.domElement, 0, 0, width, height);
         const pixels = sampleContext.getImageData(0, 0, width, height).data;
         let output = "";
-        if (randomizeGlyphColors) {
+        const burst = rainBurstRef.current;
+        const rawBurstElapsed = burst ? now - burst.startedAt : MATRIX_RAIN_MS + 1;
+        const burstElapsed = rawBurstElapsed;
+        const burstActive = Boolean(
+          burst && (rainPointerRef.current !== null || burstElapsed < MATRIX_RAIN_MS)
+        );
+        if (burst) burst.currentX = followAsciiRainCursor(burst.currentX, burst.targetX);
+        outputCanvas.style.display = randomizeGlyphColors || burstActive ? "block" : "none";
+        if (randomizeGlyphColors || burstActive) {
           // Same reason as above: offsetWidth/Height, not the
           // rotation-sensitive getBoundingClientRect.
           outputContext.clearRect(0, 0, host.offsetWidth, host.offsetHeight);
+        }
+        let inkMinX = width;
+        let inkMaxX = 0;
+        if (burstActive) {
+          for (let index = 3; index < pixels.length; index += 4) {
+            if (pixels[index] < 12) continue;
+            const x = Math.floor((index / 4) % width);
+            inkMinX = Math.min(inkMinX, x);
+            inkMaxX = Math.max(inkMaxX, x);
+          }
         }
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
@@ -350,18 +396,62 @@ export function ASCIIText({
               cell === "churning"
                 ? asciiJunkGlyph(columnHash + y * 0.137, churnTick)
                 : CHARACTERS[Math.floor(brightness * (CHARACTERS.length - 1))];
+            const inkProgress = (x - inkMinX) / Math.max(1, inkMaxX - inkMinX);
+            const cursorDistance = burst ? Math.abs(inkProgress - burst.currentX) : 1;
+            // Wide enough to carry heavy rain across roughly two letters at
+            // once, while still following the held pointer as a local field.
+            const cursorRadius = 0.26;
+            const cursorInfluence = Math.pow(
+              Math.max(0, 1 - cursorDistance / cursorRadius),
+              1.4
+            );
+            const rowProgress = height > 1 ? y / (height - 1) : 0;
+            const colorNoise = Math.sin(x * 12.9898 + y * 78.233 + colorSeed) * 43758.5453;
+            const colorChip = chipForBrightness(
+              brightness,
+              colorNoise - Math.floor(colorNoise)
+            );
+            const rain = asciiContinuousRainSampleAt(
+              columnHash,
+              rowProgress,
+              burstElapsed,
+              MATRIX_RAIN_MS
+            );
+            const inRain = Boolean(
+              burstActive &&
+              burst &&
+              cursorInfluence > 0 &&
+              // Keep the depth/shadow palette untouched. The interaction
+              // catches only the blue glyphs on the light front face.
+              colorChip === ASCII_DEPTH_RAMP[0] &&
+              rain.state !== "idle"
+            );
             output += character;
-            if (randomizeGlyphColors) {
+            if (randomizeGlyphColors || inRain) {
               // Same brightness that chose the glyph also chooses its colour,
               // so ink and hue describe one surface. The hash is a per-cell
               // nudge, stable across frames, that scatters the edge colours
               // without touching the lit face.
-              const noise = Math.sin(x * 12.9898 + y * 78.233 + colorSeed) * 43758.5453;
-              const colorChip = chipForBrightness(brightness, noise - Math.floor(noise));
-              outputContext.fillStyle = colorChip.background;
+              // Lift low intensities enough to remain legible while keeping
+              // the transition continuous. Warm coral and near-black violet
+              // sit far apart in luminance and away from the normal blue face.
+              const rainContrast = Math.pow(rain.intensity * cursorInfluence, 0.65);
+              const rainColors = ASCII_RAIN_PALETTE[rain.layer % ASCII_RAIN_PALETTE.length];
+              outputContext.fillStyle = inRain
+                ? mixRgb("#DDE0DD", rainColors.background, rainContrast)
+                : colorChip.background;
               outputContext.fillRect(x * characterWidth, y * cellFontSize, characterWidth, cellFontSize);
-              outputContext.fillStyle = colorChip.foreground;
-              outputContext.fillText(character, x * characterWidth, y * cellFontSize);
+              outputContext.fillStyle = inRain
+                ? mixRgb("#3A1AF0", rainColors.foreground, rainContrast)
+                : colorChip.foreground;
+              outputContext.font = inRain && rain.intensity > 0.5
+                ? `600 ${cellFontSize}px "IBM Plex Mono", ui-monospace, monospace`
+                : `${cellFontSize}px "IBM Plex Mono", ui-monospace, monospace`;
+              outputContext.fillText(
+                character,
+                x * characterWidth,
+                y * cellFontSize + (inRain ? rain.intensity * 0.8 : 0)
+              );
             }
           }
           output += "\n";
@@ -410,7 +500,7 @@ export function ASCIIText({
         churnTick = Math.floor(time / 55);
         material.uniforms.uTime.value = time * 0.001;
         renderer.render(scene, camera);
-        asciify();
+        asciify(time);
         frame = requestAnimationFrame(render);
       };
 
@@ -455,8 +545,89 @@ export function ASCIIText({
     };
   }, [asciiFontSize, crtCurvature, enableWaves, extrudeDepth, planeScale, randomizeGlyphColors, text, textFontSize, tiltStrength]);
 
+  useEffect(() => () => {
+    if (rainClearTimerRef.current) clearTimeout(rainClearTimerRef.current);
+  }, []);
+
+  const pointerPositionAt = (host: HTMLDivElement, clientX: number) => {
+    const bounds = host.getBoundingClientRect();
+    const wordStart = bounds.left + bounds.width * 0.07;
+    const wordWidth = bounds.width * 0.86;
+    const position = Math.min(0.999, Math.max(0, (clientX - wordStart) / wordWidth));
+    return position;
+  };
+
+  const startRain = (host: HTMLDivElement, targetX: number) => {
+    const existing = rainBurstRef.current;
+    if (existing && rainPointerRef.current !== null) {
+      existing.targetX = targetX;
+    } else {
+      rainBurstRef.current = { targetX, currentX: targetX, startedAt: performance.now() };
+      host.dataset.rainCycle = String(rainBurstRef.current.startedAt);
+    }
+    host.dataset.rainPosition = targetX.toFixed(3);
+    host.dataset.raining = String(Math.min(text.length - 1, Math.floor(targetX * text.length)));
+    if (rainClearTimerRef.current) clearTimeout(rainClearTimerRef.current);
+    rainClearTimerRef.current = null;
+  };
+
+  const releaseRain = (host: HTMLDivElement) => {
+    const burst = rainBurstRef.current;
+    rainPointerRef.current = null;
+    host.dataset.rainHeld = "false";
+    if (!burst) return;
+    // Preserve the current loop phase so droplets already on their way can
+    // finish instead of disappearing or restarting when the pointer lifts.
+    const now = performance.now();
+    const phase = (now - burst.startedAt) % MATRIX_RAIN_MS;
+    burst.startedAt = now - phase;
+    if (rainClearTimerRef.current) clearTimeout(rainClearTimerRef.current);
+    rainClearTimerRef.current = setTimeout(() => {
+      rainBurstRef.current = null;
+      host.dataset.raining = "false";
+    }, MATRIX_RAIN_MS - phase);
+  };
+
   return (
-    <div ref={hostRef} className={styles.root} data-testid="ascii-text" data-ready="false" data-crt="curved-scanline" data-glyph-colors={randomizeGlyphColors ? "random" : "gradient"} role="img" aria-label={text}>
+    <div
+      ref={hostRef}
+      className={styles.root}
+      data-testid="ascii-text"
+      data-ready="false"
+      data-crt="curved-scanline"
+      data-glyph-colors={randomizeGlyphColors ? "random" : "gradient"}
+      data-raining="false"
+      data-rain-held="false"
+      data-rain-position="false"
+      role="img"
+      aria-label={text}
+      onPointerDown={(event) => {
+        if (
+          !interactive ||
+          event.button > 0 ||
+          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        ) return;
+        rainPointerRef.current = event.pointerId;
+        event.currentTarget.dataset.rainHeld = "true";
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        startRain(event.currentTarget, pointerPositionAt(event.currentTarget, event.clientX));
+      }}
+      onPointerMove={(event) => {
+        if (rainPointerRef.current !== event.pointerId) return;
+        startRain(event.currentTarget, pointerPositionAt(event.currentTarget, event.clientX));
+      }}
+      onPointerUp={(event) => {
+        if (rainPointerRef.current !== event.pointerId) return;
+        releaseRain(event.currentTarget);
+        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      }}
+      onPointerCancel={(event) => {
+        if (rainPointerRef.current !== event.pointerId) return;
+        releaseRain(event.currentTarget);
+      }}
+    >
       <span className={styles.fallback} aria-hidden="true">{text}</span>
     </div>
   );

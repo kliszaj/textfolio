@@ -50,12 +50,15 @@ type WarpTextProps = {
   letterSpacing?: string | number;
   lineHeight?: string | number;
   onActiveChange?: (active: boolean) => void;
+  // A press-and-hold boost supplied by the parent interaction surface. Kept
+  // out of the WebGL setup dependencies so pressing never rebuilds a canvas.
+  boosted?: boolean;
   className?: string;
   style?: CSSProperties;
 };
 
 type DrawProps = Required<
-  Omit<WarpTextProps, "className" | "style" | "onActiveChange" | "demoSweepMs" | "demoMode">
+  Omit<WarpTextProps, "className" | "style" | "onActiveChange" | "demoSweepMs" | "demoMode" | "boosted">
 >;
 
 const fontValue = (value: string | number) => (typeof value === "number" ? `${value}px` : value);
@@ -146,11 +149,17 @@ export function WarpText({
   letterSpacing = "0",
   lineHeight = 0.9,
   onActiveChange,
+  boosted = false,
   className = "",
   style,
 }: WarpTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const demoSweepRef = useRef(demoSweepMs);
+  const boostedRef = useRef(boosted);
+
+  useEffect(() => {
+    boostedRef.current = boosted;
+  }, [boosted]);
   // Read in the same rAF loop as demoSweepRef, for the same reason: Hero
   // changes which motion plays as the intro advances, and putting it in the
   // effect's dependency array would rebuild the WebGL context to read a
@@ -275,6 +284,15 @@ export function WarpText({
         program.uniforms.uPointer.value.set([pointer.x, pointer.y]);
         program.uniforms.uPointerActive.value = pointer.strength;
         program.uniforms.uHover.value = pointer.strength;
+        const boost = boostedRef.current ? 1 : 0;
+        const easeUniform = (name: string, resting: number, boostedValue: number) => {
+          const uniform = program.uniforms[name];
+          uniform.value += ((boost ? boostedValue : resting) - uniform.value) * 0.12;
+        };
+        easeUniform("uWarpStrength", warpStrength, Math.min(0.75, warpStrength * 2.6));
+        easeUniform("uPointerInfluence", pointerInfluence, Math.min(0.9, pointerInfluence * 1.55));
+        easeUniform("uPointerStrength", pointerStrength, Math.min(1.4, pointerStrength * 1.7));
+        easeUniform("uRefraction", refraction, Math.min(0.16, refraction * 2.4));
         program.uniforms.uTime.value = (now - startedAt) / 1000;
         render();
         frame = requestAnimationFrame(loop);
@@ -282,6 +300,7 @@ export function WarpText({
       const observer = new ResizeObserver(resize);
       observer.observe(container);
       container.addEventListener("pointermove", onPointerMove);
+      container.addEventListener("pointerdown", onPointerMove);
       container.addEventListener("pointerleave", onPointerLeave);
       resize();
       // The texture captures pixels, rather than live text. Regenerate it
@@ -301,6 +320,7 @@ export function WarpText({
         cancelAnimationFrame(frame);
         observer.disconnect();
         container.removeEventListener("pointermove", onPointerMove);
+        container.removeEventListener("pointerdown", onPointerMove);
         container.removeEventListener("pointerleave", onPointerLeave);
         program.remove();
         gl.deleteTexture(texture.texture);
@@ -325,6 +345,7 @@ export function WarpText({
       style={style}
       data-testid="warp-text"
       data-webgl-ready="false"
+      data-boosted={boosted}
       role="img"
       aria-label={text}
       onPointerEnter={(event) => {

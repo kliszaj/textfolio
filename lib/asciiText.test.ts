@@ -7,6 +7,9 @@ import {
   extrudeLayerShade,
   ASCII_INK_BLUE,
   ASCII_INK_LIME,
+  ASCII_RAIN_BACKGROUND,
+  ASCII_RAIN_FOREGROUND,
+  ASCII_RAIN_PALETTE,
   DEFAULT_ASCII_TEXT_CONFIG,
   ASCII_MIN_FONT_SIZE,
   asciiFontSizeForHost,
@@ -15,12 +18,107 @@ import {
   asciiCellStateAt,
   ASCII_TYPE_SHARE,
   asciiJunkGlyph,
+  asciiRainStateAt,
+  asciiRainSampleAt,
+  asciiContinuousRainSampleAt,
+  followAsciiRainCursor,
   chipForBrightness,
   demoTiltAt,
   planeHeightForFontSize,
   textTextureLayout,
   visibleWorldHeight,
 } from "./asciiText";
+
+describe("interactive character rain", () => {
+  test("staggers neighboring columns instead of dropping one solid curtain", () => {
+    const states = Array.from({ length: 80 }, (_, column) =>
+      asciiRainStateAt(column / 79, 0.45, 1050)
+    );
+    const wet = states.filter((state) => state !== "idle").length;
+    expect(wet).toBeGreaterThan(0);
+    expect(wet).toBeLessThan(states.length / 3);
+  });
+
+  test("uses most columns over a full cycle for a heavy overall volume", () => {
+    const rainyColumns = Array.from({ length: 80 }, (_, column) => column / 79).filter(
+      (hash) =>
+        Array.from({ length: 25 }, (_, tick) => tick * 100).some((elapsed) =>
+          Array.from({ length: 11 }, (_, row) =>
+            asciiRainStateAt(hash, row / 10, elapsed)
+          ).some((state) => state !== "idle")
+        )
+    );
+    expect(rainyColumns.length).toBeGreaterThan(60);
+  });
+
+  test("stacks five offset showers for the high-intensity treatment", () => {
+    const layers = new Set<number>();
+    for (let elapsed = 0; elapsed < 2450; elapsed += 50) {
+      for (let column = 0; column <= 50; column += 1) {
+        for (let row = 0; row <= 20; row += 1) {
+          const sample = asciiContinuousRainSampleAt(column / 50, row / 20, elapsed, 2450);
+          if (sample.state !== "idle") layers.add(sample.layer);
+        }
+      }
+    }
+    expect(layers).toEqual(new Set([0, 1, 2, 3, 4]));
+  });
+
+  test("overlaps showers so a held cycle never has a global dry lull", () => {
+    const wetAtEveryTick = Array.from({ length: 25 }, (_, tick) => tick * 100).every(
+      (elapsed) =>
+        Array.from({ length: 50 }, (_, column) => column / 49).some((hash) =>
+          Array.from({ length: 11 }, (_, row) =>
+            asciiContinuousRainSampleAt(hash, row / 10, elapsed, 2450)
+          ).some((sample) => sample.state !== "idle")
+        )
+    );
+    expect(wetAtEveryTick).toBe(true);
+  });
+
+  test("uses the high-contrast coral rain palette", () => {
+    expect(ASCII_RAIN_BACKGROUND).toBe("#FF5A36");
+    expect(ASCII_RAIN_FOREGROUND).toBe("#18122B");
+    expect(new Set(ASCII_RAIN_PALETTE.map((layer) => layer.background)).size).toBe(3);
+  });
+
+  test("eases the rain field toward the cursor instead of jumping by letter", () => {
+    const first = followAsciiRainCursor(0.1, 0.9);
+    expect(first).toBeGreaterThan(0.1);
+    expect(first).toBeLessThan(0.9);
+    expect(followAsciiRainCursor(first, 0.9)).toBeGreaterThan(first);
+  });
+
+  test("moves a short stream down its column over time", () => {
+    const activeRows = (hash: number, elapsedMs: number) =>
+      Array.from({ length: 101 }, (_, row) => row / 100).filter(
+        (row) => asciiRainStateAt(hash, row, elapsedMs) !== "idle"
+      );
+    const hash = Array.from({ length: 101 }, (_, index) => index / 100).find(
+      (candidate) =>
+        activeRows(candidate, 900).length > 0 && activeRows(candidate, 1250).length > 0
+    );
+    expect(hash).toBeDefined();
+    const early = activeRows(hash!, 900);
+    const late = activeRows(hash!, 1250);
+    expect(early.length).toBeGreaterThan(0);
+    expect(late.length).toBeGreaterThan(0);
+    expect(late.reduce((sum, row) => sum + row, 0) / late.length).toBeGreaterThan(
+      early.reduce((sum, row) => sum + row, 0) / early.length
+    );
+  });
+
+  test("eases each cell in instead of switching it on at full intensity", () => {
+    const samples = Array.from({ length: 101 }, (_, column) => column / 100)
+      .flatMap((hash) =>
+        Array.from({ length: 101 }, (_, row) => asciiRainSampleAt(hash, row / 100, 1100))
+      )
+      .filter((sample) => sample.state !== "idle");
+    expect(samples.length).toBeGreaterThan(2);
+    expect(samples.some((sample) => sample.intensity > 0 && sample.intensity < 0.5)).toBe(true);
+    expect(samples.every((sample) => sample.intensity >= 0 && sample.intensity <= 1)).toBe(true);
+  });
+});
 
 test("every field has a default, so the config can be spread as props", () => {
   const keys = Object.keys(DEFAULT_ASCII_TEXT_CONFIG).sort();

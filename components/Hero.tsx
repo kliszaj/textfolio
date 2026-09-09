@@ -12,7 +12,12 @@ import {
 import type { ASCIITextConfig } from "@/lib/asciiText";
 import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import type { WarpTextConfig } from "@/lib/warpText";
-import { DEFAULT_STROKE_TEXT_CONFIG, SKETCH_INK } from "@/lib/strokeText";
+import {
+  CORRECTION_INK,
+  CORRECTION_PEN_SCALE,
+  DEFAULT_STROKE_TEXT_CONFIG,
+  SKETCH_INK,
+} from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
@@ -29,6 +34,7 @@ import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
+import { SketchAnnotations } from "./SketchAnnotations";
 import { PageIndicator } from "./PageIndicator";
 import { isOverHeadline, unionBox } from "@/lib/headlineHit";
 import { caseStudies } from "@/data/caseStudies";
@@ -125,61 +131,6 @@ type HeroProps = {
 
 type HeadlineEffect = "ascii" | "warp" | "stroke";
 const HEADLINE_EFFECT_SEQUENCE: HeadlineEffect[] = ["ascii", "warp", "stroke"];
-type MousePosition = { x: number; y: number };
-
-function AsciiWindowsCursor({
-  active,
-  lastMousePosition,
-}: {
-  active: boolean;
-  lastMousePosition: RefObject<MousePosition>;
-}) {
-  useEffect(() => {
-    if (!active) return;
-
-    const cursor = document.createElement("img");
-    cursor.setAttribute("data-testid", "ascii-windows-cursor");
-    cursor.setAttribute("src", "/cursors/win95-arrow.png");
-    cursor.setAttribute("alt", "");
-    cursor.setAttribute("aria-hidden", "true");
-    cursor.className = styles.asciiWindowsCursor;
-    Object.assign(cursor.style, {
-      position: "fixed",
-      top: "0",
-      left: "0",
-      zIndex: "2147483647",
-      width: "32px",
-      height: "32px",
-      pointerEvents: "none",
-      userSelect: "none",
-      opacity: "1",
-      willChange: "transform",
-    });
-
-    // Chrome can retain a descendant cursor declaration over an inherited
-    // parent value. An ephemeral document-level rule is the only scope that
-    // wins decisively over canvases and utility classes alike.
-    const cursorRule = document.createElement("style");
-    cursorRule.textContent = "html, body, body * { cursor: none !important; }";
-    document.head.appendChild(cursorRule);
-    document.body.appendChild(cursor);
-
-    const placeCursor = ({ x, y }: MousePosition) => {
-      cursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    };
-    const moveCursor = (event: MouseEvent) => placeCursor({ x: event.clientX, y: event.clientY });
-
-    placeCursor(lastMousePosition.current);
-    window.addEventListener("mousemove", moveCursor, { passive: true });
-    return () => {
-      window.removeEventListener("mousemove", moveCursor);
-      cursor.remove();
-      cursorRule.remove();
-    };
-  }, [active, lastMousePosition]);
-
-  return null;
-}
 
 // A tiny generated static texture for the noise-burst cut effect. Not a pure,
 // tested helper like the rest of this codebase's timing math -- it draws to a
@@ -217,7 +168,8 @@ export function Hero({
   rgbConfig = DEFAULT_INTRO_CUT_RGB_CONFIG,
 }: HeroProps) {
   const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
-  const lastMousePositionRef = useRef<MousePosition>({ x: -40, y: -40 });
+  const [warpPressed, setWarpPressed] = useState(false);
+  const interactionLockedRef = useRef(false);
   const intro = useHeadlineIntro(playIntro);
   const rgbSplitFilterId = useId();
   const [rgbFlash, setRgbFlash] = useState(false);
@@ -230,13 +182,6 @@ export function Hero({
   const [noiseBursting, setNoiseBursting] = useState(false);
   const [channelChanging, setChannelChanging] = useState(false);
   const [noiseUrl, setNoiseUrl] = useState("");
-  useEffect(() => {
-    const rememberMousePosition = (event: MouseEvent) => {
-      lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
-    };
-    window.addEventListener("mousemove", rememberMousePosition, { passive: true });
-    return () => window.removeEventListener("mousemove", rememberMousePosition);
-  }, []);
   // intro.phase only ever changes during the scripted intro (four times:
   // into sketch, ascii, warp, then final) and never again afterward -- a
   // later hover swap is driven by hoverEffect, a separate piece of state.
@@ -404,6 +349,7 @@ export function Hero({
   };
 
   const deactivateHeadline = () => {
+    if (interactionLockedRef.current) return;
     if (!isHeadlinePointerInsideRef.current) return;
     isHeadlinePointerInsideRef.current = false;
     setHoverEffect(null);
@@ -416,12 +362,16 @@ export function Hero({
   // so hovering the subheader activates a treatment exactly like hovering
   // the name itself does.
   const handleHeadlinePointer = (event: PointerEvent<HTMLDivElement>) => {
+    const over = isPointOverHeadline({ x: event.clientX, y: event.clientY });
+    if (over) activateHeadline();
+    else deactivateHeadline();
+  };
+
+  const isPointOverHeadline = (point: { x: number; y: number }) => {
     const word = wordRef.current?.getBoundingClientRect();
     const tagline = taglineNode?.getBoundingClientRect();
     const box = word ? unionBox(word, tagline) : undefined;
-    const over = !box || isOverHeadline({ x: event.clientX, y: event.clientY }, box);
-    if (over) activateHeadline();
-    else deactivateHeadline();
+    return !box || isOverHeadline(point, box);
   };
 
   return (
@@ -445,14 +395,10 @@ export function Hero({
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
         // This must be inline: the ASCII layer contains canvases and utility
         // classes whose cursor declarations can otherwise outrank the hero.
-        // Its portal cursor is rendered separately above the whole viewport.
+        // The native Windows cursor rule is installed at document scope.
         cursor: activeEffect === "ascii" ? "none" : undefined,
       }}
     >
-      <AsciiWindowsCursor
-        active={activeEffect === "ascii"}
-        lastMousePosition={lastMousePositionRef}
-      />
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
           enough for the two to overlap. */}
@@ -521,10 +467,29 @@ export function Hero({
           priority
         />
       )}
+      {activeEffect === "stroke" && (
+        <SketchAnnotations
+          active={intro.done}
+          strokeColor={CORRECTION_INK}
+          strokeWidth={strokeConfig.strokeWidth * CORRECTION_PEN_SCALE}
+          sketchStyle={strokeConfig.sketchStyle}
+          canStartDrawing={isPointOverHeadline}
+          onDrawingChange={(drawing, point) => {
+            interactionLockedRef.current = drawing;
+            if (!drawing && !isPointOverHeadline(point)) {
+              isHeadlinePointerInsideRef.current = false;
+              setHoverEffect(null);
+            }
+          }}
+        />
+      )}
       <div
         data-testid="hero-headline"
         className="relative z-10 flex flex-col items-center"
-        style={{ transform: `translateY(-${liftPercent}vh)` }}
+        style={{
+          transform: `translateY(-${liftPercent}vh)`,
+          cursor: activeEffect === "stroke" ? "crosshair" : undefined,
+        }}
         // Moved up from the frame below: this wraps the frame and the
         // tagline both, so the union hit-test in handleHeadlinePointer
         // actually gets a chance to run while the cursor is over the
@@ -532,6 +497,24 @@ export function Hero({
         onPointerEnter={handleHeadlinePointer}
         onPointerMove={handleHeadlinePointer}
         onPointerLeave={deactivateHeadline}
+        onPointerDown={(event) => {
+          if (!intro.done || activeEffect !== "warp" || event.button > 0) return;
+          interactionLockedRef.current = true;
+          setWarpPressed(true);
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        }}
+        onPointerUp={(event) => {
+          if (!warpPressed) return;
+          interactionLockedRef.current = false;
+          setWarpPressed(false);
+          if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        }}
+        onPointerCancel={() => {
+          interactionLockedRef.current = false;
+          setWarpPressed(false);
+        }}
       >
         {/* The frame sizes every treatment but no longer clips them: one
             that draws past its own box -- a correction mark, a warp, a tilted
@@ -668,6 +651,7 @@ export function Hero({
               demoMode="circle"
               letterSpacing="0"
               lineHeight={1}
+              boosted={activeEffect === "warp" && warpPressed}
             />
           </div>
           {activeEffect === "ascii" ? (
@@ -680,6 +664,7 @@ export function Hero({
               // word straight away, leaning as its one bit of scripted
               // motion, same as sketch shows itself already drawn.
               typeProgress={1}
+              interactive={intro.done}
             />
             </div>
           ) : activeEffect === "stroke" ? (

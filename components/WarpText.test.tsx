@@ -29,3 +29,13 @@ test("forwards the shared headline typography to its fallback", () => {
     "--warp-text-line-height": "1",
   });
 });
+
+test("exposes the press-and-hold boost state without replacing its canvas host", () => {
+  const { rerender } = render(<WarpText text="ADRIAN" boosted={false} />);
+  const host = screen.getByTestId("warp-text");
+  expect(host).toHaveAttribute("data-boosted", "false");
+
+  rerender(<WarpText text="ADRIAN" boosted />);
+  expect(screen.getByTestId("warp-text")).toBe(host);
+  expect(host).toHaveAttribute("data-boosted", "true");
+});

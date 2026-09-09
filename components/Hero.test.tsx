@@ -75,22 +75,15 @@ test("starts the hover cycle with ASCII text", () => {
   expect(hero).toHaveStyle({ cursor: "none" });
 
   expect(hero.className).toContain("asciiCursor");
-  expect(screen.getByTestId("ascii-windows-cursor")).toHaveAttribute(
-    "src",
-    "/cursors/win95-arrow.png"
-  );
-  fireEvent.mouseMove(window, { clientX: 320, clientY: 180 });
-  expect(screen.getByTestId("ascii-windows-cursor")).toHaveStyle({
-    transform: "translate3d(320px, 180px, 0)",
-    opacity: "1",
-  });
+  const heroCss = readFileSync("components/Hero.module.css", "utf8");
+  expect(heroCss).toContain('url("/cursors/win95-arrow.png") 0 0');
+  expect(heroCss).toContain('url("/cursors/win95-arrow.cur") 0 0');
 
   fireEvent.pointerLeave(headline);
   expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
   expect(hero.style.cursor).toBe("");
   expect(hero.className).not.toContain("asciiCursor");
-  expect(screen.queryByTestId("ascii-windows-cursor")).not.toBeInTheDocument();
 });
 
 test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries", () => {
@@ -137,6 +130,36 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
   expect(hero).toHaveStyle({ backgroundColor: "#05AEAE" });
+});
+
+test("boosts the warp while held and restores it on release", () => {
+  render(<Hero playIntro={false} fanProgress={0} />);
+  const headline = screen.getByTestId("hero-headline");
+
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  fireEvent.pointerLeave(headline);
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  const warp = screen.getByTestId("warp-text");
+  expect(warp).toHaveAttribute("data-boosted", "false");
+
+  fireEvent.pointerDown(headline, { pointerId: 2, pointerType: "mouse", button: 0 });
+  expect(warp).toHaveAttribute("data-boosted", "true");
+  fireEvent.pointerUp(headline, { pointerId: 2, pointerType: "mouse", button: 0 });
+  expect(warp).toHaveAttribute("data-boosted", "false");
+});
+
+test("mounts the persistent drawing layer with the sketch treatment", () => {
+  const { container } = render(<Hero playIntro={false} fanProgress={0} />);
+  const headline = screen.getByTestId("hero-headline");
+  for (let index = 0; index < 3; index += 1) {
+    fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+    if (index < 2) fireEvent.pointerLeave(headline);
+  }
+  const annotations = screen.getByTestId("sketch-annotations");
+  expect(annotations).toHaveAttribute("data-active", "true");
+  // The SVG belongs to the whole hero sheet, not the headline frame, so a
+  // stroke that starts over the name can continue anywhere on the page.
+  expect(annotations.parentElement).toBe(container.firstChild);
 });
 
 test("the down-arrow hint fades as fanProgress increases", () => {

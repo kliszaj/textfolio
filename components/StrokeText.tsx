@@ -9,6 +9,7 @@ import {
   CORRECTION_CROSS_MS,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
+  CORRECTION_PEN_SCALE,
   CORRECTION_LETTER_DELAY_MS,
   letterSequenceSeconds,
   SKETCH_BOIL_SEEDS,
@@ -587,7 +588,7 @@ export function StrokeText({
   const inkOffsetX = inkCentringOffsetX(box, centreX);
   // Bounded by the host, so a mark is pulled inside the frame rather than
   // running off the edge and reading as clipped.
-  const correctionPen = strokeWidth * 1.6;
+  const correctionPen = strokeWidth * CORRECTION_PEN_SCALE;
   // Nothing clips the frame any more, so a mark may sit a little outside it.
   const marks = markBox
     ? correctionMarks(

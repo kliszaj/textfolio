@@ -44,6 +44,11 @@ export const DEFAULT_STROKE_TEXT_CONFIG: StrokeTextConfig = {
 // tagline, the arrow, and the cool-S mark. A test pins the svg asset to it.
 export const SKETCH_INK = "#0040C0";
 
+// Correction marks use a slightly broader red pen than the blue letter
+// outline. Export the relationship so freehand annotations can use the exact
+// same instrument instead of merely approximating it in CSS.
+export const CORRECTION_PEN_SCALE = 1.6;
+
 // Hand-drawn look without a drawing library: turbulence displaces the outline
 // so it wanders like a drawn line, and a second, much finer noise eats into
 // its alpha so the ink breaks up the way graphite does on paper.
