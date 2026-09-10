@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { caseStudies, getCaseStudyBySlug, getNextCaseStudy } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import { CaseStudyView } from "@/components/CaseStudyView";
+import { ProjectsCollection } from "@/components/ProjectsCollection";
+import { PROJECTS_EXPERIMENTS } from "@/data/projectsExperiments";
 
 // The case studies are a fixed list, so every route can be built ahead of
 // time. That keeps the whole site static, which is what lets it deploy to a
@@ -29,5 +31,12 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
   const isLastCaseStudy = slug === caseStudies[caseStudies.length - 1].slug;
   const next = isLastCaseStudy ? ABOUT_PAGE : getNextCaseStudy(slug);
 
-  return <CaseStudyView caseStudy={caseStudy} next={next} />;
+  return (
+    <>
+      <CaseStudyView caseStudy={caseStudy} next={next} />
+      {slug === "projects-and-experiments" && (
+        <ProjectsCollection projects={PROJECTS_EXPERIMENTS} />
+      )}
+    </>
+  );
 }

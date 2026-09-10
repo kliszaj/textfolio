@@ -44,10 +44,10 @@ import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
 
 const DEFAULT_CONFIG: FanSheetConfig = {
   mechanic: "bottom",
-  // Fully swept, the bands add up to roughly half the viewport height. At the
-  // old 4/8 they reached about 30% and the stack read as a sliver.
-  bandPercents: [6, 6, 6, 6, 6],
-  emphasisBonusPercent: 16,
+  // Keep every destination's resting band equal; the moving emphasis still
+  // gives the active sheet enough extra room to reveal its summary.
+  bandPercents: [5, 5, 5, 5, 5],
+  emphasisBonusPercent: 12,
   emphasisFalloff: 1.5,
   revealLeadSheets: 1.5,
   tiltStepDegrees: -2,

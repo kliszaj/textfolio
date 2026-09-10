@@ -229,16 +229,6 @@ export const caseStudies: CaseStudy[] = [
     blurb: "Personal projects, small experiments, and the things I tinker with on evenings and weekends.",
     overview:
       "A growing collection of things made for curiosity, practice, and the satisfaction of finding out whether an idea works.",
-    facts: [
-      { label: "Type", value: "Personal projects & experiments" },
-      { label: "When", value: "Evenings & weekends" },
-      { label: "Status", value: "Ongoing" },
-    ],
-    sections: [
-      {
-        body: "Personal projects, small experiments, and the things I tinker with on evenings and weekends.",
-      },
-    ],
   },
 ];
 export function getCaseStudyBySlug(slug: string): CaseStudy | undefined {

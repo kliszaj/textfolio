@@ -44,6 +44,17 @@ test("keeps the tuning panel behind a Settings button", () => {
   expect(screen.queryByTestId("fan-debug-panel")).not.toBeInTheDocument();
 });
 
+test("starts with the tuned stack band and emphasis defaults", () => {
+  render(<HomePage />);
+  fireEvent.click(screen.getByTestId("fan-debug-toggle"));
+  fireEvent.click(screen.getByTestId("stack-settings-toggle"));
+
+  for (const label of ["One", "Two", "Three", "Four", "Five"]) {
+    expect(screen.getByLabelText(`Case ${label} band: 5%`)).toHaveValue("5");
+  }
+  expect(screen.getByLabelText("Emphasis bonus: 12%")).toHaveValue("12");
+});
+
 test("touch drives the same stack, scrolling rather than a separate list", () => {
   // The reveal is the interaction, so touch gets the stack too -- with a
   // spacer to scroll against, since the stack itself is fixed.
@@ -75,13 +86,12 @@ test("the stack opens further on touch than it does on a pointer", () => {
   expect(touchHero).toBeGreaterThan(desktopHero);
 });
 
-test("the fully swept stack takes about half the viewport", () => {
-  // It used to reach only ~30% and read as a sliver.
+test("the fully swept stack still reveals a substantial portion of the viewport", () => {
   mockUseFanProgress.mockReturnValue({ fanProgress: 1, sweepProgress: 1 });
   render(<HomePage />);
   const revealed = parseFloat(screen.getByTestId("paper-sheet-0").style.bottom);
-  expect(revealed).toBeGreaterThan(40);
-  expect(revealed).toBeLessThan(60);
+  expect(revealed).toBeGreaterThan(35);
+  expect(revealed).toBeLessThan(45);
 });
 
 test("keeps the fixed cursor-driven stack on fine-pointer devices", () => {

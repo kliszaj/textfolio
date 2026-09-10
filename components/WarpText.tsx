@@ -156,9 +156,22 @@ export function WarpText({
   const containerRef = useRef<HTMLDivElement>(null);
   const demoSweepRef = useRef(demoSweepMs);
   const boostedRef = useRef(boosted);
+  const capturedPointerMoveRef = useRef<((event: PointerEvent) => void) | null>(null);
 
   useEffect(() => {
     boostedRef.current = boosted;
+  }, [boosted]);
+
+  // Hero captures the pointer during a press so releasing outside the word is
+  // still reliable. Captured events target Hero rather than this canvas, so
+  // mirror them from window into the WebGL pointer while the boost is held.
+  useEffect(() => {
+    if (!boosted) return;
+    const followCapturedPointer = (event: PointerEvent) => {
+      capturedPointerMoveRef.current?.(event);
+    };
+    window.addEventListener("pointermove", followCapturedPointer, true);
+    return () => window.removeEventListener("pointermove", followCapturedPointer, true);
   }, [boosted]);
   // Read in the same rAF loop as demoSweepRef, for the same reason: Hero
   // changes which motion plays as the intro advances, and putting it in the
@@ -240,10 +253,11 @@ export function WarpText({
         if (event.pointerType === "touch") return;
         pointerTaken = true;
         const rect = container.getBoundingClientRect();
-        pointer.targetX = (event.clientX - rect.left) / rect.width;
-        pointer.targetY = 1 - (event.clientY - rect.top) / rect.height;
+        pointer.targetX = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+        pointer.targetY = Math.min(1, Math.max(0, 1 - (event.clientY - rect.top) / rect.height));
         pointer.targetStrength = 1;
       };
+      capturedPointerMoveRef.current = onPointerMove;
       const onPointerLeave = () => { pointer.targetStrength = 0; };
       let handledEndRequest = demoEndRequestRef.current;
       const loop = (now: number) => {
@@ -322,6 +336,9 @@ export function WarpText({
         container.removeEventListener("pointermove", onPointerMove);
         container.removeEventListener("pointerdown", onPointerMove);
         container.removeEventListener("pointerleave", onPointerLeave);
+        if (capturedPointerMoveRef.current === onPointerMove) {
+          capturedPointerMoveRef.current = null;
+        }
         program.remove();
         gl.deleteTexture(texture.texture);
         gl.getExtension("WEBGL_lose_context")?.loseContext();
@@ -346,6 +363,7 @@ export function WarpText({
       data-testid="warp-text"
       data-webgl-ready="false"
       data-boosted={boosted}
+      data-drag-tracking={boosted}
       role="img"
       aria-label={text}
       onPointerEnter={(event) => {

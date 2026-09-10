@@ -38,4 +38,20 @@ test("exposes the press-and-hold boost state without replacing its canvas host",
   rerender(<WarpText text="ADRIAN" boosted />);
   expect(screen.getByTestId("warp-text")).toBe(host);
   expect(host).toHaveAttribute("data-boosted", "true");
+  expect(host).toHaveAttribute("data-drag-tracking", "true");
+});
+
+test("tracks captured pointer movement globally only while the boost is held", () => {
+  const addEventListener = jest.spyOn(window, "addEventListener");
+  const removeEventListener = jest.spyOn(window, "removeEventListener");
+  const { rerender } = render(<WarpText text="ADRIAN" boosted={false} />);
+
+  rerender(<WarpText text="ADRIAN" boosted />);
+  expect(addEventListener).toHaveBeenCalledWith("pointermove", expect.any(Function), true);
+
+  rerender(<WarpText text="ADRIAN" boosted={false} />);
+  expect(removeEventListener).toHaveBeenCalledWith("pointermove", expect.any(Function), true);
+
+  addEventListener.mockRestore();
+  removeEventListener.mockRestore();
 });

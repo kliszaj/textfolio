@@ -75,15 +75,16 @@ test("starts the hover cycle with ASCII text", () => {
   expect(hero).toHaveStyle({ cursor: "none" });
 
   expect(hero.className).toContain("asciiCursor");
+  expect(screen.getByTestId("win95-cursor")).toBeInTheDocument();
   const heroCss = readFileSync("components/Hero.module.css", "utf8");
-  expect(heroCss).toContain('url("/cursors/win95-arrow.png") 0 0');
-  expect(heroCss).toContain('url("/cursors/win95-arrow.cur") 0 0');
+  expect(heroCss).toContain("cursor: none !important");
 
   fireEvent.pointerLeave(headline);
   expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
   expect(hero.style.cursor).toBe("");
   expect(hero.className).not.toContain("asciiCursor");
+  expect(screen.queryByTestId("win95-cursor")).not.toBeInTheDocument();
 });
 
 test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries", () => {

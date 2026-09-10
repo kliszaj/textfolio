@@ -36,6 +36,7 @@ import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
 import { SketchAnnotations } from "./SketchAnnotations";
 import { PageIndicator } from "./PageIndicator";
+import { Windows95Cursor } from "./Windows95Cursor";
 import { isOverHeadline, unionBox } from "@/lib/headlineHit";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
@@ -168,6 +169,7 @@ export function Hero({
   rgbConfig = DEFAULT_INTRO_CUT_RGB_CONFIG,
 }: HeroProps) {
   const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
+  const [asciiCursorStart, setAsciiCursorStart] = useState<{ x: number; y: number } | null>(null);
   const [warpPressed, setWarpPressed] = useState(false);
   const interactionLockedRef = useRef(false);
   const intro = useHeadlineIntro(playIntro);
@@ -333,12 +335,13 @@ export function Hero({
   // contrast to read as an affordance before any treatment has been invoked.
   const arrowColor = activeEffect === null ? DEFAULT_INK_COLOR : accentColor;
 
-  const activateHeadline = () => {
+  const activateHeadline = (pointerPosition?: { x: number; y: number }) => {
     if (suppressHeadlineHover || !intro.done) return;
     if (isHeadlinePointerInsideRef.current) return;
     isHeadlinePointerInsideRef.current = true;
     const effect = HEADLINE_EFFECT_SEQUENCE[nextEffectIndexRef.current];
     if (effect === "ascii") {
+      if (pointerPosition) setAsciiCursorStart(pointerPosition);
       const nextStageColor = asciiConfig.randomizeStageColor
         ? ASCII_STAGE_COLORS[Math.floor(Math.random() * ASCII_STAGE_COLORS.length)]
         : ASCII_BG_COLOR;
@@ -363,7 +366,7 @@ export function Hero({
   // the name itself does.
   const handleHeadlinePointer = (event: PointerEvent<HTMLDivElement>) => {
     const over = isPointOverHeadline({ x: event.clientX, y: event.clientY });
-    if (over) activateHeadline();
+    if (over) activateHeadline({ x: event.clientX, y: event.clientY });
     else deactivateHeadline();
   };
 
@@ -393,12 +396,15 @@ export function Hero({
         // The sketch lettering, tagline, and arrow share blue-pencil ink;
         // the correction mark stays red to remain visibly distinct.
         color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
-        // This must be inline: the ASCII layer contains canvases and utility
-        // classes whose cursor declarations can otherwise outrank the hero.
-        // The native Windows cursor rule is installed at document scope.
+        // The custom Windows95Cursor is the only visible pointer in this
+        // state; the CSS-module class hides the native cursor on descendants.
         cursor: activeEffect === "ascii" ? "none" : undefined,
       }}
     >
+      <Windows95Cursor
+        active={activeEffect === "ascii"}
+        initialPosition={asciiCursorStart}
+      />
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
           enough for the two to overlap. */}

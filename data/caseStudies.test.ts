@@ -12,7 +12,7 @@ test("ends with an ongoing personal Projects & Experiments page", () => {
     title: "Projects & Experiments",
     blurb: expect.stringMatching(/evenings and weekends/i),
   });
-  expect(projects.sections?.[0]?.body).toMatch(/personal projects, small experiments/i);
+  expect(projects.overview).toMatch(/growing collection/i);
 });
 
 test("all slugs are unique", () => {

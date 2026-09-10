@@ -29,6 +29,20 @@ test("sends the last case study's next arrow to About, not back to Jam", async (
   expect(nextLink).toHaveStyle({ backgroundColor: ABOUT_PAGE.thumbnailColor });
 });
 
+test("adds the project collection to Projects & Experiments", async () => {
+  const jsx = await CaseStudyPage({
+    params: Promise.resolve({ slug: "projects-and-experiments" }),
+  });
+  render(jsx as React.ReactElement);
+
+  expect(screen.getByRole("heading", { name: "wordsnap" })).toBeInTheDocument();
+  expect(screen.getAllByTestId("project-entry")).toHaveLength(3);
+  expect(screen.getByRole("img", { name: /wordsnap handheld device concept/i })).toHaveAttribute(
+    "src",
+    "/assets/wordsnap.jpg"
+  );
+});
+
 test("points the header arrow at the next study, in its colour", async () => {
   const jsx = await CaseStudyPage({ params: Promise.resolve({ slug: caseStudies[0].slug }) });
   render(jsx as React.ReactElement);

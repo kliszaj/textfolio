@@ -26,15 +26,11 @@
   mix-blend-mode: multiply;
 }
 
-/* Keep the Windows pointer native. A floating image can fall behind a canvas
-   or stop tracking during pointer capture; a real cursor cannot. PNG is the
-   broadly supported primary asset, with CUR retained as a fallback. */
+/* Windows95Cursor supplies the visible pointer. Hide the system pointer on
+   the active stage and everything inside it so the two can never overlap. */
 .asciiCursor,
 .asciiCursor * {
-  cursor:
-    url("/cursors/win95-arrow.png") 0 0,
-    url("/cursors/win95-arrow.cur") 0 0,
-    auto !important;
+  cursor: none !important;
 }
 
 .asciiDesktopIcons {

@@ -24,12 +24,12 @@ export type ASCIITextConfig = {
 // chips are weighted far heavier.
 export const ASCII_INK_BLUE = "#3A1AF0";
 export const ASCII_INK_LIME = "#C6F03F";
-export const ASCII_RAIN_BACKGROUND = "#FF5A36";
-export const ASCII_RAIN_FOREGROUND = "#18122B";
+export const ASCII_RAIN_BACKGROUND = ASCII_INK_LIME;
+export const ASCII_RAIN_FOREGROUND = ASCII_INK_BLUE;
 export const ASCII_RAIN_PALETTE = [
-  { background: "#FF5A36", foreground: "#18122B" },
-  { background: "#35E2DA", foreground: "#17183D" },
-  { background: "#D9007F", foreground: "#FFF8ED" },
+  { background: ASCII_INK_LIME, foreground: ASCII_INK_BLUE },
+  { background: ASCII_INK_BLUE, foreground: "#F5EDE6" },
+  { background: "#DDE0DD", foreground: ASCII_INK_BLUE },
 ] as const;
 
 export type AsciiColorChip = {

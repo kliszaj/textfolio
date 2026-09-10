@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* The ASCII treatment draws its own Windows 95 pointer in a body portal.
+   Suppress the platform cursor across the complete document while it is
+   active, including controls whose own cursor rule would otherwise win. */
+html[data-win95-cursor="active"],
+html[data-win95-cursor="active"] body,
+html[data-win95-cursor="active"] body * {
+  cursor: none !important;
+}
+
 @theme inline {
   --color-cream: #f5ede6;
   --color-ink: #1c1c1c;

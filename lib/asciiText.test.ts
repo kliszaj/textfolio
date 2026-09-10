@@ -76,9 +76,13 @@ describe("interactive character rain", () => {
     expect(wetAtEveryTick).toBe(true);
   });
 
-  test("uses the high-contrast coral rain palette", () => {
-    expect(ASCII_RAIN_BACKGROUND).toBe("#FF5A36");
-    expect(ASCII_RAIN_FOREGROUND).toBe("#18122B");
+  test("builds the rain from the treatment's existing blue and lime palette", () => {
+    expect(ASCII_RAIN_BACKGROUND).toBe(ASCII_INK_LIME);
+    expect(ASCII_RAIN_FOREGROUND).toBe(ASCII_INK_BLUE);
+    expect(ASCII_RAIN_PALETTE).toContainEqual({
+      background: ASCII_INK_BLUE,
+      foreground: "#F5EDE6",
+    });
     expect(new Set(ASCII_RAIN_PALETTE.map((layer) => layer.background)).size).toBe(3);
   });
 
