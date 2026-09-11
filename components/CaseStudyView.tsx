@@ -11,11 +11,15 @@ import { caseStudyRoute } from "@/data/caseStudies";
 import { nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
 import type { CaseStudy, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
+import type { ReactNode } from "react";
 
 type CaseStudyViewProps = {
   caseStudy: CaseStudy;
   // Where the header arrow leads. Optional so the view still renders standalone.
   next?: CaseStudy;
+  // Route-specific sections belong to the same sheet so they leave with the
+  // header and body during the explicit home transition.
+  children?: ReactNode;
 };
 
 // Matched to the homepage's own arrow, a step down so it sits inside the
@@ -29,6 +33,19 @@ const COLLAPSED_SECTION_COUNT = 1;
 // Two concise beats are already an overview, not a long read. Preserve those
 // in full; three or more use the shorter opening above.
 const COLLAPSIBLE_SECTION_MINIMUM = COLLAPSED_SECTION_COUNT + 1;
+
+export function caseStudyTitleScale(naturalWidth: number, availableWidth: number): number {
+  if (
+    !Number.isFinite(naturalWidth) ||
+    !Number.isFinite(availableWidth) ||
+    naturalWidth <= 0 ||
+    availableWidth <= 0
+  ) {
+    return 1;
+  }
+
+  return Math.min(1, availableWidth / naturalWidth);
+}
 
 const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
   full: "col-span-2 row-span-2",
@@ -76,7 +93,7 @@ function renderLinkedCopy(
   return parts.length === 0 ? copy : <>{parts}{copy.slice(cursor)}</>;
 }
 
-export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
+export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps) {
   const {
     overview,
     overviewLink,
@@ -103,6 +120,8 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
   const [settled, setSettled] = useState(false);
   const [exiting, setExiting] = useState(false);
   const [isLongReadExpanded, setIsLongReadExpanded] = useState(false);
+  const titleContainerRef = useRef<HTMLHeadingElement>(null);
+  const titleButtonRef = useRef<HTMLButtonElement>(null);
   const hasCollapsibleLongRead = sections.length > COLLAPSIBLE_SECTION_MINIMUM;
   const visibleSections = hasCollapsibleLongRead && !isLongReadExpanded
     ? sections.slice(0, COLLAPSED_SECTION_COUNT)
@@ -112,6 +131,28 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
     const timer = setTimeout(() => setSettled(true), 620);
     return () => clearTimeout(timer);
   }, []);
+
+  useLayoutEffect(() => {
+    const container = titleContainerRef.current;
+    const title = titleButtonRef.current;
+    if (!container || !title) return;
+
+    const fit = () => {
+      const scale = caseStudyTitleScale(title.scrollWidth, container.clientWidth);
+      title.style.setProperty("--case-study-title-fit", String(scale));
+    };
+
+    fit();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    observer?.observe(container);
+    window.addEventListener("resize", fit);
+    void document.fonts?.ready.then(fit);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, [caseStudy.title]);
 
   const shrunkRef = useRef(false);
 
@@ -152,6 +193,15 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
     setTimeout(() => router.push("/"), EXIT_ANIMATION_MS);
   }, [caseStudy, router]);
 
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, []);
+
   return (
     <>
       {/* Revealed behind the page during the explicit home transition. */}
@@ -159,12 +209,9 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
       <main
         data-testid="case-study-view"
         data-exiting={exiting}
-        // Not min-h-screen: a short page (About, with no media) doesn't
-        // need padding out to a full viewport, and the fixed cream layer
-        // just above already covers the screen regardless of this
-        // element's real height -- min-h-screen here only ever pushed
-        // whatever follows (AboutNow) down into empty space nobody sees a
-        // reason for.
+        // Not min-h-screen: a short page (About, with no media) doesn't need
+        // padding out to a full viewport, and the fixed cream layer above
+        // already covers the screen regardless of this element's real height.
         className="bg-cream text-ink"
         style={{
           transform: exiting ? "translateY(100vh)" : undefined,
@@ -223,10 +270,19 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
 
             <div className="case-study-header-row flex items-end justify-between gap-6">
               <h1
+                ref={titleContainerRef}
                 data-testid="case-study-title"
-                className="case-study-title font-display leading-none"
+                className="case-study-title min-w-0 flex-1 font-display leading-none"
               >
-                {caseStudy.title}
+                <button
+                  ref={titleButtonRef}
+                  type="button"
+                  title="Back to top"
+                  onClick={scrollToTop}
+                  className="case-study-title-button cursor-pointer whitespace-nowrap rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+                >
+                  {caseStudy.title}
+                </button>
               </h1>
               {next && (
                 <Link
@@ -472,6 +528,7 @@ export function CaseStudyView({ caseStudy, next }: CaseStudyViewProps) {
             </section>
           )}
         </div>
+        {children}
       </main>
     </>
   );

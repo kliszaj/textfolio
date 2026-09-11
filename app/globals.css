@@ -424,6 +424,11 @@ body {
   transition: font-size 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.case-study-title-button {
+  transform: scale(var(--case-study-title-fit, 1));
+  transform-origin: left center;
+}
+
 .case-study-header[data-shrunk="true"] .case-study-title {
   font-size: clamp(1.5rem, 3vw, 2.25rem);
 }

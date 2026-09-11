@@ -51,3 +51,11 @@ test("closes the loop: About's next arrow leads back to the first case study", (
   expect(nextLink).toHaveAttribute("href", `/work/${caseStudies[0].slug}`);
   expect(nextLink).toHaveStyle({ backgroundColor: caseStudies[0].thumbnailColor });
 });
+
+test("keeps the Now section inside the animated page surface", () => {
+  render(<AboutPage />);
+
+  expect(screen.getByTestId("case-study-view")).toContainElement(
+    screen.getByRole("heading", { name: "Now" })
+  );
+});

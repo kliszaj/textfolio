@@ -10,7 +10,7 @@ beforeEach(() => {
   window.scrollY = 0;
 });
 
-import { CaseStudyView } from "./CaseStudyView";
+import { CaseStudyView, caseStudyTitleScale } from "./CaseStudyView";
 import { getCaseStudyBySlug } from "@/data/caseStudies";
 
 const caseStudy = {
@@ -34,7 +34,41 @@ test("keeps the title in the header but omits the preview blurb from the full pa
   expect(screen.getByTestId("case-study-header")).toContainElement(
     screen.getByText("Test Case")
   );
+  expect(screen.getByRole("button", { name: "Test Case" })).toHaveAttribute(
+    "title",
+    "Back to top"
+  );
+  expect(screen.getByRole("button", { name: "Test Case" })).toHaveClass(
+    "whitespace-nowrap",
+    "case-study-title-button"
+  );
+  expect(screen.getByTestId("case-study-title")).toHaveClass("min-w-0", "flex-1");
   expect(screen.queryByText("A test blurb.")).not.toBeInTheDocument();
+});
+
+test("scales long case-study titles only when their allotted width is too narrow", () => {
+  expect(caseStudyTitleScale(600, 300)).toBe(0.5);
+  expect(caseStudyTitleScale(300, 600)).toBe(1);
+  expect(caseStudyTitleScale(0, 300)).toBe(1);
+});
+
+test("scrolls to the top from the sticky title and reveals the full header", () => {
+  const scrollTo = jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+  render(<CaseStudyView caseStudy={caseStudy} />);
+  scrollTo.mockClear();
+
+  window.scrollY = 480;
+  fireEvent.scroll(window);
+  expect(screen.getByTestId("case-study-header")).toHaveAttribute("data-shrunk", "true");
+
+  fireEvent.click(screen.getByRole("button", { name: "Test Case" }));
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+
+  window.scrollY = 0;
+  fireEvent.scroll(window);
+  expect(screen.getByTestId("case-study-header")).toHaveAttribute("data-shrunk", "false");
+
+  scrollTo.mockRestore();
 });
 
 test("carries the case study's colour through into the header", () => {

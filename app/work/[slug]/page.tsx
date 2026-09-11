@@ -32,11 +32,10 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
   const next = isLastCaseStudy ? ABOUT_PAGE : getNextCaseStudy(slug);
 
   return (
-    <>
-      <CaseStudyView caseStudy={caseStudy} next={next} />
+    <CaseStudyView caseStudy={caseStudy} next={next}>
       {slug === "projects-and-experiments" && (
         <ProjectsCollection projects={PROJECTS_EXPERIMENTS} />
       )}
-    </>
+    </CaseStudyView>
   );
 }

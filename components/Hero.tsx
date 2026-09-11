@@ -92,10 +92,9 @@ const RESTING_ACCENT_COLOR = "#878787";
 // their colour transition as one shared value so one cannot lag the others.
 const TREATMENT_COLOR_TRANSITION = "500ms ease-out";
 const TAGLINE_SIZE = "clamp(1.35rem, min(var(--tagline-vw), 6.2vh), 4.5rem)";
-// Two deliberate sizes only: the enlarged middle size holds across mobile and
-// small screens, while the pencil-sketch treatment gets its own larger mark.
-const ARROW_SIZE = "3.75rem";
-const SKETCH_ARROW_SIZE = "5.4rem";
+// One shared size keeps the scroll invitation stable while the headline
+// treatment changes around it.
+const ARROW_SIZE = "3.25rem";
 const HEADLINE_FONT_FAMILY = "var(--font-pp-frama)";
 const HEADLINE_FONT_WEIGHT = 900;
 // A named constant rather than an inline string: useHeroReveal needs its
@@ -744,7 +743,7 @@ export function Hero({
           // transition on top would double-ease it.
           opacity: arrowOpacity * heroReveal.arrowProgress,
           color: arrowColor,
-          fontSize: activeEffect === "stroke" ? SKETCH_ARROW_SIZE : ARROW_SIZE,
+          fontSize: ARROW_SIZE,
           transition: `color ${TREATMENT_COLOR_TRANSITION}`,
         }}
       >

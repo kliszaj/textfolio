@@ -125,7 +125,7 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: SKETCH_INK });
   expect(screen.getByTestId("scroll-hint")).toHaveStyle({
     color: SKETCH_INK,
-    fontSize: "5.4rem",
+    fontSize: "3.25rem",
   });
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
@@ -241,9 +241,17 @@ test("reveals the complete tagline from blur to sharp focus", () => {
   }
 });
 
-test("uses the enlarged middle down-arrow size outside the sketch treatment", () => {
+test("uses one down-arrow size across treatments", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
-  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ fontSize: "3.75rem" });
+  const arrow = screen.getByTestId("scroll-hint");
+  const headline = screen.getByTestId("headline-frame");
+
+  expect(arrow).toHaveStyle({ fontSize: "3.25rem" });
+  for (let index = 0; index < 3; index += 1) {
+    fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+    expect(arrow).toHaveStyle({ fontSize: "3.25rem" });
+    fireEvent.pointerLeave(headline);
+  }
 });
 
 test("hands the tagline back to the line-boil filter once its focus reveal has finished", () => {

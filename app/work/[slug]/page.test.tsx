@@ -41,6 +41,9 @@ test("adds the project collection to Projects & Experiments", async () => {
     "src",
     "/assets/wordsnap.jpg"
   );
+  expect(screen.getByTestId("case-study-view")).toContainElement(
+    screen.getByRole("heading", { name: "wordsnap" })
+  );
 });
 
 test("points the header arrow at the next study, in its colour", async () => {

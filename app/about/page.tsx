@@ -7,9 +7,8 @@ import { ABOUT_NOW, ABOUT_PAGE } from "@/data/about";
 // app/work/[slug]/page.tsx), and About's own next sends it back to the first.
 export default function AboutPage() {
   return (
-    <>
-      <CaseStudyView caseStudy={ABOUT_PAGE} next={caseStudies[0]} />
+    <CaseStudyView caseStudy={ABOUT_PAGE} next={caseStudies[0]}>
       <AboutNow now={ABOUT_NOW} />
-    </>
+    </CaseStudyView>
   );
 }
