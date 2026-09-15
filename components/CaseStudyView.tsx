@@ -8,7 +8,7 @@ import { HomeIconAnimation } from "@/components/HomeIconAnimation";
 import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudyRoute } from "@/data/caseStudies";
-import { HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
+import { HEADER_SETTLE_MS, HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
 import type { CaseStudy, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
 import type { ReactNode } from "react";
@@ -256,12 +256,32 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
 
   useEffect(() => {
     let changedAt = -Infinity;
+    let recheckTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const recheck = () => {
+      recheckTimer = null;
+      settle(nextHeaderShrunk({
+        shrunk: shrunkRef.current,
+        currentY: window.scrollY,
+        sinceChangeMs: performance.now() - changedAt,
+      }));
+    };
 
     const settle = (next: boolean) => {
       if (next === shrunkRef.current) return;
       shrunkRef.current = next;
       changedAt = performance.now();
       setShrunk(next);
+
+      // Shrinking changes the header's own height, which on a short page
+      // (About, with no media) can remove the last of the page's overflow
+      // and silently clamp scrollY back to 0. No further "scroll" event
+      // ever fires once there is nothing left to scroll, so without this
+      // the header would stay stuck compact and the page would read as
+      // frozen. Recheck once the height change has had time to land.
+      if (next && recheckTimer === null) {
+        recheckTimer = setTimeout(recheck, HEADER_SETTLE_MS);
+      }
     };
 
     const onScroll = () => {
@@ -277,7 +297,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     // its distance down the page. Fresh pages remain full at the top.
     settle(window.scrollY > HEADER_SHRINK_AT_PX);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (recheckTimer !== null) clearTimeout(recheckTimer);
+    };
   }, []);
 
   // Home is an intentional click, not a hidden scroll gesture. The page still

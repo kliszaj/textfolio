@@ -447,6 +447,34 @@ test("shrinks the header once the page is scrolled, and restores it at the top",
   }
 });
 
+test("un-shrinks on its own when shrinking removes a short page's last scrollable pixels", () => {
+  // On a short page (About, with no media) the header's own shrink can
+  // remove the only overflow the page had, clamping scrollY back to 0
+  // without the browser ever firing another "scroll" event. With nothing
+  // left to scroll, the header must recheck itself instead of waiting on
+  // an event that will never come -- otherwise it reads as permanently
+  // stuck compact with no scrollbar (reported as the page "freezing").
+  jest.useFakeTimers();
+  try {
+    render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+    const header = screen.getByTestId("case-study-header");
+
+    act(() => {
+      window.scrollY = 200;
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(header).toHaveAttribute("data-shrunk", "true");
+
+    // The shrink itself is what erases the overflow here -- simulate the
+    // browser's resulting clamp without a "scroll" event to fire.
+    window.scrollY = 0;
+    act(() => jest.advanceTimersByTime(400));
+    expect(header).toHaveAttribute("data-shrunk", "false");
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test("lays each media tile out at its authored span", () => {
   const tiled = {
     ...caseStudy,
