@@ -44,6 +44,14 @@ const LINK_PREVIEWS: Record<string, LinkPreview> = {
       "A new design process to help us build, release, and learn more quickly -- restored from the 2019 site.",
     color: "#FFA52E",
   },
+  "https://www.wired.com/story/zuckoff-app-sees-meta-glasses-before-they-see-you/": {
+    source: "WIRED",
+    title: "ZuckOff Is a Free App That Sees Meta Glasses Before They See You",
+    description:
+      "You can’t always tell if someone is recording you with their smart glasses, but your phone can help.",
+    color: "#DDE5EA",
+    image: "https://media.wired.com/photos/6aa967ea2d07a4d487b8f97e/191:100/w_1280,c_limit/MetaGlasses_lead.jpg",
+  },
   "https://www.wired.com/review/focals-by-north-smart-glasses/": {
     source: "WIRED",
     title: "Wearing Focals Made Me Rethink Smart Glasses",

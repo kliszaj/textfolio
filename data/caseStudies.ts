@@ -25,7 +25,7 @@ export type CaseStudyMedia = {
   alt: string;
   kind?: "image" | "video";
   span?: "full" | "tall" | "half";
-  aspect?: "landscape" | "portrait";
+  aspect?: "landscape" | "portrait" | "wide";
 };
 
 // An editorial portrait that belongs beside the introduction rather than in
@@ -187,6 +187,10 @@ export const caseStudies: CaseStudy[] = [
     blurb: "Designing an operating system that you're barely meant to use.",
     overview:
       "Before Meta made smartglasses creepy again, I was a Senior Product Designer at a stealth startup in Canada called North.  We had the mission of making createing the next mode of computer a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
+    overviewLink: {
+      label: "Meta made smartglasses creepy again",
+      href: "https://www.wired.com/story/zuckoff-app-sees-meta-glasses-before-they-see-you/",
+    },
     facts: [
       { label: "Role • 2018-2019", value: "Interaction Design Lead" },
       { label: "Scope", value: "0→1 interaction model, hardware-software co-design, information architecture" },
@@ -217,13 +221,34 @@ export const caseStudies: CaseStudy[] = [
         ],
       },
     ],
+    mediaLayout: "sequence",
     media: [
-      { alt: "Focals home screen module feed", span: "full" },
-      { alt: "Loop ring controller, five-input model", span: "tall" },
-      { alt: "Lens Switcher: Message and Explore", span: "half" },
-      { alt: "Go navigation heads-up display", span: "half" },
-      { alt: "Alexa on Focals, 110x110px templates", span: "half" },
-      { alt: "Early capacitive touch pad interaction model", span: "tall" },
+      {
+        src: "/assets/focals-home-modules.gif",
+        alt: "Focals home screen module feed",
+        span: "full",
+        aspect: "landscape",
+      },
+      {
+        src: "/assets/focals-sizing-scan.mp4",
+        alt: "Live head scan during the mobile sizing flow",
+        kind: "video",
+        span: "tall",
+        aspect: "portrait",
+      },
+      {
+        src: "/assets/focals-loop-sizing.mp4",
+        alt: "Loop home-sizing flow in the mobile app",
+        kind: "video",
+        span: "tall",
+        aspect: "portrait",
+      },
+      {
+        src: "/assets/focals-frame-styles.jpeg",
+        alt: "Focals frame styles",
+        span: "full",
+        aspect: "wide",
+      },
     ],
   },
   {

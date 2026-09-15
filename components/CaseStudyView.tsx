@@ -87,6 +87,7 @@ const SEQUENCE_SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> =
 const ASPECT_CLASS: Record<NonNullable<CaseStudyMedia["aspect"]>, string> = {
   landscape: "aspect-video",
   portrait: "aspect-[9/16]",
+  wide: "aspect-[3/1]",
 };
 
 function renderLinkedCopy(
@@ -559,7 +560,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             <section
               ref={mediaSectionRef}
               data-testid="case-study-media"
-              className="mx-auto mt-20 w-full max-w-[100rem]"
+              className="mx-auto mt-10 w-full max-w-[100rem]"
             >
               {videoSrc && (
                 <LazyVideo
