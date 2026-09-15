@@ -66,6 +66,13 @@ const LINK_PREVIEWS: Record<string, LinkPreview> = {
     color: "#F1D9D5",
     image: "https://i.ytimg.com/vi/5eO-Y36_t08/maxresdefault.jpg",
   },
+  "https://www.engadget.com/google-acquires-north-153625943.html": {
+    source: "Engadget",
+    title: "Google has acquired North, the maker of Focals smart glasses",
+    description: "Google is officially the new owner of North.",
+    color: "#D9E4E8",
+    image: "https://www.engadget.com/engadget/google-acquires-north-153625943/980dcda0-bae5-11ea-97fb-8387266ca2e6.jpg",
+  },
 };
 
 function fallbackSource(href: string) {

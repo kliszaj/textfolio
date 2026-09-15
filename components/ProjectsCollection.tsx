@@ -75,7 +75,7 @@ export function ProjectsCollection({
           Project collection
         </h2>
 
-        <div className="divide-y divide-ink/20 border-t border-ink/20">
+        <div className="divide-y divide-ink/20">
           {projects.map((project, projectIndex) => {
             const assets = project.assets.slice(0, 3);
             const topAssets = assets.slice(0, 2);
@@ -99,10 +99,10 @@ export function ProjectsCollection({
               ? "font-display text-3xl leading-none md:text-4xl"
               : "font-display text-4xl leading-none md:text-5xl";
             const descriptionClass = isLedger
-              ? "max-w-2xl font-body text-base font-medium leading-snug md:text-lg"
+              ? "case-study-copy max-w-2xl font-body font-medium"
               : isSplit
-                ? "mt-3 max-w-md font-body text-base font-medium leading-snug md:text-lg"
-                : "max-w-xl font-body text-lg font-medium leading-snug md:text-xl";
+                ? "case-study-copy mt-3 max-w-md font-body font-medium"
+                : "case-study-copy max-w-xl font-body font-medium";
             const primaryColumns = topAssets.length > 1
               ? isLedger ? "grid-cols-2" : "md:grid-cols-2"
               : "grid-cols-1";
@@ -163,7 +163,7 @@ export function ProjectsCollection({
           <h3 className="font-display text-3xl leading-none md:text-4xl">
             more coming soon...
           </h3>
-          <p className="mt-4 font-body text-base font-medium md:text-lg">
+          <p className="case-study-copy mt-4 font-body font-medium">
             I&apos;m always tinkering
           </p>
         </footer>}

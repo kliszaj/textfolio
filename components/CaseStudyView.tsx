@@ -137,6 +137,11 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   // narrower than it needs to be for no reason -- drop it and let the text
   // run full width instead of reserving empty space beside it.
   const hasRail = Boolean(introImage) || facts.length > 0;
+  // A page with nothing of its own to say here (Projects & Experiments,
+  // which hands the whole page over to its own children) shouldn't still
+  // pay for this section's padding -- that reads as a dead gap between the
+  // header and whatever the children actually render.
+  const hasBodyContent = hasRail || Boolean(overview) || sections.length > 0 || hasMedia || !children;
   const router = useRouter();
 
   const [shrunk, setShrunk] = useState(false);
@@ -441,6 +446,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
           </div>
         </header>
 
+        {hasBodyContent && (
         <div
           data-testid="case-study-body"
           className="case-study-body px-6 py-10 md:px-10 md:py-14 2xl:px-14"
@@ -552,7 +558,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   </button>
                 )}
                 </>
-              ) : !overview ? (
+              ) : !overview && !children ? (
                 <p className="case-study-copy">
                   Placeholder body copy for {caseStudy.title}. The real write-up goes
                   here: process, decisions, and the work itself.
@@ -656,6 +662,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             </section>
           )}
         </div>
+        )}
         {children}
       </main>
     </>

@@ -218,6 +218,10 @@ export const caseStudies: CaseStudy[] = [
             label: "TechCrunch",
             href: "https://www.youtube.com/watch?v=5eO-Y36_t08",
           },
+          {
+            label: "acquired by Google",
+            href: "https://www.engadget.com/google-acquires-north-153625943.html",
+          },
         ],
       },
     ],
@@ -256,8 +260,6 @@ export const caseStudies: CaseStudy[] = [
     title: "Projects & Experiments",
     thumbnailColor: "#219EFA",
     blurb: "Personal projects, small experiments, and the things I tinker with on evenings and weekends.",
-    overview:
-      "A growing collection of things made for curiosity, practice, and the satisfaction of finding out whether an idea works.",
   },
 ];
 export function getCaseStudyBySlug(slug: string): CaseStudy | undefined {
