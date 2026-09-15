@@ -190,13 +190,16 @@
 }
 
 .secondaryActions button,
-.saveActions button {
+.saveActions button,
+.saveActions a {
   border: 1px solid #625e59;
   border-radius: 0.55rem;
   background: transparent;
   color: inherit;
   padding: 0.65rem 0.75rem;
   cursor: pointer;
+  text-align: center;
+  text-decoration: none;
 }
 
 .saveSection {
@@ -235,6 +238,19 @@
   background: #ffd60b;
   color: #171717;
   font-weight: 700;
+}
+
+.rangeControl {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  color: #aaa49e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+}
+
+.rangeControl input {
+  width: 100%;
 }
 
 @media (max-width: 900px) {

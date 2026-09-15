@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRef } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { ASCII_INK_LIME, DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
+import { DEFAULT_ASCII_TEXT_CONFIG } from "@/lib/asciiText";
 import { SKETCH_INK } from "@/lib/strokeText";
 import {
   HEADLINE_DEFAULT_DURATION_MS,
@@ -128,11 +128,11 @@ test("cycles Sketch, LEGO, ASCII, Warp, then back to Sketch on distinct hover en
   expect(screen.getByTestId("treatment-layer-lego")).toHaveAttribute("data-active", "true");
   expect(screen.getByTestId("treatment-mount")).toHaveAttribute("data-treatment", "lego");
   expect(screen.getByTestId("lego-baseplate-surface")).toHaveAttribute("data-active", "true");
-  expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: "#15FF76" });
-  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: "#15FF76" });
-  expect(hero).toHaveStyle({ backgroundColor: "#C00000", color: "#1C1C1C" });
+  expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: "#FFD60B" });
+  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: "#FFD60B" });
+  expect(hero).toHaveStyle({ backgroundColor: "#E139A8", color: "#1C1C1C" });
   expect(screen.getByTestId("lego-baseplate-surface")).toHaveStyle({
-    backgroundColor: "#C00000",
+    backgroundColor: "#E139A8",
   });
 
   fireEvent.pointerLeave(headline);
@@ -305,7 +305,7 @@ test("moves the sketch paper grid with the lifted foreground", () => {
   });
 });
 
-test("tagline and arrow take the yellow accent under the ASCII treatment", () => {
+test("tagline and arrow take the Spotify Jam green under the ASCII treatment", () => {
   render(<Hero playIntro={false} fanProgress={0} asciiConfig={undefined} />);
   const tagline = screen.getByTestId("hero-tagline");
   const arrow = screen.getByTestId("scroll-hint");
@@ -317,8 +317,8 @@ test("tagline and arrow take the yellow accent under the ASCII treatment", () =>
     fireEvent.pointerEnter(headline);
     if (index < 2) fireEvent.pointerLeave(headline);
   }
-  expect(tagline).toHaveStyle({ color: ASCII_INK_LIME });
-  expect(arrow).toHaveStyle({ color: ASCII_INK_LIME });
+  expect(tagline).toHaveStyle({ color: "#15FF76" });
+  expect(arrow).toHaveStyle({ color: "#15FF76" });
 });
 
 test("keeps the background, tagline, and arrow colour changes in sync", () => {

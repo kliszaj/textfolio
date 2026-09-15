@@ -683,13 +683,13 @@ export function FanDebugPanel({
             Open full LEGO Builder
           </a>
           <label className="block leading-tight" htmlFor="lego-shadow-offset-x">
-            Shadow X: {legoShadowOffsetX.toFixed(1)}px
+            Extrusion X: {Math.round(legoShadowOffsetX)} tiles
             <input
               id="lego-shadow-offset-x"
               type="range"
-              min={-12}
-              max={12}
-              step={0.5}
+              min={-6}
+              max={6}
+              step={1}
               value={legoShadowOffsetX}
               onChange={(event) => onLegoShadowOffsetXChange(Number(event.target.value))}
               className="mt-1 w-full"
@@ -697,13 +697,13 @@ export function FanDebugPanel({
           </label>
 
           <label className="block leading-tight" htmlFor="lego-shadow-offset-y">
-            Shadow Y: {legoShadowOffsetY.toFixed(1)}px
+            Extrusion Y: {Math.round(legoShadowOffsetY)} tiles
             <input
               id="lego-shadow-offset-y"
               type="range"
-              min={-12}
-              max={12}
-              step={0.5}
+              min={-6}
+              max={6}
+              step={1}
               value={legoShadowOffsetY}
               onChange={(event) => onLegoShadowOffsetYChange(Number(event.target.value))}
               className="mt-1 w-full"

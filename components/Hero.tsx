@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { NAME } from "@/data/letterTreatments";
 import {
-  ASCII_INK_LIME,
   DEFAULT_ASCII_TEXT_CONFIG,
 } from "@/lib/asciiText";
 import type { ASCIITextConfig } from "@/lib/asciiText";
@@ -45,13 +44,12 @@ import type { CaseStudy } from "@/data/caseStudies";
 import {
   DEFAULT_LEGO_SHADOW_OFFSET_X,
   DEFAULT_LEGO_SHADOW_OFFSET_Y,
+  LEGO_TEXT_PALETTE,
   legoBackgroundPosition,
 } from "@/lib/legoText";
 import {
-  LEGO_BUILDER_STORAGE_KEY,
-  LEGO_LAYOUT_STORAGE_KEY,
+  DEFAULT_LEGO_BUILDER_PREFERENCES,
   legoTileOptionForPath,
-  parseLegoBuilderPreferences,
 } from "@/lib/legoBuilder";
 import styles from "./Hero.module.css";
 
@@ -96,9 +94,11 @@ const HEADLINE_SIZE = "clamp(3rem, min(var(--headline-vw), 18vh), 14.5rem)";
 export const TAGLINE_OFFSET = "clamp(-6rem, -2.6rem - 1.4vw, -2.6rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
-const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
+// Supporting type and the scroll cue share Spotify Jam's electric green.
+const ASCII_ACCENT_COLOR = "#15FF76";
 const WARP_ACCENT_COLOR = "#FF04FF";
-const LEGO_ACCENT_COLOR = "#15FF76";
+// Match the supporting text and scroll cue to the yellow LEGO face bricks.
+const LEGO_ACCENT_COLOR = LEGO_TEXT_PALETTE[0];
 // The page at rest, before any treatment has been hovered.
 const RESTING_ACCENT_COLOR = "#878787";
 // The page, tagline, and arrow all change treatment together on hover. Keep
@@ -149,6 +149,9 @@ type HeroProps = {
 
 type HeadlineEffect = "ascii" | "warp" | "stroke" | "lego";
 const HEADLINE_EFFECT_SEQUENCE: HeadlineEffect[] = ["stroke", "lego", "ascii", "warp"];
+const COMMITTED_LEGO_CELL_TILES = new Map(
+  Object.entries(DEFAULT_LEGO_BUILDER_PREFERENCES.cells)
+);
 
 // A tiny generated static texture for the noise-burst cut effect. Not a pure,
 // tested helper like the rest of this codebase's timing math -- it draws to a
@@ -169,35 +172,6 @@ function noiseTextureDataUrl(size: number): string {
   }
   context.putImageData(image, 0, 0);
   return canvas.toDataURL();
-}
-
-// Kept as a child so introducing persistence does not alter Hero's hook
-// signature. During local Fast Refresh that lets the currently hand-edited
-// layout survive long enough for this component to capture it, then future
-// visits restore the same arrangement from browser storage.
-function LegoLayoutPersistence({
-  cells,
-  ready,
-}: {
-  cells: ReadonlySet<string>;
-  ready: boolean;
-}) {
-  useEffect(() => {
-    if (!ready) return;
-    const timer = window.setTimeout(() => {
-      try {
-        window.localStorage.setItem(
-          LEGO_LAYOUT_STORAGE_KEY,
-          JSON.stringify(Array.from(cells).sort())
-        );
-      } catch {
-        // Storage can be disabled by privacy settings; editing still works for
-        // the current visit in that case.
-      }
-    }, 180);
-    return () => window.clearTimeout(timer);
-  }, [cells, ready]);
-  return null;
 }
 
 export function Hero({
@@ -225,80 +199,42 @@ export function Hero({
     size: number;
     x: number;
     y: number;
+    frameX: number;
+    frameY: number;
     width: number;
     height: number;
   } | null>(null);
-  // Server and first client render must use exactly the same baseline. Saved
-  // browser-only artwork is restored after hydration, otherwise React sees
-  // (for example) 0 edited cells on the server and 796 on the client.
+  // Homepage edits are intentionally session-only. A clean canonical word is
+  // restored on every visit instead of allowing an old builder experiment to
+  // distort the responsive headline.
   const [removedLegoCells, setRemovedLegoCells] = useState<Set<string>>(
     () => new Set()
   );
-  const [legoPreferences, setLegoPreferences] = useState(
-    () => parseLegoBuilderPreferences(null)
-  );
-  const [legoStorageReady, setLegoStorageReady] = useState(false);
   const [legoReady, setLegoReady] = useState(false);
   const [sketchReady, setSketchReady] = useState(false);
-  useEffect(() => {
-    // The next frame is deliberately after hydration: the initial client DOM
-    // remains identical to the server DOM, then saved browser artwork can be
-    // applied without React treating it as a hydration discrepancy.
-    const frame = requestAnimationFrame(() => {
-      setLegoReady(false);
-      try {
-        const storedLayout = window.localStorage.getItem(LEGO_LAYOUT_STORAGE_KEY);
-        const cells = storedLayout ? JSON.parse(storedLayout) : [];
-        setRemovedLegoCells(
-          Array.isArray(cells)
-            ? new Set(cells.filter((cell): cell is string => typeof cell === "string"))
-            : new Set()
-        );
-        setLegoPreferences(parseLegoBuilderPreferences(
-          window.localStorage.getItem(LEGO_BUILDER_STORAGE_KEY)
-        ));
-      } catch {
-        setRemovedLegoCells(new Set());
-        setLegoPreferences(parseLegoBuilderPreferences(null));
-      } finally {
-        setLegoStorageReady(true);
-      }
-    });
-    return () => cancelAnimationFrame(frame);
-  }, []);
-  const legoCellTiles = useMemo(
-    () => new Map(Object.entries(legoPreferences.cells)),
-    [legoPreferences.cells]
-  );
   const legoCanvasArea = useMemo(() => legoGrid ? {
-    left: -legoGrid.x,
+    left: -legoGrid.frameX,
     // Keep the bitmap geometry stable while the stack moves. The extra lower
     // overscan preserves the interactive viewport after the headline rises.
-    top: -legoGrid.y,
+    top: -legoGrid.frameY,
     width: legoGrid.width,
     height: Math.ceil(legoGrid.height * 1.3),
   } : undefined, [legoGrid]);
-  const legoBackground = legoTileOptionForPath(legoPreferences.backgroundTilePath);
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === LEGO_BUILDER_STORAGE_KEY) {
-        setLegoPreferences(parseLegoBuilderPreferences(event.newValue));
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  // The treatment itself has a fixed poster palette.
+  const legoBackground = legoTileOptionForPath(
+    DEFAULT_LEGO_BUILDER_PREFERENCES.backgroundTilePath
+  );
   const interactionLockedRef = useRef(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLDivElement>(null);
   const headlineFrameRef = useRef<HTMLDivElement>(null);
   const markLegoReady = useCallback(() => setLegoReady(true), []);
   const markSketchReady = useCallback(() => setSketchReady(true), []);
-  // Do not start the treatment clock until the browser-restored LEGO frame is
-  // ready. Otherwise its synchronous canvas work can consume Sketch's entire
+  // Do not start the treatment clock until the canonical LEGO frame is ready.
+  // Otherwise its synchronous canvas work can consume Sketch's entire
   // 250ms window and the first painted treatment appears to be LEGO.
   const introAssetsReady =
-    !WAIT_FOR_LEGO_BEFORE_INTRO || (legoStorageReady && legoReady && sketchReady);
+    !WAIT_FOR_LEGO_BEFORE_INTRO || (legoReady && sketchReady);
   const intro = useHeadlineIntro(playIntro, introAssetsReady);
   const rgbSplitFilterId = useId();
   const [rgbFlash, setRgbFlash] = useState(false);
@@ -480,7 +416,11 @@ export function Hero({
   // contrast to read as an affordance before any treatment has been invoked.
   const arrowColor = activeEffect === null ? DEFAULT_INK_COLOR : accentColor;
 
-  const alignLegoBackground = useCallback((studSize: number) => {
+  const alignLegoBackground = useCallback((
+    studSize: number,
+    gridOriginX: number,
+    gridOriginY: number
+  ) => {
     const hero = heroRef.current;
     const headline = headlineRef.current;
     const frame = headlineFrameRef.current;
@@ -489,10 +429,14 @@ export function Hero({
     // rectangles, they ignore the rotating/fanning PaperSheet transform and
     // remain stable through browser resizing. The only transform inside this
     // coordinate system is the known headline lift, applied in CSS below.
+    const frameX = headline.offsetLeft + frame.offsetLeft;
+    const frameY = headline.offsetTop + frame.offsetTop;
     const next = {
       size: studSize,
-      x: headline.offsetLeft + frame.offsetLeft,
-      y: headline.offsetTop + frame.offsetTop,
+      x: frameX + gridOriginX,
+      y: frameY + gridOriginY,
+      frameX,
+      frameY,
       width: hero.offsetWidth,
       height: hero.offsetHeight,
     };
@@ -501,6 +445,8 @@ export function Hero({
       && current.size === next.size
       && Math.abs(current.x - next.x) < 0.25
       && Math.abs(current.y - next.y) < 0.25
+      && Math.abs(current.frameX - next.frameX) < 0.25
+      && Math.abs(current.frameY - next.frameY) < 0.25
       && current.width === next.width
       && current.height === next.height
         ? current
@@ -615,7 +561,6 @@ export function Hero({
             : DEFAULT_INK_COLOR,
       }}
     >
-      <LegoLayoutPersistence cells={removedLegoCells} ready={legoStorageReady} />
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
           enough for the two to overlap. */}
@@ -911,13 +856,15 @@ export function Hero({
           >
             <LegoText
               text={NAME}
+              faceTilePath={DEFAULT_LEGO_BUILDER_PREFERENCES.faceTilePath}
+              extrusionTilePath={DEFAULT_LEGO_BUILDER_PREFERENCES.extrusionTilePath}
               fontSize={HEADLINE_SIZE}
               fontWeight={HEADLINE_FONT_WEIGHT}
               fontFamily={HEADLINE_FONT_FAMILY}
-              showDefaultText={legoPreferences.showDefaultText}
+              showDefaultText={DEFAULT_LEGO_BUILDER_PREFERENCES.showDefaultText}
               onGridChange={alignLegoBackground}
               toggledCells={removedLegoCells}
-              cellTiles={legoCellTiles}
+              cellTiles={COMMITTED_LEGO_CELL_TILES}
               onToggleCells={toggleLegoCells}
               onEditingChange={handleLegoEditingChange}
               onReady={markLegoReady}

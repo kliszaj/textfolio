@@ -1,5 +1,5 @@
 export const LEGO_TEXT_PALETTE = [
-  "#006CB6", // blue face
+  "#FFD60B", // yellow face
 ] as const;
 export const LEGO_TILE_ASSET_PATHS = [
   "/assets/lego-blocks/lego-block-01.png",
@@ -52,23 +52,24 @@ export function legoTileAtlasRect(path: string): {
 // Keep the original 24-color catalog above intact so future experiments can
 // still swap in any supplied render without adding another loading path.
 export const LEGO_TEXT_TILE_PATHS = [
-  LEGO_TILE_ASSET_PATHS[15],
+  LEGO_TILE_ASSET_PATHS[10],
 ] as const;
-export const LEGO_BACKGROUND_TILE_PATH = LEGO_TILE_ASSET_PATHS[23];
+export const LEGO_TEXT_EXTRUSION_TILE_PATH = LEGO_TILE_ASSET_PATHS[15];
+export const LEGO_BACKGROUND_TILE_PATH = LEGO_TILE_ASSET_PATHS[19];
 export const LEGO_TEXT_SHADOW_COLOR = "#000000";
 export const LEGO_TEXT_SHADOW_OPACITY = 0.25;
 export const DEFAULT_LEGO_SHADOW_OFFSET_X = 3;
 export const DEFAULT_LEGO_SHADOW_OFFSET_Y = 3;
-
-function hashCell(column: number, row: number, salt = 0): number {
-  const value = Math.sin(column * 12.9898 + row * 78.233 + salt * 37.719) * 43758.5453;
-  return value - Math.floor(value);
-}
+export const LEGO_CANONICAL_COLUMNS = 56;
+export const LEGO_CANONICAL_ROWS = 16;
+export const LEGO_CANONICAL_STUD_SIZE = 18;
 
 export function legoStudSizeForWidth(width: number): number {
-  if (!Number.isFinite(width) || width <= 0) return 16;
-  const scale = Math.max(0, Math.min(1, (width - 320) / (1152 - 320)));
-  return Math.round(16 + scale * 2);
+  if (!Number.isFinite(width) || width <= 0) return LEGO_CANONICAL_STUD_SIZE;
+  // The authored 56-column silhouette never changes. Narrow screens scale
+  // the complete brick composition instead of resampling the font into a new
+  // arrangement, which keeps every counter and letter gap stable.
+  return Math.min(LEGO_CANONICAL_STUD_SIZE, width / LEGO_CANONICAL_COLUMNS);
 }
 
 export function legoBackgroundPosition(
@@ -81,6 +82,37 @@ export function legoBackgroundPosition(
 
 export function legoCellKey(column: number, row: number): string {
   return `${column}:${row}`;
+}
+
+// Project a face through whole grid cells so its dimensional side can never
+// drift between studs. Intermediate cells fill the extrusion continuously;
+// face cells win when silhouettes overlap.
+export function legoExtrusionCells(
+  faceCells: Iterable<string>,
+  offsetColumns: number,
+  offsetRows: number
+): Set<string> {
+  const face = new Set(faceCells);
+  const extrusion = new Set<string>();
+  const columnOffset = Number.isFinite(offsetColumns) ? Math.round(offsetColumns) : 0;
+  const rowOffset = Number.isFinite(offsetRows) ? Math.round(offsetRows) : 0;
+  const depth = Math.max(Math.abs(columnOffset), Math.abs(rowOffset));
+  if (depth === 0) return extrusion;
+
+  face.forEach((cell) => {
+    const match = /^(-?\d+):(-?\d+)$/.exec(cell);
+    if (!match) return;
+    const column = Number(match[1]);
+    const row = Number(match[2]);
+    for (let step = 1; step <= depth; step += 1) {
+      const projected = legoCellKey(
+        column + Math.round((columnOffset * step) / depth),
+        row + Math.round((rowOffset * step) / depth)
+      );
+      if (!face.has(projected)) extrusion.add(projected);
+    }
+  });
+  return extrusion;
 }
 
 export function legoCellIsVisible(defaultFilled: boolean, toggled: boolean): boolean {
@@ -145,11 +177,11 @@ export function legoLetterIndexForCoverage(
   return strongestIndex;
 }
 
-// Fully covered cells always become bricks. Along a glyph edge, coverage is
-// converted into a stable stipple instead of a hard pixel stair-step.
+// A single deterministic contour threshold replaces the previous hashed edge
+// stipple. Partially covered cells either belong to the silhouette or do not;
+// resizing can no longer scatter them into a different arrangement.
 export function legoCellIsFilled(coverage: number, column: number, row: number): boolean {
-  if (!Number.isFinite(coverage) || coverage <= 0.22) return false;
-  if (coverage >= 0.72) return true;
-  const easedCoverage = Math.max(0, Math.min(1, (coverage - 0.22) / 0.5));
-  return hashCell(column, row, 2) < easedCoverage;
+  void column;
+  void row;
+  return Number.isFinite(coverage) && coverage >= 0.5;
 }

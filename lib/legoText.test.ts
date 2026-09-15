@@ -5,6 +5,7 @@ import {
   LEGO_BACKGROUND_TILE_PATH,
   LEGO_TEXT_SHADOW_COLOR,
   LEGO_TEXT_SHADOW_OPACITY,
+  LEGO_TEXT_EXTRUSION_TILE_PATH,
   LEGO_TEXT_TILE_PATHS,
   LEGO_TILE_ASSET_PATHS,
   LEGO_TILE_ATLAS_COLUMNS,
@@ -14,6 +15,7 @@ import {
   legoCellAtRelativePoint,
   legoBackgroundPosition,
   legoCellKey,
+  legoExtrusionCells,
   legoCellIsFilled,
   legoCellIsVisible,
   legoLetterColorAt,
@@ -24,8 +26,8 @@ import {
 } from "./legoText";
 
 test("keeps the LEGO grid chunky but responsive", () => {
-  expect(legoStudSizeForWidth(320)).toBe(16);
-  expect(legoStudSizeForWidth(768)).toBe(17);
+  expect(legoStudSizeForWidth(320)).toBeCloseTo(320 / 56);
+  expect(legoStudSizeForWidth(768)).toBeCloseTo(768 / 56);
   expect(legoStudSizeForWidth(1152)).toBe(18);
   expect(legoStudSizeForWidth(1600)).toBe(18);
 });
@@ -40,13 +42,16 @@ test("uses the supplied 64px PNG renders for every LEGO surface", () => {
   expect(new Set(LEGO_TILE_ASSET_PATHS).size).toBe(24);
   expect(LEGO_TILE_ASSET_PATHS.every((path) => path.endsWith(".png"))).toBe(true);
   expect(LEGO_TEXT_TILE_PATHS).toEqual([
-    "/assets/lego-blocks/lego-block-16.png",
+    "/assets/lego-blocks/lego-block-11.png",
   ]);
+  expect(LEGO_TEXT_EXTRUSION_TILE_PATH).toBe(
+    "/assets/lego-blocks/lego-block-16.png"
+  );
   expect(Array.from({ length: 6 }, (_, index) => legoLetterTileAt(index))).toEqual(
     Array(6).fill(LEGO_TEXT_TILE_PATHS[0])
   );
   expect(legoLetterTileAt(6)).toBe(LEGO_TEXT_TILE_PATHS[0]);
-  expect(LEGO_BACKGROUND_TILE_PATH).toBe("/assets/lego-blocks/lego-block-24.png");
+  expect(LEGO_BACKGROUND_TILE_PATH).toBe("/assets/lego-blocks/lego-block-20.png");
 });
 
 test("maps every supplied block into the shared six-column atlas", () => {
@@ -79,8 +84,8 @@ test("uses one toggle to remove a word tile or add a tile to an empty cell", () 
   expect(legoCellIsVisible(false, true)).toBe(true);
 });
 
-test("uses a blue default face and leaves accent blocks to the builder", () => {
-  expect(LEGO_TEXT_PALETTE).toEqual(["#006CB6"]);
+test("uses a yellow default face and leaves accent blocks to the builder", () => {
+  expect(LEGO_TEXT_PALETTE).toEqual(["#FFD60B"]);
   expect(Array.from({ length: 6 }, (_, index) => legoLetterColorAt(index))).toEqual(
     Array(6).fill(LEGO_TEXT_PALETTE[0])
   );
@@ -92,15 +97,28 @@ test("uses a blue default face and leaves accent blocks to the builder", () => {
   expect(DEFAULT_LEGO_SHADOW_OFFSET_Y).toBe(3);
 });
 
+test("builds a continuous down-right extrusion on exact grid cells", () => {
+  expect(Array.from(legoExtrusionCells(["1:1"], 3, 3))).toEqual([
+    "2:2",
+    "3:3",
+    "4:4",
+  ]);
+  expect(legoExtrusionCells(["1:1", "2:2"], 3, 3)).toEqual(
+    new Set(["3:3", "4:4", "5:5"])
+  );
+  expect(legoExtrusionCells(["1:1"], 0, 0)).toEqual(new Set());
+});
+
 test("assigns edge bricks to the glyph that actually covers them", () => {
   expect(legoLetterIndexForCoverage([0, 0.08, 0.62, 0], 1)).toBe(2);
   expect(legoLetterIndexForCoverage([0, 0, 0, 0], 3)).toBe(3);
 });
 
-test("keeps solid glyph interiors and dithers only their edges", () => {
+test("uses one deterministic coverage threshold for every glyph edge", () => {
   expect(legoCellIsFilled(1, 2, 3)).toBe(true);
   expect(legoCellIsFilled(0, 2, 3)).toBe(false);
-  expect(legoCellIsFilled(0.2, 2, 3)).toBe(false);
-  expect(typeof legoCellIsFilled(0.5, 2, 3)).toBe("boolean");
-  expect(legoCellIsFilled(0.5, 2, 3)).toBe(legoCellIsFilled(0.5, 2, 3));
+  expect(legoCellIsFilled(0.49, 2, 3)).toBe(false);
+  expect(legoCellIsFilled(0.5, 2, 3)).toBe(true);
+  expect(legoCellIsFilled(0.5, 2, 3)).toBe(true);
+  expect(legoCellIsFilled(0.5, 2, 3)).toBe(legoCellIsFilled(0.5, 99, 42));
 });

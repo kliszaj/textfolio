@@ -8,11 +8,15 @@ import {
   legoCellIsFilled,
   legoCellIsVisible,
   legoCellKey,
+  legoExtrusionCells,
   legoLetterIndexForCoverage,
   legoLetterTileAt,
   legoStudSizeForWidth,
   legoTileAtlasRect,
-  LEGO_TEXT_SHADOW_OPACITY,
+  LEGO_CANONICAL_COLUMNS,
+  LEGO_CANONICAL_ROWS,
+  LEGO_CANONICAL_STUD_SIZE,
+  LEGO_TEXT_EXTRUSION_TILE_PATH,
   LEGO_TEXT_TILE_PATHS,
   LEGO_TILE_ATLAS_PATH,
 } from "@/lib/legoText";
@@ -25,8 +29,10 @@ type LegoTextProps = {
   fontSize?: string;
   fontFamily?: string;
   fontWeight?: number;
+  faceTilePath?: string;
+  extrusionTilePath?: string;
   showDefaultText?: boolean;
-  onGridChange?: (studSize: number) => void;
+  onGridChange?: (studSize: number, originX: number, originY: number) => void;
   toggledCells?: ReadonlySet<string>;
   cellTiles?: ReadonlyMap<string, string | null>;
   onToggleCells?: (cells: readonly string[]) => void;
@@ -40,7 +46,7 @@ type LegoTextProps = {
 };
 
 type CellPlan = { defaultFilled: boolean; defaultTilePath: string };
-type GridPlan = { key: string; studSize: number; cells: Map<string, CellPlan> };
+type GridPlan = { key: string; cells: Map<string, CellPlan> };
 type VisibleCell = { tilePath: string; startX: number; startY: number };
 type CanvasSnapshot = {
   context: CanvasRenderingContext2D;
@@ -54,13 +60,19 @@ type CanvasSnapshot = {
   height: number;
   textFrameX: number;
   textFrameY: number;
+  gridOriginX: number;
+  gridOriginY: number;
+  studSize: number;
   artSize: number;
   artOffset: number;
-  shadowOffsetX: number;
-  shadowOffsetY: number;
+  faceTilePath?: string;
+  extrusionOffsetColumns: number;
+  extrusionOffsetRows: number;
+  extrusionTilePath: string;
 };
 
 const TILE_ART_SCALE = 1;
+const CANONICAL_LETTER_SPACING = LEGO_CANONICAL_STUD_SIZE;
 const EMPTY_TOGGLED_CELLS: ReadonlySet<string> = new Set<string>();
 let tileAtlasPromise: Promise<CanvasImageSource> | null = null;
 
@@ -132,12 +144,32 @@ function visibleCellFor(snapshot: CanvasSnapshot, cell: string): VisibleCell | n
     : snapshot.showDefaultText && Boolean(plan?.defaultFilled);
   if (!legoCellIsVisible(authoredFilled, snapshot.appliedToggledCells.has(cell))) return null;
   return {
-    tilePath: typeof customTile === "string"
-      ? customTile
-      : plan?.defaultTilePath ?? LEGO_TEXT_TILE_PATHS[0],
-    startX: snapshot.textFrameX + coordinates.column * snapshot.plan.studSize,
-    startY: snapshot.textFrameY + coordinates.row * snapshot.plan.studSize,
+    tilePath: snapshot.faceTilePath ?? (
+      typeof customTile === "string"
+        ? customTile
+        : plan?.defaultTilePath ?? LEGO_TEXT_TILE_PATHS[0]
+    ),
+    startX: snapshot.textFrameX + snapshot.gridOriginX + coordinates.column * snapshot.studSize,
+    startY: snapshot.textFrameY + snapshot.gridOriginY + coordinates.row * snapshot.studSize,
   };
+}
+
+function extrusionCellsFor(snapshot: CanvasSnapshot): VisibleCell[] {
+  return Array.from(
+    legoExtrusionCells(
+      snapshot.visibleCells.keys(),
+      snapshot.extrusionOffsetColumns,
+      snapshot.extrusionOffsetRows
+    )
+  ).flatMap((cell) => {
+    const coordinates = parseCellKey(cell);
+    if (!coordinates) return [];
+    return [{
+      tilePath: snapshot.extrusionTilePath,
+      startX: snapshot.textFrameX + snapshot.gridOriginX + coordinates.column * snapshot.studSize,
+      startY: snapshot.textFrameY + snapshot.gridOriginY + coordinates.row * snapshot.studSize,
+    }];
+  });
 }
 
 function redrawDirtyCells(snapshot: CanvasSnapshot, cells: readonly string[]) {
@@ -148,8 +180,8 @@ function redrawDirtyCells(snapshot: CanvasSnapshot, cells: readonly string[]) {
     visibleCells,
     artSize,
     artOffset,
-    shadowOffsetX,
-    shadowOffsetY,
+    extrusionOffsetColumns,
+    extrusionOffsetRows,
     width,
     height,
   } = snapshot;
@@ -161,12 +193,14 @@ function redrawDirtyCells(snapshot: CanvasSnapshot, cells: readonly string[]) {
   cells.forEach((cell) => {
     const coordinates = parseCellKey(cell);
     if (!coordinates) return;
-    const faceX = snapshot.textFrameX + coordinates.column * snapshot.plan.studSize - artOffset;
-    const faceY = snapshot.textFrameY + coordinates.row * snapshot.plan.studSize - artOffset;
-    dirtyX = Math.min(dirtyX, faceX + Math.min(0, shadowOffsetX) - 1);
-    dirtyY = Math.min(dirtyY, faceY + Math.min(0, shadowOffsetY) - 1);
-    dirtyRight = Math.max(dirtyRight, faceX + artSize + Math.max(0, shadowOffsetX) + 1);
-    dirtyBottom = Math.max(dirtyBottom, faceY + artSize + Math.max(0, shadowOffsetY) + 1);
+    const faceX = snapshot.textFrameX + snapshot.gridOriginX + coordinates.column * snapshot.studSize - artOffset;
+    const faceY = snapshot.textFrameY + snapshot.gridOriginY + coordinates.row * snapshot.studSize - artOffset;
+    const extrusionX = extrusionOffsetColumns * snapshot.studSize;
+    const extrusionY = extrusionOffsetRows * snapshot.studSize;
+    dirtyX = Math.min(dirtyX, faceX + Math.min(0, extrusionX) - 1);
+    dirtyY = Math.min(dirtyY, faceY + Math.min(0, extrusionY) - 1);
+    dirtyRight = Math.max(dirtyRight, faceX + artSize + Math.max(0, extrusionX) + 1);
+    dirtyBottom = Math.max(dirtyBottom, faceY + artSize + Math.max(0, extrusionY) + 1);
   });
 
   dirtyX = Math.max(0, dirtyX);
@@ -182,11 +216,9 @@ function redrawDirtyCells(snapshot: CanvasSnapshot, cells: readonly string[]) {
   context.beginPath();
   context.rect(dirtyX, dirtyY, dirtyWidth, dirtyHeight);
   context.clip();
-  context.filter = "brightness(0)";
-  context.globalAlpha = LEGO_TEXT_SHADOW_OPACITY;
-  visibleCells.forEach(({ tilePath, startX, startY }) => {
-    const x = startX - artOffset + shadowOffsetX;
-    const y = startY - artOffset + shadowOffsetY;
+  extrusionCellsFor(snapshot).forEach(({ tilePath, startX, startY }) => {
+    const x = startX - artOffset;
+    const y = startY - artOffset;
     if (rectanglesIntersect(x, y, artSize, artSize, dirtyX, dirtyY, dirtyWidth, dirtyHeight)) {
       drawAtlasTile(context, atlas, tilePath, x, y, artSize);
     }
@@ -220,15 +252,13 @@ function drawFullSnapshot(snapshot: CanvasSnapshot) {
   const { context, width, height, visibleCells, atlas, artOffset, artSize } = snapshot;
   context.clearRect(0, 0, width, height);
   context.save();
-  context.filter = "brightness(0)";
-  context.globalAlpha = LEGO_TEXT_SHADOW_OPACITY;
-  visibleCells.forEach(({ tilePath, startX, startY }) => {
+  extrusionCellsFor(snapshot).forEach(({ tilePath, startX, startY }) => {
     drawAtlasTile(
       context,
       atlas,
       tilePath,
-      startX - artOffset + snapshot.shadowOffsetX,
-      startY - artOffset + snapshot.shadowOffsetY,
+      startX - artOffset,
+      startY - artOffset,
       artSize
     );
   });
@@ -255,6 +285,8 @@ export const LegoText = memo(function LegoText({
   fontSize = "var(--headline-font-size, 128px)",
   fontFamily = "var(--headline-font-family, sans-serif)",
   fontWeight = 900,
+  faceTilePath,
+  extrusionTilePath = LEGO_TEXT_EXTRUSION_TILE_PATH,
   showDefaultText = true,
   onGridChange,
   toggledCells = EMPTY_TOGGLED_CELLS,
@@ -271,7 +303,6 @@ export const LegoText = memo(function LegoText({
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const studSizeRef = useRef(16);
-  const textFrameOriginRef = useRef({ x: 0, y: 0 });
   const gridPlanRef = useRef<GridPlan | null>(null);
   const canvasSnapshotRef = useRef<CanvasSnapshot | null>(null);
   const toggledCellsRef = useRef(new Set(toggledCells));
@@ -317,11 +348,9 @@ export const LegoText = memo(function LegoText({
       onReady?.();
     };
 
-    const buildGridPlan = (
-      textFrameWidth: number,
-      textFrameHeight: number,
-      geometryKey: string
-    ): GridPlan | null => {
+    const buildGridPlan = (geometryKey: string): GridPlan | null => {
+      const textFrameWidth = LEGO_CANONICAL_COLUMNS * LEGO_CANONICAL_STUD_SIZE;
+      const textFrameHeight = LEGO_CANONICAL_ROWS * LEGO_CANONICAL_STUD_SIZE;
       const mask = document.createElement("canvas");
       mask.width = textFrameWidth;
       mask.height = textFrameHeight;
@@ -341,7 +370,7 @@ export const LegoText = memo(function LegoText({
       probe.textContent = text;
       root.appendChild(probe);
       const computed = window.getComputedStyle(probe);
-      let resolvedSize = Number.parseFloat(computed.fontSize) || 128;
+      let resolvedSize = LEGO_CANONICAL_STUD_SIZE * 13;
       const resolvedFamily = computed.fontFamily || fontFamily;
       const resolvedWeight = computed.fontWeight || String(fontWeight);
       probe.remove();
@@ -374,19 +403,25 @@ export const LegoText = memo(function LegoText({
       setMaskFont();
       let characterMetrics = measureCharacters();
       const bounds = runBounds(characterMetrics);
+      const trackingWidth = CANONICAL_LETTER_SPACING * Math.max(0, text.length - 1);
       resolvedSize *= Math.min(
         1,
-        (textFrameWidth * 0.86) / Math.max(bounds.width, 1),
+        (textFrameWidth * 0.92 - trackingWidth) / Math.max(bounds.width, 1),
         (textFrameHeight * 0.78) / Math.max(bounds.height, 1)
       );
       setMaskFont();
       characterMetrics = measureCharacters();
       maskContext.textBaseline = "alphabetic";
       maskContext.fillStyle = "#000";
-      const layout = centeredRunLayout(characterMetrics, 0, textFrameWidth, textFrameHeight);
-      const studSize = legoStudSizeForWidth(textFrameWidth);
-      const columns = Math.ceil(textFrameWidth / studSize);
-      const rows = Math.ceil(textFrameHeight / studSize);
+      const layout = centeredRunLayout(
+        characterMetrics,
+        CANONICAL_LETTER_SPACING,
+        textFrameWidth,
+        textFrameHeight
+      );
+      const studSize = LEGO_CANONICAL_STUD_SIZE;
+      const columns = LEGO_CANONICAL_COLUMNS;
+      const rows = LEGO_CANONICAL_ROWS;
       const coverageByCell = new Map<string, number[]>();
 
       Array.from(text).forEach((character, letterIndex) => {
@@ -400,22 +435,114 @@ export const LegoText = memo(function LegoText({
             const cell = legoCellKey(column, row);
             const coverages = coverageByCell.get(cell) ?? Array(text.length).fill(0);
             let alpha = 0;
-            for (let sampleY = 0; sampleY < 3; sampleY += 1) {
-              for (let sampleX = 0; sampleX < 3; sampleX += 1) {
-                const x = Math.floor(column * studSize + studSize * ((sampleX + 0.5) / 3));
-                const y = Math.floor(row * studSize + studSize * ((sampleY + 0.5) / 3));
-                if (x < textFrameWidth && y < textFrameHeight) {
-                  alpha += pixels[(y * textFrameWidth + x) * 4 + 3] / 255;
-                }
+            let samples = 0;
+            const startX = column * studSize;
+            const startY = row * studSize;
+            for (let y = startY; y < Math.min(startY + studSize, textFrameHeight); y += 1) {
+              for (let x = startX; x < Math.min(startX + studSize, textFrameWidth); x += 1) {
+                alpha += pixels[(y * textFrameWidth + x) * 4 + 3] / 255;
+                samples += 1;
               }
             }
-            coverages[letterIndex] = alpha / 9;
+            coverages[letterIndex] = samples ? alpha / samples : 0;
             coverageByCell.set(cell, coverages);
           }
         }
       });
 
       const cells = new Map<string, CellPlan>();
+      // Coarse grids can round two neighboring glyph edges into the same
+      // column even when the vector font leaves air between them. Reserve the
+      // grid column nearest every inter-letter midpoint: the yellow face can
+      // never bridge it, while the blue extrusion may still travel through it.
+      const separatorColumns = new Set<number>();
+      characterMetrics.slice(0, -1).forEach((metrics, index) => {
+        const currentRight = layout.charX[index] + metrics.boundingBoxRight;
+        const nextLeft = layout.charX[index + 1] - characterMetrics[index + 1].boundingBoxLeft;
+        separatorColumns.add(Math.floor(((currentRight + nextLeft) / 2) / studSize));
+      });
+      const counterCutouts = new Set<string>();
+      Array.from(text).forEach((character, letterIndex) => {
+        if (!"ADR".includes(character.toUpperCase())) return;
+        const metrics = characterMetrics[letterIndex];
+        const minColumn = Math.max(
+          0,
+          Math.floor((layout.charX[letterIndex] - metrics.boundingBoxLeft) / studSize)
+        );
+        const maxColumn = Math.min(
+          columns - 1,
+          Math.ceil((layout.charX[letterIndex] + metrics.boundingBoxRight) / studSize) - 1
+        );
+        const minRow = Math.max(
+          0,
+          Math.floor((layout.baselineY - metrics.boundingBoxAscent) / studSize)
+        );
+        const maxRow = Math.min(
+          rows - 1,
+          Math.ceil((layout.baselineY + metrics.boundingBoxDescent) / studSize) - 1
+        );
+        const coverageAt = (column: number, row: number) =>
+          coverageByCell.get(legoCellKey(column, row))?.[letterIndex] ?? 0;
+        const isFilled = (column: number, row: number) =>
+          legoCellIsFilled(coverageAt(column, row), column, row);
+        const exterior = new Set<string>();
+        const queue: { column: number; row: number }[] = [];
+        const visitExterior = (column: number, row: number) => {
+          if (
+            column < minColumn
+            || column > maxColumn
+            || row < minRow
+            || row > maxRow
+            || isFilled(column, row)
+          ) return;
+          const key = legoCellKey(column, row);
+          if (exterior.has(key)) return;
+          exterior.add(key);
+          queue.push({ column, row });
+        };
+        for (let column = minColumn; column <= maxColumn; column += 1) {
+          visitExterior(column, minRow);
+          visitExterior(column, maxRow);
+        }
+        for (let row = minRow; row <= maxRow; row += 1) {
+          visitExterior(minColumn, row);
+          visitExterior(maxColumn, row);
+        }
+        for (let index = 0; index < queue.length; index += 1) {
+          const { column, row } = queue[index];
+          visitExterior(column - 1, row);
+          visitExterior(column + 1, row);
+          visitExterior(column, row - 1);
+          visitExterior(column, row + 1);
+        }
+
+        const counterColumnsByRow = new Map<number, number[]>();
+        for (let row = minRow; row <= maxRow; row += 1) {
+          for (let column = minColumn; column <= maxColumn; column += 1) {
+            const key = legoCellKey(column, row);
+            if (!isFilled(column, row) && !exterior.has(key)) {
+              const rowColumns = counterColumnsByRow.get(row) ?? [];
+              rowColumns.push(column);
+              counterColumnsByRow.set(row, rowColumns);
+            }
+          }
+        }
+        // Widen each enclosed counter by one cell total per occupied row.
+        // Choosing the lower-coverage side follows the real vector contour
+        // instead of arbitrarily chewing into the left or right stem.
+        counterColumnsByRow.forEach((counterColumns, row) => {
+          const left = Math.min(...counterColumns) - 1;
+          const right = Math.max(...counterColumns) + 1;
+          const candidates = [left, right].filter(
+            (column) => column >= minColumn && column <= maxColumn && isFilled(column, row)
+          );
+          if (!candidates.length) return;
+          const chosen = candidates.reduce((best, column) =>
+            coverageAt(column, row) < coverageAt(best, row) ? column : best
+          );
+          counterCutouts.add(legoCellKey(chosen, row));
+        });
+      });
       const letterCenters = characterMetrics.map(
         (metrics, index) => layout.charX[index]
           + (metrics.boundingBoxRight - metrics.boundingBoxLeft) / 2
@@ -433,16 +560,25 @@ export const LegoText = memo(function LegoText({
           0
         );
         cells.set(cell, {
-          defaultFilled: legoCellIsFilled(coverage, coordinates.column, coordinates.row),
+          defaultFilled:
+            !separatorColumns.has(coordinates.column)
+            && !counterCutouts.has(cell)
+            && legoCellIsFilled(coverage, coordinates.column, coordinates.row),
           defaultTilePath: legoLetterTileAt(
             legoLetterIndexForCoverage(coverages, nearestLetter)
           ),
         });
       });
-      return { key: geometryKey, studSize, cells };
+      return { key: geometryKey, cells };
     };
 
     const draw = async (version: number) => {
+      try {
+        await document.fonts?.ready;
+      } catch {
+        // A font loading failure still leaves a usable CSS fallback.
+      }
+      if (disposed || version !== drawVersion) return;
       const textFrameWidth = root.offsetWidth;
       const textFrameHeight = root.offsetHeight;
       if (!textFrameWidth || !textFrameHeight) { notifyReady(); return; }
@@ -460,20 +596,25 @@ export const LegoText = memo(function LegoText({
       try { atlas = await loadTileAtlas(); } catch { notifyReady(); return; }
       if (disposed || version !== drawVersion) return;
 
-      const geometryKey = [text, textFrameWidth, textFrameHeight, fontFamily, fontSize, fontWeight].join("|");
+      const geometryKey = [text, fontFamily, fontWeight].join("|");
       let plan = gridPlanRef.current;
       if (!plan || plan.key !== geometryKey) {
-        plan = buildGridPlan(textFrameWidth, textFrameHeight, geometryKey);
+        plan = buildGridPlan(geometryKey);
         if (!plan) { notifyReady(); return; }
         gridPlanRef.current = plan;
       }
 
+      const studSize = legoStudSizeForWidth(textFrameWidth);
+      const gridWidth = LEGO_CANONICAL_COLUMNS * studSize;
+      const gridHeight = LEGO_CANONICAL_ROWS * studSize;
+      const gridOriginX = (textFrameWidth - gridWidth) / 2;
+      const gridOriginY = (textFrameHeight - gridHeight) / 2;
+
       canvas.width = Math.max(1, Math.round(width));
       canvas.height = Math.max(1, Math.round(height));
       context.setTransform(1, 0, 0, 1, 0, 0);
-      textFrameOriginRef.current = { x: textFrameX, y: textFrameY };
-      studSizeRef.current = plan.studSize;
-      onGridChange?.(plan.studSize);
+      studSizeRef.current = studSize;
+      onGridChange?.(studSize, gridOriginX, gridOriginY);
 
       const snapshot: CanvasSnapshot = {
         context,
@@ -487,10 +628,15 @@ export const LegoText = memo(function LegoText({
         height,
         textFrameX,
         textFrameY,
-        artSize: plan.studSize * TILE_ART_SCALE,
-        artOffset: (plan.studSize * TILE_ART_SCALE - plan.studSize) / 2,
-        shadowOffsetX,
-        shadowOffsetY,
+        gridOriginX,
+        gridOriginY,
+        studSize,
+        artSize: studSize * TILE_ART_SCALE,
+        artOffset: (studSize * TILE_ART_SCALE - studSize) / 2,
+        faceTilePath,
+        extrusionOffsetColumns: Math.round(shadowOffsetX),
+        extrusionOffsetRows: Math.round(shadowOffsetY),
+        extrusionTilePath,
       };
       const candidates = new Set([
         ...plan.cells.keys(),
@@ -501,8 +647,8 @@ export const LegoText = memo(function LegoText({
         const visible = visibleCellFor(snapshot, cell);
         if (!visible) return;
         if (
-          visible.startX + plan.studSize <= 0
-          || visible.startY + plan.studSize <= 0
+          visible.startX + studSize <= 0
+          || visible.startY + studSize <= 0
           || visible.startX >= width
           || visible.startY >= height
         ) return;
@@ -525,7 +671,6 @@ export const LegoText = memo(function LegoText({
     scheduleDraw();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleDraw);
     observer?.observe(root);
-    void document.fonts?.ready.then(scheduleDraw);
     window.addEventListener("resize", scheduleDraw);
     return () => {
       disposed = true;
@@ -542,6 +687,8 @@ export const LegoText = memo(function LegoText({
     fontFamily,
     fontSize,
     fontWeight,
+    faceTilePath,
+    extrusionTilePath,
     onGridChange,
     onReady,
     shadowOffsetX,
@@ -552,6 +699,7 @@ export const LegoText = memo(function LegoText({
 
   const cellFromEvent = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
+    const snapshot = canvasSnapshotRef.current;
     if (!canvas) return null;
     const canvasX = event.nativeEvent.offsetX;
     const canvasY = event.nativeEvent.offsetY;
@@ -559,9 +707,16 @@ export const LegoText = memo(function LegoText({
     const canvasWidth = canvas.clientWidth || canvasArea?.width || root?.offsetWidth || 0;
     const canvasHeight = canvas.clientHeight || canvasArea?.height || root?.offsetHeight || 0;
     if (canvasX < 0 || canvasY < 0 || canvasX >= canvasWidth || canvasY >= canvasHeight) return null;
+    if (!snapshot) {
+      return legoCellAtRelativePoint(
+        canvasX - (canvasArea ? -canvasArea.left : 0),
+        canvasY - (canvasArea ? -canvasArea.top : 0),
+        studSizeRef.current
+      );
+    }
     return legoCellAtRelativePoint(
-      canvasX - (canvasArea ? -canvasArea.left : textFrameOriginRef.current.x),
-      canvasY - (canvasArea ? -canvasArea.top : textFrameOriginRef.current.y),
+      canvasX - snapshot.textFrameX - snapshot.gridOriginX,
+      canvasY - snapshot.textFrameY - snapshot.gridOriginY,
       studSizeRef.current
     );
   };

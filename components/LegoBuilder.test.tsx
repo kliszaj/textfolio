@@ -2,17 +2,11 @@ import { createEvent, fireEvent, render, screen, within } from "@testing-library
 import { LEGO_BUILDER_STORAGE_KEY } from "@/lib/legoBuilder";
 import { LegoBuilder } from "./LegoBuilder";
 
-const push = jest.fn();
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
-}));
-
 beforeEach(() => {
   window.localStorage.clear();
-  push.mockClear();
 });
 
-test("selects one supplied block at a time and saves painted cells for the homepage", () => {
+test("selects one supplied block at a time and saves a browser draft", () => {
   render(<LegoBuilder />);
   const blockPalette = screen.getByRole("group", { name: "Block color" });
   const yellow = within(blockPalette).getByRole("button", { name: "Yellow" });
@@ -32,10 +26,10 @@ test("selects one supplied block at a time and saves painted cells for the homep
   Object.defineProperty(pointerUp, "offsetY", { value: 17 });
   fireEvent(canvas, pointerUp);
 
-  fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
   const saved = JSON.parse(window.localStorage.getItem(LEGO_BUILDER_STORAGE_KEY) ?? "{}");
   expect(saved.cells["1:1"]).toBe("/assets/lego-blocks/lego-block-11.png");
-  expect(screen.getByText("Saved to the main site")).toBeInTheDocument();
+  expect(screen.getByText("Browser draft saved")).toBeInTheDocument();
 });
 
 test("changes the baseplate and can start from a completely blank grid", () => {
@@ -49,9 +43,27 @@ test("changes the baseplate and can start from a completely blank grid", () => {
     backgroundColor: "#A0A0A0",
   });
 
-  fireEvent.click(screen.getByRole("button", { name: /Save & view homepage/i }));
-  expect(push).toHaveBeenCalledWith("/");
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
   const saved = JSON.parse(window.localStorage.getItem(LEGO_BUILDER_STORAGE_KEY) ?? "{}");
   expect(saved.showDefaultText).toBe(false);
   expect(saved.backgroundTilePath).toBe("/assets/lego-blocks/lego-block-03.png");
+});
+
+test("exports the complete repository-backed homepage default", () => {
+  render(<LegoBuilder />);
+  fireEvent.change(screen.getByRole("slider", { name: "Horizontal tiles" }), {
+    target: { value: "4" },
+  });
+
+  const exportLink = screen.getByRole("link", { name: "Export homepage default" });
+  expect(exportLink).toHaveAttribute("download", "lego-default.json");
+  const href = exportLink.getAttribute("href") ?? "";
+  const exported = JSON.parse(decodeURIComponent(href.split(",", 2)[1]));
+  expect(exported).toMatchObject({
+    backgroundTilePath: "/assets/lego-blocks/lego-block-20.png",
+    faceTilePath: "/assets/lego-blocks/lego-block-11.png",
+    extrusionTilePath: "/assets/lego-blocks/lego-block-16.png",
+    extrusionOffsetColumns: 4,
+    extrusionOffsetRows: 3,
+  });
 });

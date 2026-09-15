@@ -2,6 +2,7 @@ import {
   LEGO_BACKGROUND_TILE_PATH,
   LEGO_TILE_ASSET_PATHS,
 } from "./legoText";
+import committedDefault from "@/data/lego-default.json";
 
 export const LEGO_BUILDER_STORAGE_KEY = "textfolio:lego-builder-v1";
 export const LEGO_LAYOUT_STORAGE_KEY = "textfolio:lego-layout-v1";
@@ -11,6 +12,10 @@ export type LegoCellValue = string | null;
 export type LegoBuilderPreferences = {
   version: 1;
   backgroundTilePath: string;
+  faceTilePath: string;
+  extrusionTilePath: string;
+  extrusionOffsetColumns: number;
+  extrusionOffsetRows: number;
   showDefaultText: boolean;
   cells: Record<string, LegoCellValue>;
 };
@@ -85,9 +90,13 @@ export const LEGO_TILE_OPTIONS: readonly LegoTileOption[] = LEGO_TILE_ASSET_PATH
 
 export const DEFAULT_LEGO_BUILDER_PREFERENCES: LegoBuilderPreferences = {
   version: 1,
-  backgroundTilePath: LEGO_BACKGROUND_TILE_PATH,
-  showDefaultText: true,
-  cells: {},
+  backgroundTilePath: committedDefault.backgroundTilePath ?? LEGO_BACKGROUND_TILE_PATH,
+  faceTilePath: committedDefault.faceTilePath,
+  extrusionTilePath: committedDefault.extrusionTilePath,
+  extrusionOffsetColumns: committedDefault.extrusionOffsetColumns,
+  extrusionOffsetRows: committedDefault.extrusionOffsetRows,
+  showDefaultText: committedDefault.showDefaultText,
+  cells: committedDefault.cells,
 };
 
 const VALID_TILE_PATHS = new Set<string>(LEGO_TILE_ASSET_PATHS);
@@ -102,6 +111,10 @@ export function sanitizeLegoBuilderPreferences(value: unknown): LegoBuilderPrefe
   if (!value || typeof value !== "object") return DEFAULT_LEGO_BUILDER_PREFERENCES;
   const candidate = value as {
     backgroundTilePath?: unknown;
+    faceTilePath?: unknown;
+    extrusionTilePath?: unknown;
+    extrusionOffsetColumns?: unknown;
+    extrusionOffsetRows?: unknown;
     showDefaultText?: unknown;
     cells?: unknown;
   };
@@ -122,6 +135,23 @@ export function sanitizeLegoBuilderPreferences(value: unknown): LegoBuilderPrefe
   return {
     version: 1,
     backgroundTilePath,
+    faceTilePath:
+      typeof candidate.faceTilePath === "string" && VALID_TILE_PATHS.has(candidate.faceTilePath)
+        ? candidate.faceTilePath
+        : DEFAULT_LEGO_BUILDER_PREFERENCES.faceTilePath,
+    extrusionTilePath:
+      typeof candidate.extrusionTilePath === "string"
+      && VALID_TILE_PATHS.has(candidate.extrusionTilePath)
+        ? candidate.extrusionTilePath
+        : DEFAULT_LEGO_BUILDER_PREFERENCES.extrusionTilePath,
+    extrusionOffsetColumns:
+      typeof candidate.extrusionOffsetColumns === "number"
+        ? Math.max(-6, Math.min(6, Math.round(candidate.extrusionOffsetColumns)))
+        : DEFAULT_LEGO_BUILDER_PREFERENCES.extrusionOffsetColumns,
+    extrusionOffsetRows:
+      typeof candidate.extrusionOffsetRows === "number"
+        ? Math.max(-6, Math.min(6, Math.round(candidate.extrusionOffsetRows)))
+        : DEFAULT_LEGO_BUILDER_PREFERENCES.extrusionOffsetRows,
     showDefaultText: candidate.showDefaultText !== false,
     cells,
   };

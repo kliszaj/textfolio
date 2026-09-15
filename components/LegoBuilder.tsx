@@ -2,14 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { NAME } from "@/data/letterTreatments";
 import {
   DEFAULT_LEGO_BUILDER_PREFERENCES,
   LEGO_BUILDER_STORAGE_KEY,
-  LEGO_LAYOUT_STORAGE_KEY,
   LEGO_TILE_OPTIONS,
   legoTileOptionForPath,
   parseLegoBuilderPreferences,
@@ -32,12 +30,19 @@ function readSavedPreferences(): LegoBuilderPreferences {
 }
 
 export function LegoBuilder() {
-  const router = useRouter();
   const [preferences, setPreferences] = useState<LegoBuilderPreferences>(
     DEFAULT_LEGO_BUILDER_PREFERENCES
   );
   const [selectedTool, setSelectedTool] = useState<PaintTool>(LEGO_TEXT_TILE_PATHS[0]);
-  const [legoGrid, setLegoGrid] = useState({ size: 18, x: 0, y: 0, width: 0, height: 0 });
+  const [legoGrid, setLegoGrid] = useState({
+    size: 18,
+    x: 0,
+    y: 0,
+    frameX: 0,
+    frameY: 0,
+    width: 0,
+    height: 0,
+  });
   const [saveState, setSaveState] = useState<SaveState>("ready");
   const baseplateRef = useRef<HTMLDivElement>(null);
   const wordFrameRef = useRef<HTMLDivElement>(null);
@@ -75,14 +80,22 @@ export function LegoBuilder() {
     setSaveState("dirty");
   }, [selectedTool]);
 
-  const alignBuilderBackground = useCallback((size: number) => {
+  const alignBuilderBackground = useCallback((
+    size: number,
+    gridOriginX: number,
+    gridOriginY: number
+  ) => {
     const baseplate = baseplateRef.current;
     const frame = wordFrameRef.current;
     if (!baseplate || !frame) return;
+    const frameX = frame.offsetLeft;
+    const frameY = frame.offsetTop;
     const next = {
       size,
-      x: frame.offsetLeft,
-      y: frame.offsetTop,
+      x: frameX + gridOriginX,
+      y: frameY + gridOriginY,
+      frameX,
+      frameY,
       width: baseplate.offsetWidth,
       height: baseplate.offsetHeight,
     };
@@ -90,6 +103,8 @@ export function LegoBuilder() {
       current.size === next.size
       && Math.abs(current.x - next.x) < 0.25
       && Math.abs(current.y - next.y) < 0.25
+      && Math.abs(current.frameX - next.frameX) < 0.25
+      && Math.abs(current.frameY - next.frameY) < 0.25
       && current.width === next.width
       && current.height === next.height
         ? current
@@ -120,19 +135,14 @@ export function LegoBuilder() {
   const save = () => {
     try {
       window.localStorage.setItem(LEGO_BUILDER_STORAGE_KEY, JSON.stringify(preferences));
-      // Old homepage toggles describe a different authored baseline. Clear
-      // them when a builder design becomes the source of truth.
-      window.localStorage.setItem(LEGO_LAYOUT_STORAGE_KEY, "[]");
       setSaveState("saved");
     } catch {
       setSaveState("dirty");
     }
   };
 
-  const saveAndOpen = () => {
-    save();
-    router.push("/");
-  };
+  const exportedDefault = JSON.stringify(preferences, null, 2);
+  const exportHref = `data:application/json;charset=utf-8,${encodeURIComponent(exportedDefault)}`;
 
   const paintedCount = Object.values(preferences.cells).filter(
     (tile): tile is string => typeof tile === "string"
@@ -147,7 +157,8 @@ export function LegoBuilder() {
           <h1>LEGO Type Builder</h1>
           <p className={styles.intro}>
             Pick a block, then click or drag across the grid. Every action paints exactly one
-            grid cell at a time. Save when this is how ADRIAN should appear on the main site.
+            grid cell at a time. Save a browser draft while you work, then export the homepage
+            default when the treatment is ready for every visitor.
           </p>
         </div>
         <Link className={styles.homeLink} href="/">Back to portfolio</Link>
@@ -176,6 +187,7 @@ export function LegoBuilder() {
           >
             <LegoText
               text={NAME}
+              extrusionTilePath={preferences.extrusionTilePath}
               fontSize="var(--headline-font-size)"
               fontFamily="var(--headline-font-family)"
               fontWeight={900}
@@ -183,10 +195,12 @@ export function LegoBuilder() {
               cellTiles={cellTiles}
               onPaintCells={paintCells}
               paintTile={selectedTool === "erase" ? null : selectedTool}
+              shadowOffsetX={preferences.extrusionOffsetColumns}
+              shadowOffsetY={preferences.extrusionOffsetRows}
               onGridChange={alignBuilderBackground}
               canvasArea={legoGrid.width && legoGrid.height ? {
-                left: -legoGrid.x,
-                top: -legoGrid.y,
+                left: -legoGrid.frameX,
+                top: -legoGrid.frameY,
                 width: legoGrid.width,
                 height: legoGrid.height,
               } : undefined}
@@ -194,8 +208,8 @@ export function LegoBuilder() {
           </div>
         </div>
         <div className={styles.workspaceFooter}>
-          <span>{preferences.showDefaultText ? "Editing blue ADRIAN" : "Building from a blank grid"}</span>
-          <span>{paintedCount} painted · {erasedCount} erased · {legoGrid.size}px grid</span>
+          <span>{preferences.showDefaultText ? "Editing canonical ADRIAN" : "Building from a blank grid"}</span>
+          <span>{paintedCount} painted · {erasedCount} erased · {legoGrid.size.toFixed(1)}px grid</span>
         </div>
       </section>
 
@@ -256,25 +270,77 @@ export function LegoBuilder() {
         <section className={styles.controlSection}>
           <p className={styles.step}>3 · Starting point</p>
           <div className={styles.secondaryActions}>
-            <button type="button" onClick={resetWord}>Reset to blue ADRIAN</button>
+            <button type="button" onClick={resetWord}>Reset to canonical ADRIAN</button>
             <button type="button" onClick={clearCanvas}>Clear canvas</button>
             <button type="button" onClick={revertSaved}>Revert saved</button>
           </div>
         </section>
 
+        <section className={styles.controlSection}>
+          <p className={styles.step}>4 · Blue brick extrusion</p>
+          <h2>
+            {preferences.extrusionOffsetColumns} right · {preferences.extrusionOffsetRows} down
+          </h2>
+          <label className={styles.rangeControl} htmlFor="builder-extrusion-x">
+            Horizontal tiles
+            <input
+              id="builder-extrusion-x"
+              type="range"
+              min={-6}
+              max={6}
+              step={1}
+              value={preferences.extrusionOffsetColumns}
+              onChange={(event) => {
+                setPreferences((current) => ({
+                  ...current,
+                  extrusionOffsetColumns: Number(event.target.value),
+                }));
+                setSaveState("dirty");
+              }}
+            />
+          </label>
+          <label className={styles.rangeControl} htmlFor="builder-extrusion-y">
+            Vertical tiles
+            <input
+              id="builder-extrusion-y"
+              type="range"
+              min={-6}
+              max={6}
+              step={1}
+              value={preferences.extrusionOffsetRows}
+              onChange={(event) => {
+                setPreferences((current) => ({
+                  ...current,
+                  extrusionOffsetRows: Number(event.target.value),
+                }));
+                setSaveState("dirty");
+              }}
+            />
+          </label>
+        </section>
+
         <section className={styles.saveSection}>
+          <p className={styles.step}>
+            Export downloads <code>lego-default.json</code>. Replace the file in <code>data</code>
+            and commit it to publish this design for every visitor.
+          </p>
           <p aria-live="polite" className={styles.saveStatus} data-state={saveState}>
             {saveState === "saved"
-              ? "Saved to the main site"
+              ? "Browser draft saved"
               : saveState === "dirty"
                 ? "Unsaved changes"
                 : "Ready to edit"}
           </p>
           <div className={styles.saveActions}>
-            <button type="button" className={styles.saveButton} onClick={save}>Save</button>
-            <button type="button" className={styles.openButton} onClick={saveAndOpen}>
-              Save &amp; view homepage
-            </button>
+            <button type="button" className={styles.saveButton} onClick={save}>Save draft</button>
+            <a
+              className={styles.openButton}
+              href={exportHref}
+              download="lego-default.json"
+              onClick={save}
+            >
+              Export homepage default
+            </a>
           </div>
         </section>
       </aside>

@@ -213,7 +213,7 @@ test("updates Warp Text settings independently", () => {
   expect(onWarpConfigChange).toHaveBeenCalledWith({ ...DEFAULT_WARP_TEXT_CONFIG, warpStrength: 0.31 });
 });
 
-test("exposes independent LEGO shadow offsets", () => {
+test("exposes independent LEGO extrusion offsets", () => {
   const { onLegoShadowOffsetXChange, onLegoShadowOffsetYChange } = renderPanel();
   fireEvent.click(screen.getByRole("tab", { name: "LEGO Text" }));
   expect(screen.getByTestId("lego-text-settings")).toBeInTheDocument();
@@ -222,9 +222,9 @@ test("exposes independent LEGO shadow offsets", () => {
     "/lego-builder"
   );
 
-  fireEvent.change(screen.getByLabelText(/Shadow X/i), { target: { value: "7.5" } });
-  fireEvent.change(screen.getByLabelText(/Shadow Y/i), { target: { value: "-2" } });
-  expect(onLegoShadowOffsetXChange).toHaveBeenCalledWith(7.5);
+  fireEvent.change(screen.getByLabelText(/Extrusion X/i), { target: { value: "5" } });
+  fireEvent.change(screen.getByLabelText(/Extrusion Y/i), { target: { value: "-2" } });
+  expect(onLegoShadowOffsetXChange).toHaveBeenCalledWith(5);
   expect(onLegoShadowOffsetYChange).toHaveBeenCalledWith(-2);
 });
 
