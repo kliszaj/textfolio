@@ -48,13 +48,6 @@
   box-shadow: inset 0 0 10vw rgb(111 77 3 / 14%);
 }
 
-/* Windows95Cursor supplies the visible pointer. Hide the system pointer on
-   the active stage and everything inside it so the two can never overlap. */
-.asciiCursor,
-.asciiCursor * {
-  cursor: none !important;
-}
-
 .asciiDesktopIcons {
   position: absolute;
   inset: 0;

@@ -39,7 +39,6 @@ import { LegoText } from "./LegoText";
 import { CircularText } from "./CircularText";
 import { SketchAnnotations } from "./SketchAnnotations";
 import { PageIndicator } from "./PageIndicator";
-import { Windows95Cursor } from "./Windows95Cursor";
 import { isOverHeadline, unionBox } from "@/lib/headlineHit";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
@@ -222,7 +221,6 @@ export function Hero({
   const [hoverColorTransition, setHoverColorTransition] = useState(
     TREATMENT_COLOR_TRANSITION
   );
-  const [asciiCursorStart, setAsciiCursorStart] = useState<{ x: number; y: number } | null>(null);
   const [warpPressed, setWarpPressed] = useState(false);
   const [legoGrid, setLegoGrid] = useState<{
     size: number;
@@ -538,13 +536,12 @@ export function Hero({
     }
   }, [taglineNode]);
 
-  const activateHeadline = (pointerPosition?: { x: number; y: number }) => {
+  const activateHeadline = () => {
     if (suppressHeadlineHover || !intro.done) return;
     if (isHeadlinePointerInsideRef.current) return;
     isHeadlinePointerInsideRef.current = true;
     const effect = HEADLINE_EFFECT_SEQUENCE[nextEffectIndexRef.current];
     if (effect === "ascii") {
-      if (pointerPosition) setAsciiCursorStart(pointerPosition);
       const nextStageColor = asciiConfig.randomizeStageColor
         ? ASCII_STAGE_COLORS[Math.floor(Math.random() * ASCII_STAGE_COLORS.length)]
         : ASCII_BG_COLOR;
@@ -586,7 +583,7 @@ export function Hero({
       return;
     }
     const over = isPointOverHeadline({ x: event.clientX, y: event.clientY });
-    if (over) activateHeadline({ x: event.clientX, y: event.clientY });
+    if (over) activateHeadline();
     else deactivateHeadline();
   };
 
@@ -610,9 +607,7 @@ export function Hero({
       // this transition has to be off for its duration too, or the
       // background alone still visibly dissolves between each stage's
       // colour while the headline on top of it hard-cuts.
-      className={`relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center ${
-        activeEffect === "ascii" ? styles.asciiCursor : ""
-      }`}
+      className="relative w-full min-h-[100dvh] md:h-screen flex flex-col items-center justify-center"
       style={{
         backgroundColor: stageBackground,
         transition: colorTransitionsReady
@@ -624,9 +619,6 @@ export function Hero({
           isHeadlineActive && activeEffect !== "stroke" && activeEffect !== "lego"
             ? "#FFFFFF"
             : DEFAULT_INK_COLOR,
-        // The custom Windows95Cursor is the only visible pointer in this
-        // state; the CSS-module class hides the native cursor on descendants.
-        cursor: activeEffect === "ascii" ? "none" : undefined,
       }}
     >
       {showIntroLoader && (
@@ -639,10 +631,6 @@ export function Hero({
           />
         </div>
       )}
-      <Windows95Cursor
-        active={activeEffect === "ascii"}
-        initialPosition={asciiCursorStart}
-      />
       <LegoLayoutPersistence cells={removedLegoCells} ready={legoStorageReady} />
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
@@ -755,10 +743,9 @@ export function Hero({
       <div
         ref={headlineRef}
         data-testid="hero-headline"
-        className="relative z-10 flex flex-col items-center"
+        className="relative z-10 flex cursor-pointer flex-col items-center"
         style={{
           transform: `translateY(-${liftPercent}vh)`,
-          cursor: activeEffect === "stroke" ? "crosshair" : undefined,
         }}
         // Moved up from the frame below: this wraps the frame and the
         // tagline both, so the union hit-test in handleHeadlinePointer

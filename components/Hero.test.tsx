@@ -80,18 +80,15 @@ test("uses the full ASCII treatment on its third hover beat", () => {
   expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "false");
   expect(hero).toHaveStyle({ backgroundColor: "#05AEAE" });
   expect(hero).toHaveStyle({ color: "#FFFFFF" });
-  expect(hero).toHaveStyle({ cursor: "none" });
-
-  expect(hero.className).toContain("asciiCursor");
-  expect(screen.getByTestId("win95-cursor")).toBeInTheDocument();
-  const heroCss = readFileSync("components/Hero.module.css", "utf8");
-  expect(heroCss).toContain("cursor: none !important");
+  expect(hero.style.cursor).toBe("");
+  expect(screen.getByTestId("hero-headline")).toHaveClass("cursor-pointer");
+  expect(screen.queryByTestId("win95-cursor")).not.toBeInTheDocument();
 
   fireEvent.pointerLeave(headline);
   expect(hero).toHaveStyle({ backgroundColor: "#F5EDE6" });
   expect(hero).toHaveStyle({ color: "#1C1C1C" });
   expect(hero.style.cursor).toBe("");
-  expect(hero.className).not.toContain("asciiCursor");
+  expect(screen.getByTestId("hero-headline")).toHaveClass("cursor-pointer");
   expect(screen.queryByTestId("win95-cursor")).not.toBeInTheDocument();
 });
 
