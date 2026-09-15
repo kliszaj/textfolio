@@ -36,7 +36,6 @@ import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
 import { LegoText } from "./LegoText";
-import { CircularText } from "./CircularText";
 import { SketchAnnotations } from "./SketchAnnotations";
 import { PageIndicator } from "./PageIndicator";
 import { isOverHeadline, unionBox } from "@/lib/headlineHit";
@@ -593,11 +592,6 @@ export function Hero({
     const box = word ? unionBox(word, tagline) : undefined;
     return !box || isOverHeadline(point, box);
   };
-  const showIntroLoader =
-    playIntro
-    && WAIT_FOR_LEGO_BEFORE_INTRO
-    && !introAssetsReady;
-
   return (
     <div
       ref={heroRef}
@@ -621,16 +615,6 @@ export function Hero({
             : DEFAULT_INK_COLOR,
       }}
     >
-      {showIntroLoader && (
-        <div className={styles.introLoader} data-testid="intro-loader">
-          <CircularText
-            text="LOADING*LOADING*"
-            spinDuration={8}
-            onHover="speedUp"
-            className={styles.introLoaderSpinner}
-          />
-        </div>
-      )}
       <LegoLayoutPersistence cells={removedLegoCells} ready={legoStorageReady} />
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
@@ -727,6 +711,7 @@ export function Hero({
       {activeEffect === "stroke" && (
         <SketchAnnotations
           active={intro.done}
+          liftPercent={liftPercent}
           strokeColor={CORRECTION_INK}
           strokeWidth={strokeConfig.strokeWidth * CORRECTION_PEN_SCALE}
           sketchStyle={strokeConfig.sketchStyle}

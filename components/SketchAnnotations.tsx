@@ -58,6 +58,7 @@ function pathFor(points: Point[], width: number, height: number): string {
 
 export function SketchAnnotations({
   active,
+  liftPercent = 0,
   onDrawingChange,
   canStartDrawing = () => true,
   strokeColor = CORRECTION_INK,
@@ -65,6 +66,7 @@ export function SketchAnnotations({
   sketchStyle = DEFAULT_STROKE_TEXT_CONFIG.sketchStyle,
 }: {
   active: boolean;
+  liftPercent?: number;
   onDrawingChange?: (drawing: boolean, point: { x: number; y: number }) => void;
   canStartDrawing?: (point: { x: number; y: number }) => boolean;
   strokeColor?: string;
@@ -173,6 +175,7 @@ export function SketchAnnotations({
       role="img"
       viewBox={`0 0 ${size.width} ${size.height}`}
       preserveAspectRatio="none"
+      style={{ transform: `translateY(-${liftPercent}vh)` }}
     >
       <defs>
         {sketchFilter &&

@@ -300,6 +300,9 @@ test("moves the sketch paper grid with the lifted foreground", () => {
   expect(screen.getByTestId("hero-headline")).toHaveStyle({
     transform: "translateY(-12.5vh)",
   });
+  expect(screen.getByTestId("sketch-annotations")).toHaveStyle({
+    transform: "translateY(-12.5vh)",
+  });
 });
 
 test("tagline and arrow take the yellow accent under the ASCII treatment", () => {
