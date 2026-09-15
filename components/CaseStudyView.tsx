@@ -8,7 +8,7 @@ import { HomeIconAnimation } from "@/components/HomeIconAnimation";
 import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudyRoute } from "@/data/caseStudies";
-import { nextHeaderShrunk } from "@/lib/stickyHeader";
+import { HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
 import type { CaseStudy, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
 import type { ReactNode } from "react";
@@ -254,18 +254,27 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   }, []);
 
   useEffect(() => {
+    let changedAt = -Infinity;
+
     const settle = (next: boolean) => {
       if (next === shrunkRef.current) return;
       shrunkRef.current = next;
+      changedAt = performance.now();
       setShrunk(next);
     };
 
     const onScroll = () => {
       const currentY = window.scrollY;
-      settle(nextHeaderShrunk(currentY));
+      settle(nextHeaderShrunk({
+        shrunk: shrunkRef.current,
+        currentY,
+        sinceChangeMs: performance.now() - changedAt,
+      }));
     };
 
-    settle(nextHeaderShrunk(window.scrollY));
+    // A restored position has no wheel gesture to observe, so initialize from
+    // its distance down the page. Fresh pages remain full at the top.
+    settle(window.scrollY > HEADER_SHRINK_AT_PX);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -280,6 +289,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   }, [caseStudy, router]);
 
   const scrollToTop = useCallback(() => {
+    // The title is an explicit request to return homeward, so reveal the full
+    // header immediately instead of waiting for the smooth scroll to finish.
+    shrunkRef.current = false;
+    setShrunk(false);
     window.scrollTo({
       top: 0,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches

@@ -34,6 +34,7 @@ export function LegoBuilder() {
     DEFAULT_LEGO_BUILDER_PREFERENCES
   );
   const [selectedTool, setSelectedTool] = useState<PaintTool>(LEGO_TEXT_TILE_PATHS[0]);
+  const [showTraceGuide, setShowTraceGuide] = useState(true);
   const [legoGrid, setLegoGrid] = useState({
     size: 18,
     x: 0,
@@ -205,11 +206,27 @@ export function LegoBuilder() {
                 height: legoGrid.height,
               } : undefined}
             />
+            <span
+              aria-hidden="true"
+              className={styles.traceGuide}
+              data-testid="lego-builder-trace-guide"
+              data-visible={showTraceGuide}
+            >
+              {NAME}
+            </span>
           </div>
         </div>
         <div className={styles.workspaceFooter}>
           <span>{preferences.showDefaultText ? "Editing canonical ADRIAN" : "Building from a blank grid"}</span>
           <span>{paintedCount} painted · {erasedCount} erased · {legoGrid.size.toFixed(1)}px grid</span>
+          <button
+            type="button"
+            className={styles.guideToggle}
+            aria-pressed={showTraceGuide}
+            onClick={() => setShowTraceGuide((visible) => !visible)}
+          >
+            {showTraceGuide ? "Hide font guide" : "Show font guide"}
+          </button>
         </div>
       </section>
 

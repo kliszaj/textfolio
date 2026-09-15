@@ -24,6 +24,12 @@ const LINK_PREVIEWS: Record<string, LinkPreview> = {
     description: "Concept in behavioral economics, political theory and behavioral sciences.",
     color: "#DDE7F3",
   },
+  "https://en.wikipedia.org/wiki/Matter_(standard)": {
+    source: "Wikipedia",
+    title: "Matter (standard)",
+    description: "Technical standard for smart home and Internet of Things devices.",
+    color: "#DDE7F3",
+  },
   "https://newsroom.spotify.com/2026-05-21/investor-day-recap/": {
     source: "Spotify Newsroom",
     title: "Spotify’s 2026 Investor Day Recap",

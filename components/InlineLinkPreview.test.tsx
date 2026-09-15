@@ -116,6 +116,24 @@ test("skips the image entirely for a link with none, rather than a broken img", 
   expect(screen.queryByAltText("")).not.toBeInTheDocument();
 });
 
+test("shows a proper Wikipedia preview for the Matter standard", () => {
+  render(
+    <InlineLinkPreview
+      link={{ label: "Matter", href: "https://en.wikipedia.org/wiki/Matter_(standard)" }}
+    />
+  );
+  fireEvent.pointerEnter(screen.getByRole("link", { name: "Matter" }), {
+    pointerType: "mouse",
+  });
+
+  const preview = screen.getByTestId("inline-link-preview");
+  expect(preview).toHaveTextContent("Wikipedia");
+  expect(preview).toHaveTextContent("Matter (standard)");
+  expect(preview).toHaveTextContent(
+    "Technical standard for smart home and Internet of Things devices."
+  );
+});
+
 test("keeps the source as a safe external link", () => {
   render(<InlineLinkPreview link={link} />);
 

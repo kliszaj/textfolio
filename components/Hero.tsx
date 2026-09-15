@@ -870,6 +870,7 @@ export function Hero({
               onReady={markLegoReady}
               shadowOffsetX={legoShadowOffsetX}
               shadowOffsetY={legoShadowOffsetY}
+              followPointerLight={intro.done && activeEffect === "lego"}
               // The intro only needs the finished word. Keep that first frame
               // word-sized, then prepare the full editable hero canvas after
               // the scripted sequence has finished.

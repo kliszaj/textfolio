@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_LEGO_SHADOW_OFFSET_X,
   DEFAULT_LEGO_SHADOW_OFFSET_Y,
@@ -11,6 +11,7 @@ import {
   legoExtrusionCells,
   legoLetterIndexForCoverage,
   legoLetterTileAt,
+  legoShadowOffsetFromLight,
   legoStudSizeForWidth,
   legoTileAtlasRect,
   LEGO_CANONICAL_COLUMNS,
@@ -42,6 +43,7 @@ type LegoTextProps = {
   onEditingChange?: (editing: boolean, point: { x: number; y: number }) => void;
   shadowOffsetX?: number;
   shadowOffsetY?: number;
+  followPointerLight?: boolean;
   canvasArea?: { left: number; top: number; width: number; height: number };
 };
 
@@ -298,6 +300,7 @@ export const LegoText = memo(function LegoText({
   onEditingChange,
   shadowOffsetX = DEFAULT_LEGO_SHADOW_OFFSET_X,
   shadowOffsetY = DEFAULT_LEGO_SHADOW_OFFSET_Y,
+  followPointerLight = false,
   canvasArea,
 }: LegoTextProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -310,6 +313,46 @@ export const LegoText = memo(function LegoText({
   const editingRef = useRef(false);
   const visitedCellsRef = useRef<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
+
+  const redrawShadow = useCallback((x: number, y: number) => {
+    const snapshot = canvasSnapshotRef.current;
+    if (
+      !snapshot
+      || (
+        snapshot.extrusionOffsetColumns === x
+        && snapshot.extrusionOffsetRows === y
+      )
+    ) return;
+    snapshot.extrusionOffsetColumns = x;
+    snapshot.extrusionOffsetRows = y;
+    rootRef.current?.setAttribute("data-shadow-offset-x", String(x));
+    rootRef.current?.setAttribute("data-shadow-offset-y", String(y));
+    drawFullSnapshot(snapshot);
+  }, []);
+
+  useEffect(() => {
+    if (followPointerLight) return;
+    redrawShadow(Math.round(shadowOffsetX), Math.round(shadowOffsetY));
+  }, [followPointerLight, redrawShadow, shadowOffsetX, shadowOffsetY]);
+
+  const movePointerLight = useCallback((canvasX: number, canvasY: number) => {
+    if (!followPointerLight) return;
+    const snapshot = canvasSnapshotRef.current;
+    if (!snapshot) return;
+    const gridWidth = LEGO_CANONICAL_COLUMNS * snapshot.studSize;
+    const gridHeight = LEGO_CANONICAL_ROWS * snapshot.studSize;
+    const centerX = snapshot.textFrameX + snapshot.gridOriginX + gridWidth / 2;
+    const centerY = snapshot.textFrameY + snapshot.gridOriginY + gridHeight / 2;
+    const next = legoShadowOffsetFromLight(
+      canvasX,
+      canvasY,
+      centerX,
+      centerY,
+      gridWidth / 2,
+      gridHeight / 2
+    );
+    redrawShadow(next.x, next.y);
+  }, [followPointerLight, redrawShadow]);
 
   useEffect(() => {
     const next = new Set(toggledCells);
@@ -778,6 +821,9 @@ export const LegoText = memo(function LegoText({
       data-testid="lego-text"
       data-ready={ready}
       data-edited-count={toggledCells.size + (cellTiles?.size ?? 0)}
+      data-pointer-light={followPointerLight}
+      data-shadow-offset-x={Math.round(shadowOffsetX)}
+      data-shadow-offset-y={Math.round(shadowOffsetY)}
       className={styles.root}
     >
       <canvas
@@ -793,7 +839,12 @@ export const LegoText = memo(function LegoText({
         role="img"
         aria-label={`${text} built from editable LEGO tiles`}
         onPointerDown={startEditing}
-        onPointerMove={continueEditing}
+        onPointerMove={(event) => {
+          // Use the canvas-local coordinates already proven by tile editing,
+          // then update the light before editing stops event propagation.
+          movePointerLight(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
+          continueEditing(event);
+        }}
         onPointerUp={stopEditing}
         onPointerCancel={stopEditing}
       />

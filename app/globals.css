@@ -412,6 +412,11 @@ body {
 
 .case-study-title {
   font-size: clamp(2.75rem, 7.5vw, 6rem);
+  /* PP Frama's g/y descenders extend below its nominal line box. The title
+     must stay overflow-clipped horizontally for one-line fitting, so enlarge
+     that clipping box below the baseline and cancel the added layout space. */
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
   transition: font-size 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 

@@ -3,7 +3,7 @@
 // readable.
 export type CaseStudyFactLink = { label: string; href: string };
 
-// One line of the at-a-glance rail: "Role", "Lead Designer". A fact can
+// One line of the at-a-glance rail: "Role", "Design Lead". A fact can
 // optionally be a short bulleted list when its values need separate emphasis,
 // or a list of links when the values are things a reader would want to open.
 export type CaseStudyFact = { label: string; value: string | string[] | CaseStudyFactLink[] };
@@ -83,17 +83,17 @@ export const caseStudies: CaseStudy[] = [
     overview:
       "Spotify Jam lets you listen together with friends from anywhere in the world, on any device.  Jam is now one of Spotify's fastest growing features with 50 million monthly active users and over 100 million monthly listening hours.",
     facts: [
-      { label: "Role", value: "Lead Designer\n2023 – present" },
+      { label: "Role • 2023-Present", value: "Design Lead" },
       { label: "Scope", value: "Design Strategy, Product Strategy" },
       {
         label: "Impact",
-        value: ["<5M to 50M monthly users", "100M+ monthly listening hours"],
+        value: ["50M+ monthly users", "100M+ monthly listening hours"],
       },
     ],
     sections: [
       {
         body:
-          "As a Staff Product Designer, I was responsible for the value framing and positioning of the early feature concept, designing a safe and seamless proactive nudging system that really helped it take off and find product-market-fit, working with other designers in the organization to adapt the mobile experience to other platforms like Car, Desktop, and TV, and growing the remote-use of the feature by desginig a co-ordination layer via Listening Activity and Messages so that remote users would know when friends are avaialble to listen and have a way to give eachother feedback to keep sessions engaging.",
+          "As Design Lead, I was responsible for value framing and positioning of the early feature concept, designing a safe and seamless proactive nudging system that was key to getting people to try it and find product-market-fit, working with other designers in the organization to adapt the mobile experience to platforms like Car, Desktop, and TV, and growing the remote Jam use case (i.e. two people listening together who are in different locations) by designing a co-ordination layer via Listening Activity and Messages to help users know when friends are available to listen and have a way to give communicate with each other to make the session great.",
         bodyLink: {
           label: "proactive nudging",
           href: "https://en.wikipedia.org/wiki/Nudge_theory",
@@ -152,20 +152,24 @@ export const caseStudies: CaseStudy[] = [
     thumbnailColor: "#F850C0",
     blurb: "Taking Spotify beyond Ubiquity",
     overview:
-      "For years Spotify has held a competitive advantage through it's Ubiquity strategy - being available on any device you listen on whether it's a TV, a Smart Speaker, or a Fridge.  Now, the Ubiquity advantage is being challenged through new technologies and new connectivity standards such as Matter. As a Senior Product Designer, I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences.",
+      "Spotify has held a competitive advantage through it's Ubiquity strategy - being available on any device you may want to listen on, from TVs, to Cars, and even some Fridges. Recently, the Ubiquity advantage is being challenged through new technologies and new connectivity standards such as Matter. As a Senior Product Designer, I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences with Spotify.",
+    overviewLink: {
+      label: "Matter",
+      href: "https://en.wikipedia.org/wiki/Matter_(standard)",
+    },
     facts: [
-      { label: "Role", value: "Co-Creator, Design Lead\n2021 – 2022" },
+      { label: "Role • 2021-2022", value: "Co-Creator, Design Lead" },
       { label: "Scope", value: "Design Strategy, Product Strategy, Research" },
       { label: "Impact", value: "Co-created core business strategy that impacts over 500 million users" },
     ],
     sections: [
       {
         body:
-          "During this project I was responsible for facilitated cross-organizational opportunity mapping workshops, co-authoring a data and insights informed bet list, helped define the three pillars of the strategy, align and socialize design principles, and helped define a multi-year roadmap that then turned into a new Product Area.",
+          "During this project I was responsible for facilitating cross-organizational opportunity mapping workshops, co-authoring a data-and-insights-informed bet list, defining the key pillars of the strategy, align and socializing the strategy and design principles within the organization, and helped define a multi-year roadmap that then turned into a new Product Area.",
       },
      {
         body:
-          "The Seamless Strategy remains a core focus for the business and the Product Area now employs over 100 people."
+          "The Seamless Strategy remains a core focus for the business and the Product Area now employs over 60 people."
       },  
     ],
     media: [
@@ -184,7 +188,7 @@ export const caseStudies: CaseStudy[] = [
     overview:
       "Before Meta made smartglasses creepy again, I was a Senior Product Designer at a stealth startup in Canada called North.  We had the mission of making createing the next mode of computer a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
     facts: [
-      { label: "Role", value: "Interaction Design Lead\n2018 – 2019" },
+      { label: "Role • 2018-2019", value: "Interaction Design Lead" },
       { label: "Scope", value: "0→1 interaction model, hardware-software co-design, information architecture" },
       { label: "Impact", value: "Alexa on Focals certified by Amazon, late 2018" },
     ],

@@ -422,21 +422,29 @@ test("keeps the header on screen so both controls stay reachable", () => {
 });
 
 test("shrinks the header once the page is scrolled, and restores it at the top", () => {
-  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
-  const header = screen.getByTestId("case-study-header");
-  expect(header).toHaveAttribute("data-shrunk", "false");
+  jest.useFakeTimers();
+  try {
+    render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+    const header = screen.getByTestId("case-study-header");
+    expect(header).toHaveAttribute("data-shrunk", "false");
 
-  act(() => {
-    window.scrollY = 400;
-    window.dispatchEvent(new Event("scroll"));
-  });
-  expect(header).toHaveAttribute("data-shrunk", "true");
+    act(() => {
+      window.scrollY = 400;
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(header).toHaveAttribute("data-shrunk", "true");
 
-  act(() => {
-    window.scrollY = 0;
-    window.dispatchEvent(new Event("scroll"));
-  });
-  expect(header).toHaveAttribute("data-shrunk", "false");
+    // The resize-induced events are ignored while the header is moving. Once
+    // settled, reaching the real document top restores the full header.
+    act(() => jest.advanceTimersByTime(400));
+    act(() => {
+      window.scrollY = 0;
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(header).toHaveAttribute("data-shrunk", "false");
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("lays each media tile out at its authored span", () => {

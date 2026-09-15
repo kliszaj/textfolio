@@ -21,6 +21,7 @@ import {
   legoLetterColorAt,
   legoLetterTileAt,
   legoLetterIndexForCoverage,
+  legoShadowOffsetFromLight,
   legoStudSizeForWidth,
   legoTileAtlasRect,
 } from "./legoText";
@@ -35,6 +36,13 @@ test("keeps the LEGO grid chunky but responsive", () => {
 test("keeps the baseplate registered to a headline that lifts during scroll", () => {
   expect(legoBackgroundPosition(24, 180, 12)).toBe("24px calc(180px - 12vh)");
   expect(legoBackgroundPosition(31.5, 96, 0)).toBe("31.5px calc(96px - 0vh)");
+});
+
+test("moves a grid-snapped shadow away from the cursor light", () => {
+  expect(legoShadowOffsetFromLight(0, 0, 50, 50, 50, 50)).toEqual({ x: 4, y: 4 });
+  expect(legoShadowOffsetFromLight(100, 100, 50, 50, 50, 50)).toEqual({ x: -4, y: -4 });
+  expect(legoShadowOffsetFromLight(50, 50, 50, 50, 50, 50)).toEqual({ x: 0, y: 0 });
+  expect(legoShadowOffsetFromLight(-100, 200, 50, 50, 50, 50, 3)).toEqual({ x: 3, y: -3 });
 });
 
 test("uses the supplied 64px PNG renders for every LEGO surface", () => {

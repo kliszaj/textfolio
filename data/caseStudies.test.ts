@@ -20,6 +20,14 @@ test("all slugs are unique", () => {
   expect(new Set(slugs).size).toBe(slugs.length);
 });
 
+test("keeps each case study date beside the role label, not in the large role value", () => {
+  expect(caseStudies.slice(0, 3).map((caseStudy) => caseStudy.facts?.[0])).toEqual([
+    { label: "Role • 2023-Present", value: "Design Lead" },
+    { label: "Role • 2021-2022", value: "Co-Creator, Design Lead" },
+    { label: "Role • 2018-2019", value: "Interaction Design Lead" },
+  ]);
+});
+
 test("orders the Spotify Jam media as one full-width flow, two portrait choices, then desktop and TV", () => {
   const spotifyJam = getCaseStudyBySlug("spotify-jam");
 
@@ -31,6 +39,13 @@ test("orders the Spotify Jam media as one full-width flow, two portrait choices,
     expect.objectContaining({ src: "/assets/jam-desktop.png", span: "full", aspect: "landscape" }),
     expect.objectContaining({ src: "/assets/jam-tv.png", span: "full", aspect: "landscape" }),
   ]);
+});
+
+test("links Matter from the Seamless Strategy overview", () => {
+  expect(getCaseStudyBySlug("seamless-strategy")?.overviewLink).toEqual({
+    label: "Matter",
+    href: "https://en.wikipedia.org/wiki/Matter_(standard)",
+  });
 });
 
 test("work overview body copy avoids em dashes", () => {

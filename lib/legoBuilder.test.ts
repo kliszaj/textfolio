@@ -29,7 +29,7 @@ test("sanitizes saved builder cells and baseplate choices", () => {
     faceTilePath: "/assets/lego-blocks/lego-block-11.png",
     extrusionTilePath: "/assets/lego-blocks/lego-block-16.png",
     extrusionOffsetColumns: 3,
-    extrusionOffsetRows: 3,
+    extrusionOffsetRows: -3,
     showDefaultText: false,
     cells: {
       "12:8": "/assets/lego-blocks/lego-block-20.png",

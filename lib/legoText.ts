@@ -80,6 +80,37 @@ export function legoBackgroundPosition(
   return `${x}px calc(${y}px - ${liftPercent}vh)`;
 }
 
+export function legoShadowOffsetFromLight(
+  lightX: number,
+  lightY: number,
+  centerX: number,
+  centerY: number,
+  radiusX: number,
+  radiusY: number,
+  maximumOffset = 4
+): { x: number; y: number } {
+  const safeMaximum = Number.isFinite(maximumOffset)
+    ? Math.max(0, Math.round(Math.abs(maximumOffset)))
+    : 0;
+  const normalized = (value: number, center: number, radius: number) => {
+    if (!Number.isFinite(value) || !Number.isFinite(center) || !Number.isFinite(radius) || radius <= 0) {
+      return 0;
+    }
+    return Math.max(-1, Math.min(1, (value - center) / radius));
+  };
+
+  // A shadow travels away from its light source. Keep both axes snapped to
+  // whole studs so the extrusion can never drift off the LEGO grid.
+  const snap = (value: number) => {
+    const offset = Math.round(-value * safeMaximum);
+    return Object.is(offset, -0) ? 0 : offset;
+  };
+  return {
+    x: snap(normalized(lightX, centerX, radiusX)),
+    y: snap(normalized(lightY, centerY, radiusY)),
+  };
+}
+
 export function legoCellKey(column: number, row: number): string {
   return `${column}:${row}`;
 }

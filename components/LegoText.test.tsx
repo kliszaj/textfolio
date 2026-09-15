@@ -4,6 +4,9 @@ import { LegoText } from "./LegoText";
 test("keeps an accessible word while the LEGO canvas is decorative", () => {
   render(<LegoText text="ADRIAN" />);
   expect(screen.getByTestId("lego-text")).toHaveAttribute("data-ready", "false");
+  expect(screen.getByTestId("lego-text")).toHaveAttribute("data-pointer-light", "false");
+  expect(screen.getByTestId("lego-text")).toHaveAttribute("data-shadow-offset-x", "3");
+  expect(screen.getByTestId("lego-text")).toHaveAttribute("data-shadow-offset-y", "3");
   expect(screen.getByRole("img", { name: "ADRIAN built from editable LEGO tiles" })).toBeInTheDocument();
   expect(screen.getByTestId("lego-text")).toHaveAttribute("data-edited-count", "0");
 });

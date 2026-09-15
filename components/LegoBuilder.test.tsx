@@ -32,6 +32,19 @@ test("selects one supplied block at a time and saves a browser draft", () => {
   expect(screen.getByText("Browser draft saved")).toBeInTheDocument();
 });
 
+test("shows a toggleable 50-percent red original-font tracing guide", () => {
+  render(<LegoBuilder />);
+
+  const guide = screen.getByTestId("lego-builder-trace-guide");
+  expect(guide).toHaveTextContent("ADRIAN");
+  expect(guide).toHaveAttribute("aria-hidden", "true");
+  expect(guide).toHaveAttribute("data-visible", "true");
+
+  fireEvent.click(screen.getByRole("button", { name: "Hide font guide" }));
+  expect(guide).toHaveAttribute("data-visible", "false");
+  expect(screen.getByRole("button", { name: "Show font guide" })).toBeInTheDocument();
+});
+
 test("changes the baseplate and can start from a completely blank grid", () => {
   render(<LegoBuilder />);
   const baseplatePalette = screen.getByRole("group", { name: "Baseplate color" });
@@ -64,6 +77,6 @@ test("exports the complete repository-backed homepage default", () => {
     faceTilePath: "/assets/lego-blocks/lego-block-11.png",
     extrusionTilePath: "/assets/lego-blocks/lego-block-16.png",
     extrusionOffsetColumns: 4,
-    extrusionOffsetRows: 3,
+    extrusionOffsetRows: -3,
   });
 });
