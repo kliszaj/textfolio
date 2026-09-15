@@ -9,12 +9,12 @@ test("keeps an accessible word while the LEGO canvas is decorative", () => {
 });
 
 test("toggles every newly crossed cell once during a pointer drag", () => {
-  const onToggleCell = jest.fn();
+  const onToggleCells = jest.fn();
   const onEditingChange = jest.fn();
   render(
     <LegoText
       text="ADRIAN"
-      onToggleCell={onToggleCell}
+      onToggleCells={onToggleCells}
       onEditingChange={onEditingChange}
     />
   );
@@ -42,7 +42,8 @@ test("toggles every newly crossed cell once during a pointer drag", () => {
   pointerEvent("pointerMove", 17, 17);
   pointerEvent("pointerUp", 17, 17);
 
-  expect(onToggleCell.mock.calls).toEqual([["1:1"], ["2:1"]]);
+  expect(onToggleCells).toHaveBeenCalledTimes(1);
+  expect(onToggleCells).toHaveBeenCalledWith(["1:1", "2:1"]);
   expect(onEditingChange.mock.calls).toEqual([
     [true, { x: 50, y: 60 }],
     [false, { x: 50, y: 60 }],
@@ -50,17 +51,19 @@ test("toggles every newly crossed cell once during a pointer drag", () => {
 
   // A new gesture can intentionally toggle that same square back again.
   pointerEvent("pointerDown", 17, 17);
-  expect(onToggleCell).toHaveBeenLastCalledWith("1:1");
-  expect(onToggleCell).toHaveBeenCalledTimes(3);
+  expect(onToggleCells).toHaveBeenCalledTimes(1);
+  pointerEvent("pointerUp", 17, 17);
+  expect(onToggleCells).toHaveBeenLastCalledWith(["1:1"]);
+  expect(onToggleCells).toHaveBeenCalledTimes(2);
 });
 
 test("paints cells across an expanded canvas while keeping coordinates anchored to the word", () => {
-  const onPaintCell = jest.fn();
+  const onPaintCells = jest.fn();
   render(
     <LegoText
       text="ADRIAN"
       canvasArea={{ left: -80, top: -64, width: 320, height: 288 }}
-      onPaintCell={onPaintCell}
+      onPaintCells={onPaintCells}
     />
   );
   const root = screen.getByTestId("lego-text");
@@ -72,6 +75,10 @@ test("paints cells across an expanded canvas while keeping coordinates anchored 
   Object.defineProperty(pointer, "offsetX", { value: 17 });
   Object.defineProperty(pointer, "offsetY", { value: 17 });
   fireEvent(canvas, pointer);
+  const pointerUp = createEvent.pointerUp(canvas, { button: 0, pointerId: 8 });
+  Object.defineProperty(pointerUp, "offsetX", { value: 17 });
+  Object.defineProperty(pointerUp, "offsetY", { value: 17 });
+  fireEvent(canvas, pointerUp);
 
-  expect(onPaintCell).toHaveBeenCalledWith("-4:-3");
+  expect(onPaintCells).toHaveBeenCalledWith(["-4:-3"]);
 });

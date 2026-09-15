@@ -146,9 +146,11 @@ function hatchStrokesForBox(box: MeasuredBox | null, gap: number): HatchStroke[]
   return strokes;
 }
 
-// About half a second of frames: long enough for a late web font to land, and
-// free because boxMoved discards every measurement that has not changed.
-const MEASURE_SETTLE_FRAMES = 36;
+// Font readiness and ResizeObserver already schedule authoritative measures.
+// Keep only a few initial frames for browser layout settling: getBBox and
+// getExtentOfChar force synchronous SVG layout even when boxMoved discards the
+// resulting React update, so doing this 36 times competed with the intro.
+const MEASURE_SETTLE_FRAMES = 3;
 
 export function StrokeText({
   text,

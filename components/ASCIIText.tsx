@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { cappedCanvasDpr } from "@/lib/canvasResolution";
 import {
   ASCII_CAMERA_DISTANCE,
   ASCII_CAMERA_FOV_DEG,
@@ -68,6 +69,10 @@ void main() {
 // Kept below a retro-game simulation: its job is to give the ASCII source a
 // glass-screen character while leaving the type's silhouette readable.
 const CRT_SCANLINE_INTENSITY = 0.68;
+// ASCII is intentionally a stepped digital treatment. Sampling the WebGL
+// canvas and repainting thousands of individual glyph cells at 60fps doubled
+// main-thread work without producing perceptibly more animation frames.
+const ASCII_RENDER_FRAME_MS = 1000 / 30;
 
 const CHARACTERS = " .`^\\\",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 type ASCIITextProps = Partial<ASCIITextConfig> & {
@@ -337,7 +342,7 @@ export function ASCIIText({
         renderer.setSize(size.width, size.height);
         camera.aspect = size.width / size.height;
         camera.updateProjectionMatrix();
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = cappedCanvasDpr(window.devicePixelRatio || 1);
         outputCanvas.width = Math.max(1, Math.floor(size.width * dpr));
         outputCanvas.height = Math.max(1, Math.floor(size.height * dpr));
         outputContext.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -357,11 +362,12 @@ export function ASCIIText({
         sampleContext.clearRect(0, 0, width, height);
         sampleContext.drawImage(renderer.domElement, 0, 0, width, height);
         const pixels = sampleContext.getImageData(0, 0, width, height).data;
-        let output = "";
         const burst = rainBurstRef.current;
         const burstElapsed = burst ? now - burst.startedAt : ASCII_REBUILD_TOTAL_MS + 1;
         const rebuild = asciiRebuildPhaseAt(burstElapsed);
         const burstActive = Boolean(burst && rebuild.phase !== "idle");
+        const buildTextOutput = !randomizeGlyphColors && !burstActive;
+        let output = "";
         outputCanvas.style.display = randomizeGlyphColors || burstActive ? "block" : "none";
         pre.style.opacity = !randomizeGlyphColors && burstActive ? "0" : "1";
         if (randomizeGlyphColors || burstActive) {
@@ -384,7 +390,7 @@ export function ASCIIText({
             const index = (y * width + x) * 4;
             const alpha = pixels[index + 3];
             if (alpha < 12) {
-              output += " ";
+              if (buildTextOutput) output += " ";
               continue;
             }
             const brightness = (pixels[index] * 0.3 + pixels[index + 1] * 0.6 + pixels[index + 2] * 0.1) / 255;
@@ -418,7 +424,7 @@ export function ASCIIText({
                   burstActive ? rebuild.progress : typeProgressRef.current
                 );
             if (cell === "hidden") {
-              output += " ";
+              if (buildTextOutput) output += " ";
               continue;
             }
             const character =
@@ -435,7 +441,7 @@ export function ASCIIText({
               (rebuild.phase === "decompose" || rebuild.phase === "rebuild") &&
               cell === "churning"
             );
-            output += character;
+            if (buildTextOutput) output += character;
             if (randomizeGlyphColors || burstActive) {
               // Same brightness that chose the glyph also chooses its colour,
               // so ink and hue describe one surface. The hash is a per-cell
@@ -462,12 +468,13 @@ export function ASCIIText({
               );
             }
           }
-          output += "\n";
+          if (buildTextOutput) output += "\n";
         }
-        if (!randomizeGlyphColors) pre.textContent = output;
+        if (buildTextOutput) pre.textContent = output;
       };
 
       let demoStart = performance.now();
+      let lastAsciiFrame = -Infinity;
       // Advances a few times a second so churning cells reshuffle their junk.
       let churnTick = 0;
       let pointerTaken = false;
@@ -508,7 +515,10 @@ export function ASCIIText({
         churnTick = Math.floor(time / 55);
         material.uniforms.uTime.value = time * 0.001;
         renderer.render(scene, camera);
-        asciify(time);
+        if (time - lastAsciiFrame >= ASCII_RENDER_FRAME_MS) {
+          lastAsciiFrame = time;
+          asciify(time);
+        }
         frame = requestAnimationFrame(render);
       };
 

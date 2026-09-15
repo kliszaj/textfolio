@@ -44,20 +44,18 @@ export const HEADLINE_INTRO_DURATION_MS = HEADLINE_INTRO_STEPS.reduce(
   0
 );
 
-// The treatments (especially the editable LEGO canvas) can briefly occupy
-// the main thread while a frame is being prepared. Never let one delayed rAF
-// callback consume an entire treatment's screen time. At normal refresh rates
-// this cap changes nothing; after a stall it resumes the story from the last
-// visible frame instead of jumping several stages ahead.
-export const HEADLINE_MAX_FRAME_DELTA_MS = 50;
-
 export function advanceHeadlineIntroElapsed(
   elapsedMs: number,
   frameDeltaMs: number
 ): number {
   const safeElapsed = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
   const safeDelta = Number.isFinite(frameDeltaMs) ? Math.max(0, frameDeltaMs) : 0;
-  return safeElapsed + Math.min(safeDelta, HEADLINE_MAX_FRAME_DELTA_MS);
+  // Stay tied to wall time. Capping a slow frame used to preserve every
+  // treatment after LEGO blocked the main thread, but it also made the clock
+  // fall behind reality and repay that missing time as a long pause on Warp.
+  // LEGO's intro frame is now pre-rendered and compact, so an interrupted tab
+  // should catch up instead of stretching the sequence.
+  return safeElapsed + safeDelta;
 }
 
 function smoothstep(t: number): number {

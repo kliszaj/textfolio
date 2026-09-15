@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  HEADLINE_INTRO_BOUNDARIES_MS,
   HEADLINE_INTRO_SETTLED,
   HEADLINE_INTRO_WAITING,
-  advanceHeadlineIntroElapsed,
   introStateAt,
 } from "@/lib/headlineIntro";
 import type { HeadlineIntroState } from "@/lib/headlineIntro";
@@ -30,20 +30,23 @@ export function useHeadlineIntro(enabled: boolean, ready = true): HeadlineIntroS
 
   useEffect(() => {
     if (!active) return;
-    let accumulated = 0;
-    let previousFrameTime = performance.now();
-    let frame = 0;
-    const step = (now: number) => {
-      accumulated = advanceHeadlineIntroElapsed(
-        accumulated,
-        now - previousFrameTime
+    const startedAt = performance.now();
+    let timer = 0;
+    const step = () => {
+      const nextElapsed = performance.now() - startedAt;
+      setElapsed(nextElapsed);
+      const nextBoundary = HEADLINE_INTRO_BOUNDARIES_MS.find(
+        (boundary) => boundary > nextElapsed
       );
-      previousFrameTime = now;
-      setElapsed(accumulated);
-      if (!introStateAt(accumulated).done) frame = requestAnimationFrame(step);
+      if (nextBoundary !== undefined) {
+        timer = window.setTimeout(step, Math.max(0, nextBoundary - nextElapsed));
+      }
     };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    // The intro uses hard cuts, so nothing in this hook needs a per-frame
+    // React render. Wake only at the five authored treatment boundaries; the
+    // treatments' own canvas loops remain independent and fluid.
+    timer = window.setTimeout(step, HEADLINE_INTRO_BOUNDARIES_MS[1]);
+    return () => window.clearTimeout(timer);
   }, [active]);
 
   if (!enabled || reducedMotion) return HEADLINE_INTRO_SETTLED;

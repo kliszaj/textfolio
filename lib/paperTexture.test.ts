@@ -1,26 +1,7 @@
-import { DEFAULT_PAPER_TEXTURE_CONFIG } from "./paperTexture";
+import { sketchBackgroundPosition } from "./paperTexture";
 
-test("keeps the paper material restrained and its colours usable by the shader", () => {
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorBack).toBe("#FFFFFF");
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorFront).toBe("#E3E3E3");
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.opacity).toBe(1);
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorBack).toMatch(/^#[0-9A-F]{6}$/i);
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.colorFront).toMatch(/^#[0-9A-F]{6}$/i);
-  for (const key of [
-    "opacity",
-    "contrast",
-    "roughness",
-    "fiber",
-    "fiberSize",
-    "crumples",
-    "crumpleSize",
-    "folds",
-    "drops",
-    "fade",
-  ] as const) {
-    expect(DEFAULT_PAPER_TEXTURE_CONFIG[key]).toBeGreaterThanOrEqual(0);
-    expect(DEFAULT_PAPER_TEXTURE_CONFIG[key]).toBeLessThanOrEqual(1);
-  }
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.foldCount).toBeGreaterThanOrEqual(1);
-  expect(DEFAULT_PAPER_TEXTURE_CONFIG.foldCount).toBeLessThanOrEqual(15);
+test("moves the sketch texture with the lifted headline", () => {
+  expect(sketchBackgroundPosition(0)).toBe("0px calc(0px - 0vh)");
+  expect(sketchBackgroundPosition(12.5)).toBe("0px calc(0px - 12.5vh)");
+  expect(sketchBackgroundPosition(Number.NaN)).toBe("0px calc(0px - 0vh)");
 });

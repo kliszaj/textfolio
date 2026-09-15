@@ -57,31 +57,35 @@ The user explicitly approved committing and pushing this release to
   row plays at a time; other loaded rows pause. Playback also pauses while the
   document is hidden and resumes when the active row becomes eligible again.
 
-### LEGO performance follow-up
+### LEGO performance pass
 
 PNG-to-WebP conversion is low priority: all 24 PNGs total only about 152KB,
-and decoded images cost essentially the same to draw. If more optimization is
-needed, implement roughly in this order:
+and decoded images cost essentially the same to draw. The prioritized pass is
+now implemented:
 
-1. Keep an entire pointer gesture local to `LegoText` and commit the cell set
-   to `Hero` only on pointer-up, avoiding a parent-tree rerender per cell.
-2. Make incremental dirty-cell rendering authoritative so a tile edit never
-   triggers the current full bitmap recomposition afterward.
-3. Persist homepage edits on pointer-up or after an idle debounce instead of
-   serializing and sorting the complete cell set after every change.
-4. Cache a compact per-grid cell plan (filled state, letter ownership, tile,
-   coordinates) and stop resampling glyph pixels on each full redraw.
-5. Replace the six retained full-resolution RGBA letter masks with that compact
-   grid plan, then discard the masks to reduce memory/GC pressure.
-6. Coalesce `ResizeObserver`, window resize, font-ready, and prop-driven redraw
-   requests into one rAF and skip work when dimensions are unchanged.
-7. Use a static pre-rendered LEGO frame during the 250ms intro and activate the
-   interactive canvas for hover/editing after the intro.
-8. If still useful, combine the 24 tiles into one atlas and decode it once via
-   `createImageBitmap`; pre-baked shadow variants may reduce two passes to one.
-9. Larger grid cells are an effective optional visual/performance tradeoff.
-10. Only after profiling the above, consider `OffscreenCanvas` in a worker or
-    a WebGL instanced-quad renderer. Both add much more complexity.
+1. Pointer gestures remain local to `LegoText`; homepage toggles and builder
+   paints commit one cell collection to React on pointer-up.
+2. Tile edits are authoritative incremental dirty-region redraws. The later
+   prop synchronization diffs changed keys and does not rebuild the bitmap.
+3. Homepage persistence is debounced 180ms and therefore occurs after the
+   batched pointer-up state commit rather than once per crossed tile.
+4. Each font/size combination produces one compact grid plan containing the
+   default fill and tile assignment for every cell. Redraws reuse it.
+5. Only one temporary letter RGBA mask exists while the plan is generated;
+   each mask is reduced to grid coverage and then discarded instead of keeping
+   six full-size pixel arrays alive.
+6. Initial, resize-observer, window-resize, and font-ready reconstruction
+   requests are coalesced through one requestAnimationFrame callback.
+7. During the intro LEGO renders only the static word-sized canvas. The larger
+   full-hero editing surface is prepared after the intro finishes.
+8. Canvas rendering uses the 384×256 `lego-atlas.png` (six columns by four
+   rows). It decodes once through `createImageBitmap` when available, with an
+   `HTMLImageElement` fallback; the atlas is about 88KB.
+
+If profiling still finds a meaningful bottleneck, remaining options are larger
+grid cells, pre-baked shadow atlas variants, `OffscreenCanvas` in a worker, or
+finally a WebGL instanced-quad renderer. Those trade visual flexibility or add
+substantial complexity and were intentionally not added speculatively.
 
 ### Verification and release contents
 
@@ -2919,3 +2923,28 @@ Also removed the `border-t border-ink/25` divider above the "Now" heading
 and the `pt-4`/`pt-8 md:pt-10` spacing that existed to hold copy clear of
 it, per the user's follow-up ask once the height fix was confirmed live
 and looking right. Full suite still 586/586, `tsc`/`eslint` clean.
+
+### Homepage cold-load performance pass
+
+The lingering hitch at the Warp-to-default handoff was not authored timing.
+The hidden `LegoText` canvas changed from the compact headline frame to the
+full editable viewport on the exact render where `intro.done` became true,
+forcing its most expensive redraw during the visible final cut. The full
+canvas is now prepared only after the visitor activates Sketch (the treatment
+immediately before LEGO) or LEGO itself; first load keeps the compact atlas
+bitmap throughout.
+
+The hard-cut intro clock in `useHeadlineIntro` now updates React only at the
+five treatment boundaries instead of rerendering the entire Hero every rAF.
+`StrokeText` reduced its forced SVG geometry settling reads from 36 frames to
+3 (font events and ResizeObserver remain authoritative). `ASCIIText` samples
+and repaints its glyph grid at 30fps rather than 60fps and no longer builds an
+unused giant text string while using its coloured canvas renderer. The idle
+Warp canvas now stops its WebGL rAF loop and wakes only for its demo, pointer
+motion, boost, or colour change. Route prefetches begin after 3.2s and are
+staggered by 350ms instead of all firing during the intro.
+
+Live cold-load sampling after the changes showed clean ~250ms treatment beats,
+an immediate Warp-to-default cut, the subheader starting on the next frame,
+and the LEGO bitmap remaining 1152x216 throughout the sampled load instead of
+expanding to the viewport. Full suite: 646/646; lint and production build pass.

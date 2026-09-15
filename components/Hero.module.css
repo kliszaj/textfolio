@@ -18,15 +18,6 @@
 
 .introLoaderSpinner {
   --circular-text-color: #1c1c1c;
-  --circular-text-font-family: var(--font-adrian);
-  --circular-text-font-weight: 400;
-  --loader-circle-size: clamp(260px, 32vw, 380px);
-  width: var(--loader-circle-size);
-  height: var(--loader-circle-size);
-}
-
-.introLoaderSpinner span {
-  font-size: clamp(2rem, 4vw, 3.25rem);
 }
 
 .paperSurface {

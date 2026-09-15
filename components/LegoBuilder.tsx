@@ -60,13 +60,17 @@ export function LegoBuilder() {
     ? null
     : legoTileOptionForPath(selectedTool);
 
-  const paintCell = useCallback((cell: string) => {
+  const paintCells = useCallback((cells: readonly string[]) => {
+    if (cells.length === 0) return;
     setPreferences((current) => ({
       ...current,
-      cells: {
-        ...current.cells,
-        [cell]: selectedTool === "erase" ? null : selectedTool,
-      },
+      cells: cells.reduce<Record<string, string | null>>(
+        (next, cell) => {
+          next[cell] = selectedTool === "erase" ? null : selectedTool;
+          return next;
+        },
+        { ...current.cells }
+      ),
     }));
     setSaveState("dirty");
   }, [selectedTool]);
@@ -177,7 +181,8 @@ export function LegoBuilder() {
               fontWeight={900}
               showDefaultText={preferences.showDefaultText}
               cellTiles={cellTiles}
-              onPaintCell={paintCell}
+              onPaintCells={paintCells}
+              paintTile={selectedTool === "erase" ? null : selectedTool}
               onGridChange={alignBuilderBackground}
               canvasArea={legoGrid.width && legoGrid.height ? {
                 left: -legoGrid.x,

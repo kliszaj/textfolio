@@ -101,16 +101,23 @@ test("keeps the fixed cursor-driven stack on fine-pointer devices", () => {
 });
 
 test("prefetches every case study route so the lift lands instantly", () => {
+  jest.useFakeTimers();
   render(<HomePage />);
+  expect(mockPrefetch).not.toHaveBeenCalled();
+  act(() => jest.advanceTimersByTime(5000));
   caseStudies.forEach((cs) => {
     expect(mockPrefetch).toHaveBeenCalledWith(`/work/${cs.slug}`);
   });
+  jest.useRealTimers();
 });
 
 test("prefetches About too, at its own route rather than /work/about", () => {
+  jest.useFakeTimers();
   render(<HomePage />);
+  act(() => jest.advanceTimersByTime(5000));
   expect(mockPrefetch).toHaveBeenCalledWith("/about");
   expect(mockPrefetch).not.toHaveBeenCalledWith("/work/about");
+  jest.useRealTimers();
 });
 
 test("lifts and navigates to About the same way a case study does", () => {

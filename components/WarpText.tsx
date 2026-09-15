@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
+import { cappedCanvasDpr } from "@/lib/canvasResolution";
 import { centeredRunLayout, demoCircleAt, demoPointerAt } from "@/lib/warpText";
 import styles from "./WarpText.module.css";
 
@@ -53,12 +54,15 @@ type WarpTextProps = {
   // A press-and-hold boost supplied by the parent interaction surface. Kept
   // out of the WebGL setup dependencies so pressing never rebuilds a canvas.
   boosted?: boolean;
+  // The canvas stays mounted throughout the intro, but real pointer input
+  // must not take ownership of its scripted demo until that sequence ends.
+  interactive?: boolean;
   className?: string;
   style?: CSSProperties;
 };
 
 type DrawProps = Required<
-  Omit<WarpTextProps, "className" | "style" | "onActiveChange" | "demoSweepMs" | "demoMode" | "boosted">
+  Omit<WarpTextProps, "className" | "style" | "onActiveChange" | "demoSweepMs" | "demoMode" | "boosted" | "interactive">
 >;
 
 const fontValue = (value: string | number) => (typeof value === "number" ? `${value}px` : value);
@@ -79,7 +83,7 @@ function drawTextCanvas(container: HTMLDivElement, props: DrawProps) {
   // getBoundingClientRect would return that rotated on-screen box instead
   // of the container's real, unrotated layout size.
   const rect = { width: container.offsetWidth, height: container.offsetHeight };
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = cappedCanvasDpr(window.devicePixelRatio || 1);
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -150,17 +154,28 @@ export function WarpText({
   lineHeight = 0.9,
   onActiveChange,
   boosted = false,
+  interactive = true,
   className = "",
   style,
 }: WarpTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const demoSweepRef = useRef(demoSweepMs);
   const boostedRef = useRef(boosted);
+  const interactiveRef = useRef(interactive);
   const capturedPointerMoveRef = useRef<((event: PointerEvent) => void) | null>(null);
+  const contextRef = useRef<{
+    setTextColor: (nextColor: string) => void;
+    wake: () => void;
+  } | null>(null);
 
   useEffect(() => {
     boostedRef.current = boosted;
+    contextRef.current?.wake();
   }, [boosted]);
+
+  useEffect(() => {
+    interactiveRef.current = interactive;
+  }, [interactive]);
 
   // Hero captures the pointer during a press so releasing outside the word is
   // still reliable. Captured events target Hero rather than this canvas, so
@@ -197,13 +212,13 @@ export function WarpText({
     demoSweepRef.current = demoSweepMs;
     demoSweepStartedAtRef.current = demoSweepMs > 0 ? performance.now() : null;
     if (wasActive && demoSweepMs === 0) demoEndRequestRef.current += 1;
+    contextRef.current?.wake();
   }, [demoSweepMs]);
 
   useEffect(() => {
     demoModeRef.current = demoMode;
   }, [demoMode]);
 
-  const contextRef = useRef<{ setTextColor: (nextColor: string) => void } | null>(null);
   const colorRef = useRef(color);
 
   useEffect(() => {
@@ -221,7 +236,12 @@ export function WarpText({
       if (disposed) return;
       let renderer;
       try {
-        renderer = new Renderer({ webgl: 2, alpha: true, antialias: true, dpr: Math.min(window.devicePixelRatio || 1, 2) });
+        renderer = new Renderer({
+          webgl: 2,
+          alpha: true,
+          antialias: true,
+          dpr: cappedCanvasDpr(window.devicePixelRatio || 1),
+        });
       } catch {
         return;
       }
@@ -234,6 +254,7 @@ export function WarpText({
       const program = new Program(gl, { vertex, fragment, transparent: true, depthTest: false, depthWrite: false, uniforms: { uTextTexture: { value: texture }, uResolution: { value: new Float32Array([1, 1]) }, uPointer: { value: new Float32Array([0.5, 0.5]) }, uPointerActive: { value: 0 }, uHover: { value: 0 }, uTime: { value: 0 }, uTextColor: { value: colorVector(colorRef.current) }, uWarpStrength: { value: warpStrength }, uWarpScale: { value: warpScale }, uSpeed: { value: speed }, uPointerInfluence: { value: pointerInfluence }, uPointerStrength: { value: pointerStrength }, uRefraction: { value: refraction }, uRipple: { value: ripple ? 1 : 0 } } });
       const mesh = new Mesh(gl, { geometry: new Triangle(gl), program });
       let frame = 0;
+      let running = false;
       const pointer = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5, strength: 0, targetStrength: 0 };
       let pointerTaken = false;
       const startedAt = performance.now();
@@ -250,18 +271,42 @@ export function WarpText({
         render();
       };
       const onPointerMove = (event: PointerEvent) => {
-        if (event.pointerType === "touch") return;
+        if (event.pointerType === "touch" || !interactiveRef.current) return;
         pointerTaken = true;
         const rect = container.getBoundingClientRect();
         pointer.targetX = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
         pointer.targetY = Math.min(1, Math.max(0, 1 - (event.clientY - rect.top) / rect.height));
         pointer.targetStrength = 1;
+        scheduleLoop();
       };
       capturedPointerMoveRef.current = onPointerMove;
-      const onPointerLeave = () => { pointer.targetStrength = 0; };
+      const onPointerLeave = () => {
+        pointer.targetStrength = 0;
+        scheduleLoop();
+      };
       let handledEndRequest = demoEndRequestRef.current;
-      const loop = (now: number) => {
+      function scheduleLoop() {
+        if (disposed || running) return;
+        running = true;
+        frame = requestAnimationFrame(loop);
+      }
+      function loop(now: number) {
         if (disposed) return;
+        // The end request must win even if a stationary cursor happened to be
+        // over the headline while the intro was playing. Previously that
+        // pointermove set pointerTaken and put this reset behind the
+        // !pointerTaken guard, leaving Warp to decay visibly after its beat.
+        if (demoEndRequestRef.current !== handledEndRequest) {
+          handledEndRequest = demoEndRequestRef.current;
+          pointerTaken = false;
+          pointer.targetX = 0.5;
+          pointer.targetY = 0.5;
+          pointer.targetStrength = 0;
+          pointer.x = 0.5;
+          pointer.y = 0.5;
+          pointer.strength = 0;
+        }
+        if (!interactiveRef.current) pointerTaken = false;
         if (!pointerTaken) {
           const demoStartedAt = demoSweepStartedAtRef.current;
           const swept =
@@ -282,15 +327,6 @@ export function WarpText({
             pointer.targetX = 0.5;
             pointer.targetStrength = 0;
           }
-          if (demoEndRequestRef.current !== handledEndRequest) {
-            // Forces the resting headline back to undistorted -- see
-            // demoEndRequestRef's own comment for why the branch above can't
-            // be relied on to catch this.
-            handledEndRequest = demoEndRequestRef.current;
-            pointer.targetX = 0.5;
-            pointer.targetY = 0.5;
-            pointer.targetStrength = 0;
-          }
         }
         pointer.x += (pointer.targetX - pointer.x) * 0.12;
         pointer.y += (pointer.targetY - pointer.y) * 0.12;
@@ -309,8 +345,22 @@ export function WarpText({
         easeUniform("uRefraction", refraction, Math.min(0.16, refraction * 2.4));
         program.uniforms.uTime.value = (now - startedAt) / 1000;
         render();
-        frame = requestAnimationFrame(loop);
-      };
+        const demoStartedAt = demoSweepStartedAtRef.current;
+        const demoInProgress =
+          demoStartedAt !== null
+          && demoSweepRef.current > 0
+          && now - demoStartedAt < demoSweepRef.current;
+        const pointerMoving =
+          Math.abs(pointer.targetX - pointer.x) > 0.001
+          || Math.abs(pointer.targetY - pointer.y) > 0.001
+          || Math.abs(pointer.targetStrength - pointer.strength) > 0.001
+          || pointer.strength > 0.001;
+        if (demoInProgress || pointerMoving || boostedRef.current) {
+          frame = requestAnimationFrame(loop);
+        } else {
+          running = false;
+        }
+      }
       const observer = new ResizeObserver(resize);
       observer.observe(container);
       container.addEventListener("pointermove", onPointerMove);
@@ -326,10 +376,12 @@ export function WarpText({
       contextRef.current = {
         setTextColor: (nextColor) => {
           program.uniforms.uTextColor.value.set(colorVector(nextColor));
+          render();
         },
+        wake: scheduleLoop,
       };
       container.dataset.webglReady = "true";
-      frame = requestAnimationFrame(loop);
+      scheduleLoop();
       destroy = () => {
         cancelAnimationFrame(frame);
         observer.disconnect();
@@ -364,10 +416,11 @@ export function WarpText({
       data-webgl-ready="false"
       data-boosted={boosted}
       data-drag-tracking={boosted}
+      data-interactive={interactive}
       role="img"
       aria-label={text}
       onPointerEnter={(event) => {
-        if (event.pointerType !== "touch") onActiveChange?.(true);
+        if (interactive && event.pointerType !== "touch") onActiveChange?.(true);
       }}
       onPointerLeave={() => onActiveChange?.(false)}
     >

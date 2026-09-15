@@ -20,6 +20,7 @@ import {
 } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
+import { sketchBackgroundPosition } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
 import { useHeroReveal } from "@/hooks/useHeroReveal";
@@ -99,7 +100,7 @@ export const TAGLINE_OFFSET = "clamp(-6rem, -2.6rem - 1.4vw, -2.6rem)";
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
-const LEGO_ACCENT_COLOR = "#000000";
+const LEGO_ACCENT_COLOR = "#15FF76";
 // The page at rest, before any treatment has been hovered.
 const RESTING_ACCENT_COLOR = "#878787";
 // The page, tagline, and arrow all change treatment together on hover. Keep
@@ -185,15 +186,18 @@ function LegoLayoutPersistence({
 }) {
   useEffect(() => {
     if (!ready) return;
-    try {
-      window.localStorage.setItem(
-        LEGO_LAYOUT_STORAGE_KEY,
-        JSON.stringify(Array.from(cells).sort())
-      );
-    } catch {
-      // Storage can be disabled by privacy settings; editing still works for
-      // the current visit in that case.
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          LEGO_LAYOUT_STORAGE_KEY,
+          JSON.stringify(Array.from(cells).sort())
+        );
+      } catch {
+        // Storage can be disabled by privacy settings; editing still works for
+        // the current visit in that case.
+      }
+    }, 180);
+    return () => window.clearTimeout(timer);
   }, [cells, ready]);
   return null;
 }
@@ -507,11 +511,14 @@ export function Hero({
     );
   }, []);
 
-  const toggleLegoCell = useCallback((cell: string) => {
+  const toggleLegoCells = useCallback((cells: readonly string[]) => {
+    if (cells.length === 0) return;
     setRemovedLegoCells((current) => {
       const next = new Set(current);
-      if (next.has(cell)) next.delete(cell);
-      else next.add(cell);
+      cells.forEach((cell) => {
+        if (next.has(cell)) next.delete(cell);
+        else next.add(cell);
+      });
       return next;
     });
   }, []);
@@ -628,7 +635,7 @@ export function Hero({
             text="LOADING*LOADING*"
             spinDuration={8}
             onHover="speedUp"
-            className={`${styles.introLoaderSpinner} boil-line`}
+            className={styles.introLoaderSpinner}
           />
         </div>
       )}
@@ -660,6 +667,7 @@ export function Hero({
         data-testid="sketch-paper-surface"
         data-active={activeEffect === "stroke"}
         className={`${styles.surface} ${styles.paperSurface} ${activeEffect === "stroke" ? styles.visible : ""}`}
+        style={{ backgroundPosition: sketchBackgroundPosition(liftPercent) }}
       />
       <div
         aria-hidden="true"
@@ -912,6 +920,7 @@ export function Hero({
               // the whole headline -- enough to prove the warp reacts to a
               // pointer at all, without touring the word in only a second.
               demoMode="circle"
+              interactive={intro.done}
               letterSpacing="0"
               lineHeight={1}
               boosted={activeEffect === "warp" && warpPressed}
@@ -937,12 +946,24 @@ export function Hero({
               onGridChange={alignLegoBackground}
               toggledCells={removedLegoCells}
               cellTiles={legoCellTiles}
-              onToggleCell={toggleLegoCell}
+              onToggleCells={toggleLegoCells}
               onEditingChange={handleLegoEditingChange}
               onReady={markLegoReady}
               shadowOffsetX={legoShadowOffsetX}
               shadowOffsetY={legoShadowOffsetY}
-              canvasArea={legoCanvasArea}
+              // The intro only needs the finished word. Keep that first frame
+              // word-sized, then prepare the full editable hero canvas after
+              // the scripted sequence has finished.
+              // Expanding this hidden bitmap to the entire viewport is the
+              // most expensive LEGO draw. Never do it automatically during
+              // first load. The hover sequence reaches Sketch immediately
+              // before LEGO, so prepare it behind Sketch; a direct LEGO state
+              // still expands it immediately for correctness.
+              canvasArea={
+                intro.done && (activeEffect === "stroke" || activeEffect === "lego")
+                  ? legoCanvasArea
+                  : undefined
+              }
             />
           </div>
           {/* Like LEGO, the finished sketch is measured before the intro

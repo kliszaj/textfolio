@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { WarpText } from "./WarpText";
 
 test("keeps the readable fallback and readiness flag before WebGL2 starts", () => {
@@ -54,4 +54,22 @@ test("tracks captured pointer movement globally only while the boost is held", (
 
   addEventListener.mockRestore();
   removeEventListener.mockRestore();
+});
+
+test("can keep its warm canvas mounted while intro pointer input is disabled", () => {
+  const onActiveChange = jest.fn();
+  const { rerender } = render(
+    <WarpText text="ADRIAN" interactive={false} onActiveChange={onActiveChange} />
+  );
+  const host = screen.getByTestId("warp-text");
+
+  expect(host).toHaveAttribute("data-interactive", "false");
+  fireEvent.pointerEnter(host, { pointerType: "mouse" });
+  expect(onActiveChange).not.toHaveBeenCalled();
+
+  rerender(<WarpText text="ADRIAN" interactive onActiveChange={onActiveChange} />);
+  expect(screen.getByTestId("warp-text")).toBe(host);
+  expect(host).toHaveAttribute("data-interactive", "true");
+  fireEvent.pointerEnter(host, { pointerType: "mouse" });
+  expect(onActiveChange).toHaveBeenCalledWith(true);
 });

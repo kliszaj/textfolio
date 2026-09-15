@@ -24,17 +24,14 @@ test("starts with nothing shown, before any time has passed", () => {
   expect(state.phase).toBe("hidden");
 });
 
-describe("the pause before the focus pull starts", () => {
-  test("stays hidden for the whole delay", () => {
-    const state = heroRevealStateAt(SUBHEADER_REVEAL_START_DELAY_MS - 1, TAGLINE_LENGTH, DOT_COUNT);
-    expect(state.phase).toBe("hidden");
-    expect(state.subheaderChars).toBe(0);
+describe("the immediate focus pull after the headline handoff", () => {
+  test("has no authored pause", () => {
+    expect(SUBHEADER_REVEAL_START_DELAY_MS).toBe(0);
   });
 
-  test("starts focusing the instant the delay ends", () => {
-    expect(heroRevealStateAt(SUBHEADER_REVEAL_START_DELAY_MS, TAGLINE_LENGTH, DOT_COUNT).phase).toBe(
-      "focusing"
-    );
+  test("keeps only the zero-time handoff frame hidden", () => {
+    expect(heroRevealStateAt(0, TAGLINE_LENGTH, DOT_COUNT).phase).toBe("hidden");
+    expect(heroRevealStateAt(1, TAGLINE_LENGTH, DOT_COUNT).phase).toBe("focusing");
   });
 });
 

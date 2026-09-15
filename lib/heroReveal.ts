@@ -38,10 +38,10 @@ export function heroRevealSettled(taglineLength: number, dotCount: number): Hero
   };
 }
 
-// A breath between the headline handing off and the subtitle starting to
-// resolve -- landing straight on the resting treatment read as rushed, with
-// nothing marking the handoff as its own moment.
-export const SUBHEADER_REVEAL_START_DELAY_MS = 350;
+// Begin the focus pull as soon as the headline lands on its resting treatment.
+// This used to be 350ms, but because rest and Warp share the same persistent
+// canvas that empty beat read as the Warp treatment hanging after its turn.
+export const SUBHEADER_REVEAL_START_DELAY_MS = 0;
 
 // A single, short focus pull for the entire sentence. Unlike the prior
 // per-character cadence, copy edits never alter the reveal's duration.
@@ -65,7 +65,10 @@ export function heroRevealStateAt(
 ): HeroRevealState {
   const elapsed = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
 
-  if (elapsed < SUBHEADER_REVEAL_START_DELAY_MS) {
+  // Preserve one clean handoff render at exactly zero. It lets Hero apply the
+  // resting colours with transitions disabled before enabling the normal
+  // hover transitions on the next animation frame; this is not a timed hold.
+  if (elapsed <= 0 || elapsed < SUBHEADER_REVEAL_START_DELAY_MS) {
     return HERO_REVEAL_HIDDEN;
   }
 

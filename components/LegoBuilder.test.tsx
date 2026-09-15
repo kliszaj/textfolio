@@ -27,6 +27,10 @@ test("selects one supplied block at a time and saves painted cells for the homep
   Object.defineProperty(pointer, "offsetX", { value: 17 });
   Object.defineProperty(pointer, "offsetY", { value: 17 });
   fireEvent(canvas, pointer);
+  const pointerUp = createEvent.pointerUp(canvas, { button: 0, pointerId: 4 });
+  Object.defineProperty(pointerUp, "offsetX", { value: 17 });
+  Object.defineProperty(pointerUp, "offsetY", { value: 17 });
+  fireEvent(canvas, pointerUp);
 
   fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
   const saved = JSON.parse(window.localStorage.getItem(LEGO_BUILDER_STORAGE_KEY) ?? "{}");

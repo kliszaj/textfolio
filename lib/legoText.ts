@@ -28,6 +28,25 @@ export const LEGO_TILE_ASSET_PATHS = [
   "/assets/lego-blocks/lego-block-24.png",
 ] as const;
 
+export const LEGO_TILE_ATLAS_PATH = "/assets/lego-blocks/lego-atlas.png";
+export const LEGO_TILE_ATLAS_COLUMNS = 6;
+export const LEGO_TILE_SOURCE_SIZE = 64;
+
+export function legoTileAtlasRect(path: string): {
+  x: number;
+  y: number;
+  size: number;
+} {
+  const index = Math.max(0, LEGO_TILE_ASSET_PATHS.indexOf(
+    path as (typeof LEGO_TILE_ASSET_PATHS)[number]
+  ));
+  return {
+    x: (index % LEGO_TILE_ATLAS_COLUMNS) * LEGO_TILE_SOURCE_SIZE,
+    y: Math.floor(index / LEGO_TILE_ATLAS_COLUMNS) * LEGO_TILE_SOURCE_SIZE,
+    size: LEGO_TILE_SOURCE_SIZE,
+  };
+}
+
 // Like the ASCII treatment, LEGO now uses one dominant face color and a
 // contrasting depth color instead of distributing a rainbow across letters.
 // Keep the original 24-color catalog above intact so future experiments can

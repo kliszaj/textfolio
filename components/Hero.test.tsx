@@ -131,8 +131,8 @@ test("cycles Sketch, LEGO, ASCII, Warp, then back to Sketch on distinct hover en
   expect(screen.getByTestId("treatment-layer-lego")).toHaveAttribute("data-active", "true");
   expect(screen.getByTestId("treatment-mount")).toHaveAttribute("data-treatment", "lego");
   expect(screen.getByTestId("lego-baseplate-surface")).toHaveAttribute("data-active", "true");
-  expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: "#000000" });
-  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: "#000000" });
+  expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: "#15FF76" });
+  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: "#15FF76" });
   expect(hero).toHaveStyle({ backgroundColor: "#C00000", color: "#1C1C1C" });
   expect(screen.getByTestId("lego-baseplate-surface")).toHaveStyle({
     backgroundColor: "#C00000",
@@ -291,6 +291,18 @@ test("the tagline sits in the same place whatever treatment is active", () => {
   const resting = tagline.style.marginTop;
   fireEvent.pointerEnter(screen.getByTestId("hero-headline"));
   expect(tagline.style.marginTop).toBe(resting);
+});
+
+test("moves the sketch paper grid with the lifted foreground", () => {
+  render(<Hero playIntro={false} fanProgress={0} liftPercent={12.5} />);
+  fireEvent.pointerEnter(screen.getByTestId("hero-headline"), { pointerType: "mouse" });
+
+  expect(screen.getByTestId("sketch-paper-surface")).toHaveStyle({
+    backgroundPosition: "0px calc(0px - 12.5vh)",
+  });
+  expect(screen.getByTestId("hero-headline")).toHaveStyle({
+    transform: "translateY(-12.5vh)",
+  });
 });
 
 test("tagline and arrow take the yellow accent under the ASCII treatment", () => {

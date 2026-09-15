@@ -7,6 +7,9 @@ import {
   LEGO_TEXT_SHADOW_OPACITY,
   LEGO_TEXT_TILE_PATHS,
   LEGO_TILE_ASSET_PATHS,
+  LEGO_TILE_ATLAS_COLUMNS,
+  LEGO_TILE_ATLAS_PATH,
+  LEGO_TILE_SOURCE_SIZE,
   legoCellAtPoint,
   legoCellAtRelativePoint,
   legoBackgroundPosition,
@@ -17,6 +20,7 @@ import {
   legoLetterTileAt,
   legoLetterIndexForCoverage,
   legoStudSizeForWidth,
+  legoTileAtlasRect,
 } from "./legoText";
 
 test("keeps the LEGO grid chunky but responsive", () => {
@@ -43,6 +47,15 @@ test("uses the supplied 64px PNG renders for every LEGO surface", () => {
   );
   expect(legoLetterTileAt(6)).toBe(LEGO_TEXT_TILE_PATHS[0]);
   expect(LEGO_BACKGROUND_TILE_PATH).toBe("/assets/lego-blocks/lego-block-24.png");
+});
+
+test("maps every supplied block into the shared six-column atlas", () => {
+  expect(LEGO_TILE_ATLAS_PATH).toBe("/assets/lego-blocks/lego-atlas.png");
+  expect(LEGO_TILE_ATLAS_COLUMNS).toBe(6);
+  expect(LEGO_TILE_SOURCE_SIZE).toBe(64);
+  expect(legoTileAtlasRect(LEGO_TILE_ASSET_PATHS[0])).toEqual({ x: 0, y: 0, size: 64 });
+  expect(legoTileAtlasRect(LEGO_TILE_ASSET_PATHS[6])).toEqual({ x: 0, y: 64, size: 64 });
+  expect(legoTileAtlasRect(LEGO_TILE_ASSET_PATHS[23])).toEqual({ x: 320, y: 192, size: 64 });
 });
 
 test("addresses each removable brick by its grid position", () => {

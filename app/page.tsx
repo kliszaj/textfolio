@@ -65,6 +65,11 @@ const DEFAULT_TRANSITION_MS = 0;
 
 // Tuning controls are a development tool, not something visitors should meet.
 const SHOW_DEBUG_PANEL = process.env.NODE_ENV !== "production";
+// Route parsing and prefetch traffic should not compete with the first-load
+// treatment reel. The stack is interactive well before this fires; a click
+// still navigates normally if someone gets there unusually quickly.
+const ROUTE_PREFETCH_DELAY_MS = 3200;
+const ROUTE_PREFETCH_STAGGER_MS = 350;
 
 // The intro only plays once per page load, so trying a cut effect means
 // picking it in the settings panel, then reloading to actually watch it --
@@ -172,11 +177,23 @@ export default function HomePage() {
     : config;
 
   // Warm every case study route so the push at the end of the lift is instant
-  // and the colour carries straight through.
+  // and the colour carries straight through. Defer that unrelated work until
+  // the complete first-load reveal is off the critical path.
   useEffect(() => {
-    [...caseStudies, ABOUT_PAGE].forEach((caseStudy) =>
-      router.prefetch(caseStudyRoute(caseStudy))
-    );
+    const routes = [...caseStudies, ABOUT_PAGE].map(caseStudyRoute);
+    let index = 0;
+    let timer = 0;
+    const prefetchNext = () => {
+      const route = routes[index];
+      if (!route) return;
+      router.prefetch(route);
+      index += 1;
+      if (index < routes.length) {
+        timer = window.setTimeout(prefetchNext, ROUTE_PREFETCH_STAGGER_MS);
+      }
+    };
+    timer = window.setTimeout(prefetchNext, ROUTE_PREFETCH_DELAY_MS);
+    return () => window.clearTimeout(timer);
   }, [router]);
 
   // onClickCapture runs before the sheet's own handler, so by the time

@@ -35,3 +35,11 @@ export const DEFAULT_PAPER_TEXTURE_CONFIG: PaperTextureConfig = {
   seed: 18.4,
   scale: 0.58,
 };
+
+// The headline rises by a viewport-relative amount as the paper stack opens.
+// Move the repeating sketch-paper grid by that same amount so the drawing
+// remains registered to its paper instead of sliding over a fixed texture.
+export function sketchBackgroundPosition(liftPercent: number): string {
+  const safeLift = Number.isFinite(liftPercent) ? liftPercent : 0;
+  return `0px calc(0px - ${safeLift}vh)`;
+}

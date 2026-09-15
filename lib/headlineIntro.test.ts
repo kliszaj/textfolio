@@ -1,5 +1,4 @@
 import {
-  HEADLINE_MAX_FRAME_DELTA_MS,
   advanceHeadlineIntroElapsed,
   ASCII_INTRO_DEMO_MS,
   ASCII_INTRO_DURATION_MS,
@@ -67,11 +66,9 @@ test("survives nonsense elapsed values", () => {
   expect(introStateAt(NaN).phase).toBe("default");
 });
 
-test("a delayed animation frame cannot skip treatments", () => {
-  expect(advanceHeadlineIntroElapsed(100, 5000)).toBe(
-    100 + HEADLINE_MAX_FRAME_DELTA_MS
-  );
-  expect(introStateAt(advanceHeadlineIntroElapsed(0, 5000)).phase).toBe("default");
+test("a delayed animation frame catches up to wall time instead of extending Warp", () => {
+  expect(advanceHeadlineIntroElapsed(100, 5000)).toBe(5100);
+  expect(introStateAt(advanceHeadlineIntroElapsed(0, 5000)).phase).toBe("final");
 });
 
 describe("sketch shows the finished, corrected word -- no draw-in", () => {
