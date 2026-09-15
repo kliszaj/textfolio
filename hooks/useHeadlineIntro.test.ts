@@ -32,12 +32,43 @@ describe("useHeadlineIntro", () => {
     expect(result.current.done).toBe(false);
   });
 
-  test("reaches the ascii prototype, then settles on the finished treatment", () => {
+  test("waits for treatment assets without completing or advancing behind the loader", () => {
+    const { result, rerender } = renderHook(
+      ({ ready }) => useHeadlineIntro(true, ready),
+      { initialProps: { ready: false } }
+    );
+
+    expect(result.current).toEqual({
+      phase: "default",
+      phaseProgress: 0,
+      opacity: 1,
+      done: false,
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(result.current.phase).toBe("default");
+    expect(result.current.done).toBe(false);
+
+    rerender({ ready: true });
+    expect(result.current.phase).toBe("default");
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(result.current.phase).toBe("sketch");
+  });
+
+  test("passes through LEGO, reaches ASCII, then settles on the finished treatment", () => {
     const { result } = renderHook(() => useHeadlineIntro(true));
 
     act(() => {
       jest.advanceTimersByTime(
-        HEADLINE_INTRO_STEPS[0].durationMs + HEADLINE_INTRO_STEPS[1].durationMs + 50
+        HEADLINE_INTRO_STEPS[0].durationMs
+        + HEADLINE_INTRO_STEPS[1].durationMs
+        + HEADLINE_INTRO_STEPS[2].durationMs
+        + 50
       );
     });
     expect(result.current.phase).toBe("ascii");

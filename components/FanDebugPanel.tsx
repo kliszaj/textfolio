@@ -32,6 +32,10 @@ type FanDebugPanelProps = {
   onCutEffectChange: (effect: IntroCutEffect) => void;
   rgbConfig: IntroCutRgbConfig;
   onRgbConfigChange: (config: IntroCutRgbConfig) => void;
+  legoShadowOffsetX: number;
+  onLegoShadowOffsetXChange: (offset: number) => void;
+  legoShadowOffsetY: number;
+  onLegoShadowOffsetYChange: (offset: number) => void;
 };
 
 const BAND_LABELS = ["Case One", "Case Two", "Case Three", "Case Four", "Case Five"];
@@ -39,6 +43,7 @@ const TREATMENT_LABELS = {
   warp: "Warp Text",
   ascii: "ASCII Text",
   stroke: "Stroke Text",
+  lego: "LEGO Text",
   paper: "Paper Texture",
 } as const;
 const CUT_EFFECT_LABELS: Record<IntroCutEffect, string> = {
@@ -73,6 +78,10 @@ export function FanDebugPanel({
   onCutEffectChange,
   rgbConfig,
   onRgbConfigChange,
+  legoShadowOffsetX,
+  onLegoShadowOffsetXChange,
+  legoShadowOffsetY,
+  onLegoShadowOffsetYChange,
 }: FanDebugPanelProps) {
   const [open, setOpen] = useState(false);
   const [selectedTreatment, setSelectedTreatment] = useState<TreatmentId>("ascii");
@@ -662,6 +671,42 @@ export function FanDebugPanel({
               checked={warpConfig.ripple}
               onChange={(event) => updateWarp("ripple", event.target.checked)}
               className="size-4 accent-white"
+            />
+          </label>
+        </div>
+        ) : selectedTreatment === "lego" ? (
+        <div data-testid="lego-text-settings" className="grid grid-cols-1 gap-y-3">
+          <a
+            href="/lego-builder"
+            className="rounded border border-[#FFD60B] bg-[#FFD60B] px-2 py-2 text-center font-bold text-[#171717] no-underline"
+          >
+            Open full LEGO Builder
+          </a>
+          <label className="block leading-tight" htmlFor="lego-shadow-offset-x">
+            Shadow X: {legoShadowOffsetX.toFixed(1)}px
+            <input
+              id="lego-shadow-offset-x"
+              type="range"
+              min={-12}
+              max={12}
+              step={0.5}
+              value={legoShadowOffsetX}
+              onChange={(event) => onLegoShadowOffsetXChange(Number(event.target.value))}
+              className="mt-1 w-full"
+            />
+          </label>
+
+          <label className="block leading-tight" htmlFor="lego-shadow-offset-y">
+            Shadow Y: {legoShadowOffsetY.toFixed(1)}px
+            <input
+              id="lego-shadow-offset-y"
+              type="range"
+              min={-12}
+              max={12}
+              step={0.5}
+              value={legoShadowOffsetY}
+              onChange={(event) => onLegoShadowOffsetYChange(Number(event.target.value))}
+              className="mt-1 w-full"
             />
           </label>
         </div>

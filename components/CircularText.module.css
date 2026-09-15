@@ -1,0 +1,21 @@
+.circularText {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  border-radius: 50%;
+  color: var(--circular-text-color, #fff);
+  font-family: var(--circular-text-font-family, var(--font-pp-frama)), sans-serif;
+  font-weight: var(--circular-text-font-weight, 900);
+  text-align: center;
+  cursor: pointer;
+  transform-origin: 50% 50%;
+}
+
+.circularText span {
+  position: absolute;
+  inset: 0;
+  display: inline-block;
+  font-size: 24px;
+  transition: all 0.5s cubic-bezier(0, 0, 0, 1);
+}

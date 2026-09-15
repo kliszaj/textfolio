@@ -47,6 +47,31 @@ export function caseStudyTitleScale(naturalWidth: number, availableWidth: number
   return Math.min(1, availableWidth / naturalWidth);
 }
 
+export function caseStudyMediaRows(media: CaseStudyMedia[]): number[] {
+  let row = 0;
+  let occupiedColumns = 0;
+
+  return media.map((item) => {
+    if ((item.span ?? "half") === "full") {
+      if (occupiedColumns > 0) {
+        row += 1;
+        occupiedColumns = 0;
+      }
+      const itemRow = row;
+      row += 1;
+      return itemRow;
+    }
+
+    const itemRow = row;
+    occupiedColumns += 1;
+    if (occupiedColumns === 2) {
+      row += 1;
+      occupiedColumns = 0;
+    }
+    return itemRow;
+  });
+}
+
 const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
   full: "col-span-2 row-span-2",
   tall: "col-span-1 row-span-2",
@@ -120,8 +145,12 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   const [settled, setSettled] = useState(false);
   const [exiting, setExiting] = useState(false);
   const [isLongReadExpanded, setIsLongReadExpanded] = useState(false);
+  const [activePlaybackRow, setActivePlaybackRow] = useState<string | null>(null);
   const titleContainerRef = useRef<HTMLHeadingElement>(null);
   const titleButtonRef = useRef<HTMLButtonElement>(null);
+  const mediaSectionRef = useRef<HTMLElement>(null);
+  const mediaRows = caseStudyMediaRows(media);
+  const hasPlayableMedia = Boolean(videoSrc) || media.some((item) => item.kind === "video");
   const hasCollapsibleLongRead = sections.length > COLLAPSIBLE_SECTION_MINIMUM;
   const visibleSections = hasCollapsibleLongRead && !isLongReadExpanded
     ? sections.slice(0, COLLAPSED_SECTION_COUNT)
@@ -131,6 +160,63 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     const timer = setTimeout(() => setSettled(true), 620);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const section = mediaSectionRef.current;
+    if (!section || !hasPlayableMedia) return;
+
+    let frame: number | null = null;
+
+    const updateActiveRow = () => {
+      frame = null;
+      const viewportHeight = window.innerHeight;
+      const viewportCenter = viewportHeight / 2;
+      const rowBounds = new Map<string, { top: number; bottom: number }>();
+
+      section.querySelectorAll<HTMLElement>("[data-playback-row]").forEach((element) => {
+        const row = element.dataset.playbackRow;
+        if (!row) return;
+        const bounds = element.getBoundingClientRect();
+        const current = rowBounds.get(row);
+        rowBounds.set(row, {
+          top: current ? Math.min(current.top, bounds.top) : bounds.top,
+          bottom: current ? Math.max(current.bottom, bounds.bottom) : bounds.bottom,
+        });
+      });
+
+      const closestVisibleRow = Array.from(rowBounds.entries())
+        .filter(([, bounds]) => bounds.bottom > 0 && bounds.top < viewportHeight)
+        .sort(([, a], [, b]) => {
+          const aCenter = (a.top + a.bottom) / 2;
+          const bCenter = (b.top + b.bottom) / 2;
+          return Math.abs(aCenter - viewportCenter) - Math.abs(bCenter - viewportCenter);
+        })[0]?.[0] ?? null;
+
+      setActivePlaybackRow((current) =>
+        current === closestVisibleRow ? current : closestVisibleRow
+      );
+    };
+
+    const scheduleUpdate = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(updateActiveRow);
+    };
+
+    updateActiveRow();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(scheduleUpdate);
+    resizeObserver?.observe(section);
+
+    return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      resizeObserver?.disconnect();
+    };
+  }, [hasPlayableMedia]);
 
   useLayoutEffect(() => {
     const container = titleContainerRef.current;
@@ -458,6 +544,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               than a separate full-width gallery. */}
           {hasMedia && (
             <section
+              ref={mediaSectionRef}
               data-testid="case-study-media"
               className="mx-auto mt-20 w-full max-w-[100rem]"
             >
@@ -466,8 +553,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   data-testid="case-study-video"
                   className="w-full mx-auto rounded-2xl"
                   src={videoSrc}
+                  data-playback-row="primary"
                   style={{ backgroundColor: caseStudy.thumbnailColor }}
-                  autoPlay
+                  loadImmediately
+                  playing={activePlaybackRow === "primary"}
                   muted
                   loop
                   playsInline
@@ -500,7 +589,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                             <LazyVideo
                               className="size-full object-cover"
                               src={item.src}
-                              autoPlay
+                              data-playback-row={`media-${mediaRows[index]}`}
+                              loadImmediately
+                              playing={activePlaybackRow === `media-${mediaRows[index]}`}
                               muted
                               loop
                               playsInline

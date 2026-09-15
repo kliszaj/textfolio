@@ -12,7 +12,11 @@ let introPlayed = false;
 // subscribe to; the store exists only to separate the server's answer from the
 // client's.
 const subscribe = () => () => {};
-const serverSnapshot = () => false;
+// A genuine document load should ship the same intro/loading state that the
+// first hydrated client render will use. Returning Home is a client-side mount
+// and reads getSnapshot directly, so it still sees the module flag and skips
+// the story after the first visit.
+const serverSnapshot = () => true;
 
 export function useIntroOnce(): boolean {
   // Cached per mount, so the snapshot is stable however often React asks.
@@ -26,10 +30,8 @@ export function useIntroOnce(): boolean {
     return decided.current;
   }, []);
 
-  // The server, and therefore the first client paint, always answers false.
-  // Deciding this during an ordinary render consumed the flag at prerender
-  // time: the built HTML shipped the resting hero while the client, with a
-  // fresh module, hydrated into the intro -- a mismatch on every first visit.
+  // serverSnapshot does not consume the module flag. The hydrated first read
+  // agrees with it, then claims the one allowed intro through getSnapshot.
   return useSyncExternalStore(subscribe, getSnapshot, serverSnapshot);
 }
 

@@ -57,6 +57,7 @@ type StrokeTextProps = {
   reverse?: boolean;
   className?: string;
   style?: CSSProperties;
+  onReady?: () => void;
 };
 
 type MeasuredBox = { x: number; y: number; width: number; height: number };
@@ -169,6 +170,7 @@ export function StrokeText({
   reverse = false,
   className = "",
   style,
+  onReady,
 }: StrokeTextProps) {
   const rootRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<SVGTextElement>(null);
@@ -599,6 +601,9 @@ export function StrokeText({
       )
     : null;
   const useHatchFill = fillMode === "hatch" && sketch.fillTexture === "hatch";
+  useEffect(() => {
+    if (hostSize && box) onReady?.();
+  }, [box, hostSize, onReady]);
   return (
     <span
       ref={rootRef}

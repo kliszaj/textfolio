@@ -1,6 +1,96 @@
 # Textfolio — Handoff
 
-Last updated: 2026-09-06
+Last updated: 2026-09-15
+
+## Release: LEGO treatment, deterministic intro, and focused video playback (2026-09-15)
+
+The user explicitly approved committing and pushing this release to
+`origin/main`. This supersedes older release notes where behavior differs.
+
+### Homepage treatment and builder
+
+- LEGO is a fourth interactive headline treatment. The intro and hover order
+  is **Sketch → LEGO → ASCII → Warp**. The opening default beat remains 450ms;
+  each expressive treatment now lasts 250ms before the final hard cut back to
+  default.
+- `/lego-builder` is a separate full-canvas editor. It offers 24 supplied
+  64×64 realistic PNG block colors, an eraser, background selection, reset,
+  clear, revert, save, and save-and-open controls. Preferences are sanitized
+  and stored under `textfolio:lego-builder-v1`; homepage click/drag toggles use
+  `textfolio:lego-layout-v1`.
+- The generated default word uses blue blocks on the selected red baseplate.
+  The text layer has a black shadow rendered as a separate pass at 25% opacity
+  (75% transparent), with default X/Y offsets of 3px. Dev Settings exposes
+  both offsets. The tagline and down arrow are black during LEGO.
+- The baseplate grid is registered to the foreground grid through resize and
+  homepage lift. The editable canvas covers the full hero, not only the word.
+  A gesture toggles each newly crossed cell once: an occupied cell is removed
+  and an empty cell is added. Pointer edits now patch only the dirty tile area
+  immediately, before React performs the authoritative redraw, eliminating
+  the visible click delay.
+- `components/LegoText.tsx` stays mounted warm beneath the other treatments so
+  its bitmap is ready before LEGO is revealed. It uses a 1× canvas backing
+  store, cached glyph masks, viewport culling, and two canvas passes rather
+  than per-tile canvas shadow filters. `public/assets/lego-blocks/` is the
+  runtime tile source; the original root-level grid/reference images are not
+  runtime dependencies.
+
+### Loader and intro sequencing
+
+- The server-rendered first paint is the loader, not the final headline. The
+  loader waits for restored LEGO storage, the LEGO bitmap, and the completed
+  Sketch rendering. Only after it disappears does the headline clock begin.
+  The subheader/arrow/dot reveal remains gated on the headline intro finishing.
+- The circular loader reads `LOADING*LOADING*`, uses the Adrian script face at
+  regular weight, participates in the global four-frame line boil, and scales
+  from a 260px to 380px circle with 32px to 52px lettering.
+- Intro timing advances through capped rendered-frame deltas rather than raw
+  wall-clock time. A long LEGO/main-thread frame can slow the sequence but can
+  no longer skip Sketch, LEGO, ASCII, Warp, or the entire story.
+- `useIntroOnce` still prevents replay after client-side navigation back Home;
+  a genuine hard refresh starts a new intro.
+
+### Case-study video playback
+
+- Videos still load immediately and Spotify Jam's first video can begin when
+  its row is the closest visible row to the viewport center. Only one media
+  row plays at a time; other loaded rows pause. Playback also pauses while the
+  document is hidden and resumes when the active row becomes eligible again.
+
+### LEGO performance follow-up
+
+PNG-to-WebP conversion is low priority: all 24 PNGs total only about 152KB,
+and decoded images cost essentially the same to draw. If more optimization is
+needed, implement roughly in this order:
+
+1. Keep an entire pointer gesture local to `LegoText` and commit the cell set
+   to `Hero` only on pointer-up, avoiding a parent-tree rerender per cell.
+2. Make incremental dirty-cell rendering authoritative so a tile edit never
+   triggers the current full bitmap recomposition afterward.
+3. Persist homepage edits on pointer-up or after an idle debounce instead of
+   serializing and sorting the complete cell set after every change.
+4. Cache a compact per-grid cell plan (filled state, letter ownership, tile,
+   coordinates) and stop resampling glyph pixels on each full redraw.
+5. Replace the six retained full-resolution RGBA letter masks with that compact
+   grid plan, then discard the masks to reduce memory/GC pressure.
+6. Coalesce `ResizeObserver`, window resize, font-ready, and prop-driven redraw
+   requests into one rAF and skip work when dimensions are unchanged.
+7. Use a static pre-rendered LEGO frame during the 250ms intro and activate the
+   interactive canvas for hover/editing after the intro.
+8. If still useful, combine the 24 tiles into one atlas and decode it once via
+   `createImageBitmap`; pre-baked shadow variants may reduce two passes to one.
+9. Larger grid cells are an effective optional visual/performance tradeoff.
+10. Only after profiling the above, consider `OffscreenCanvas` in a worker or
+    a WebGL instanced-quad renderer. Both add much more complexity.
+
+### Verification and release contents
+
+- Run `npm test`, `npm run lint`, and `npm run build` before later publishing.
+- The root-level `Codex Image Sep 9, 2026, 10_09_30 PM.png`, `Codex Image Sep
+  9, 2026, 10_09_35 PM.png`, and `wordsnap-brand-guidelines.pdf` are redundant
+  source/reference copies, are not referenced at runtime, and are intentionally
+  excluded from this release. The optimized WordSnap images already live in
+  `public/assets/`.
 
 A designer portfolio built as a stack of paper. The landing page (the name
 "ADRIAN") is the top sheet; case studies sit beneath it and fan out as the

@@ -7,6 +7,28 @@
   transition: opacity 480ms ease-out;
 }
 
+.introLoader {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: #f5ede6;
+}
+
+.introLoaderSpinner {
+  --circular-text-color: #1c1c1c;
+  --circular-text-font-family: var(--font-adrian);
+  --circular-text-font-weight: 400;
+  --loader-circle-size: clamp(260px, 32vw, 380px);
+  width: var(--loader-circle-size);
+  height: var(--loader-circle-size);
+}
+
+.introLoaderSpinner span {
+  font-size: clamp(2rem, 4vw, 3.25rem);
+}
+
 .paperSurface {
   /* A light dot grid and irregular fibres make the sketch read as a notebook
      page rather than a sterile flat fill. They live on the entire hero, not
@@ -24,6 +46,15 @@
     repeating-linear-gradient(to right, rgb(120 255 235 / 6%) 0 1px, transparent 1px 3px),
     radial-gradient(ellipse at center, transparent 44%, rgb(0 30 29 / 23%) 100%);
   mix-blend-mode: multiply;
+}
+
+.legoSurface {
+  --lego-base-tile: 18px;
+  background-image: url("/assets/lego-blocks/lego-block-24.png");
+  background-position: 0 0;
+  background-repeat: repeat;
+  background-size: var(--lego-base-tile) var(--lego-base-tile);
+  box-shadow: inset 0 0 10vw rgb(111 77 3 / 14%);
 }
 
 /* Windows95Cursor supplies the visible pointer. Hide the system pointer on

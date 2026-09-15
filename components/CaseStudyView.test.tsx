@@ -10,7 +10,7 @@ beforeEach(() => {
   window.scrollY = 0;
 });
 
-import { CaseStudyView, caseStudyTitleScale } from "./CaseStudyView";
+import { CaseStudyView, caseStudyMediaRows, caseStudyTitleScale } from "./CaseStudyView";
 import { getCaseStudyBySlug } from "@/data/caseStudies";
 
 const caseStudy = {
@@ -97,13 +97,23 @@ test("bottom-aligns the header content to match where the lift left it", () => {
   expect(screen.getByTestId("case-study-header")).toHaveClass("justify-end", "pb-5");
 });
 
-test("defers the case study video until it is close to view", () => {
+test("loads the case study video immediately but leaves playback row-controlled", () => {
   render(<CaseStudyView caseStudy={withVideo} />);
   const video = screen.getByTestId("case-study-video");
-  expect(video).not.toHaveAttribute("src");
-  expect(video).toHaveAttribute("preload", "none");
-  expect(video).toHaveAttribute("autoplay");
+  expect(video).toHaveAttribute("src", "/assets/jam.mp4");
+  expect(video).toHaveAttribute("preload", "auto");
+  expect(video).not.toHaveAttribute("autoplay");
   expect(video).toHaveAttribute("loop");
+  expect(video).toHaveAttribute("data-playback-row", "primary");
+});
+
+test("groups side-by-side media into one playback row", () => {
+  expect(caseStudyMediaRows([
+    { src: "/wide.mp4", alt: "Wide", kind: "video", span: "full" },
+    { src: "/left.mp4", alt: "Left", kind: "video", span: "half" },
+    { src: "/right.mp4", alt: "Right", kind: "video", span: "half" },
+    { src: "/last.mp4", alt: "Last", kind: "video", span: "full" },
+  ])).toEqual([0, 1, 1, 2]);
 });
 
 test("shows that video exactly once", () => {
@@ -465,6 +475,12 @@ test("preserves authored media proportions in a sequential gallery", () => {
   expect(tiles[0]).toHaveClass("col-span-2", "aspect-video");
   expect(tiles[1]).toHaveClass("col-span-1", "aspect-[9/16]");
   expect(tiles[2]).toHaveClass("col-span-1", "aspect-[9/16]");
+  const videos = screen.getAllByTestId("case-study-tile").map((tile) =>
+    tile.querySelector("video")
+  );
+  expect(videos[0]).toHaveAttribute("data-playback-row", "media-0");
+  expect(videos[1]).toHaveAttribute("data-playback-row", "media-1");
+  expect(videos[2]).toHaveAttribute("data-playback-row", "media-1");
 });
 
 test("renders a placeholder tile for media that has no asset yet", () => {

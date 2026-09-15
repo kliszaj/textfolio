@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent, RefObject } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -34,6 +34,8 @@ import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
 import { ASCIIText } from "./ASCIIText";
 import { StrokeText } from "./StrokeText";
 import { WarpText } from "./WarpText";
+import { LegoText } from "./LegoText";
+import { CircularText } from "./CircularText";
 import { SketchAnnotations } from "./SketchAnnotations";
 import { PageIndicator } from "./PageIndicator";
 import { Windows95Cursor } from "./Windows95Cursor";
@@ -41,6 +43,17 @@ import { isOverHeadline, unionBox } from "@/lib/headlineHit";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import type { CaseStudy } from "@/data/caseStudies";
+import {
+  DEFAULT_LEGO_SHADOW_OFFSET_X,
+  DEFAULT_LEGO_SHADOW_OFFSET_Y,
+  legoBackgroundPosition,
+} from "@/lib/legoText";
+import {
+  LEGO_BUILDER_STORAGE_KEY,
+  LEGO_LAYOUT_STORAGE_KEY,
+  legoTileOptionForPath,
+  parseLegoBuilderPreferences,
+} from "@/lib/legoBuilder";
 import styles from "./Hero.module.css";
 
 // The shader package is only needed while the sketch treatment is visible;
@@ -86,11 +99,15 @@ export const TAGLINE_OFFSET = "clamp(-6rem, -2.6rem - 1.4vw, -2.6rem)";
 // this blue rather than the page's.
 const ASCII_ACCENT_COLOR = ASCII_INK_LIME;
 const WARP_ACCENT_COLOR = "#FF04FF";
+const LEGO_ACCENT_COLOR = "#000000";
 // The page at rest, before any treatment has been hovered.
 const RESTING_ACCENT_COLOR = "#878787";
 // The page, tagline, and arrow all change treatment together on hover. Keep
 // their colour transition as one shared value so one cannot lag the others.
 const TREATMENT_COLOR_TRANSITION = "500ms ease-out";
+// jsdom has no layout or canvas renderer, so readiness cannot model the real
+// browser there; production alone waits for the prepared LEGO bitmap.
+const WAIT_FOR_LEGO_BEFORE_INTRO = process.env.NODE_ENV !== "test";
 const TAGLINE_SIZE = "clamp(1.35rem, min(var(--tagline-vw), 6.2vh), 4.5rem)";
 // One shared size keeps the scroll invitation stable while the headline
 // treatment changes around it.
@@ -127,10 +144,12 @@ type HeroProps = {
   // than glitch.
   cutEffect?: IntroCutEffect;
   rgbConfig?: IntroCutRgbConfig;
+  legoShadowOffsetX?: number;
+  legoShadowOffsetY?: number;
 };
 
-type HeadlineEffect = "ascii" | "warp" | "stroke";
-const HEADLINE_EFFECT_SEQUENCE: HeadlineEffect[] = ["ascii", "warp", "stroke"];
+type HeadlineEffect = "ascii" | "warp" | "stroke" | "lego";
+const HEADLINE_EFFECT_SEQUENCE: HeadlineEffect[] = ["stroke", "lego", "ascii", "warp"];
 
 // A tiny generated static texture for the noise-burst cut effect. Not a pure,
 // tested helper like the rest of this codebase's timing math -- it draws to a
@@ -153,6 +172,32 @@ function noiseTextureDataUrl(size: number): string {
   return canvas.toDataURL();
 }
 
+// Kept as a child so introducing persistence does not alter Hero's hook
+// signature. During local Fast Refresh that lets the currently hand-edited
+// layout survive long enough for this component to capture it, then future
+// visits restore the same arrangement from browser storage.
+function LegoLayoutPersistence({
+  cells,
+  ready,
+}: {
+  cells: ReadonlySet<string>;
+  ready: boolean;
+}) {
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      window.localStorage.setItem(
+        LEGO_LAYOUT_STORAGE_KEY,
+        JSON.stringify(Array.from(cells).sort())
+      );
+    } catch {
+      // Storage can be disabled by privacy settings; editing still works for
+      // the current visit in that case.
+    }
+  }, [cells, ready]);
+  return null;
+}
+
 export function Hero({
   fanProgress,
   liftPercent = 0,
@@ -166,12 +211,94 @@ export function Hero({
   suppressHeadlineHover = false,
   cutEffect = "none",
   rgbConfig = DEFAULT_INTRO_CUT_RGB_CONFIG,
+  legoShadowOffsetX = DEFAULT_LEGO_SHADOW_OFFSET_X,
+  legoShadowOffsetY = DEFAULT_LEGO_SHADOW_OFFSET_Y,
 }: HeroProps) {
   const [hoverEffect, setHoverEffect] = useState<HeadlineEffect | null>(null);
+  const [hoverColorTransition, setHoverColorTransition] = useState(
+    TREATMENT_COLOR_TRANSITION
+  );
   const [asciiCursorStart, setAsciiCursorStart] = useState<{ x: number; y: number } | null>(null);
   const [warpPressed, setWarpPressed] = useState(false);
+  const [legoGrid, setLegoGrid] = useState<{
+    size: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  // Server and first client render must use exactly the same baseline. Saved
+  // browser-only artwork is restored after hydration, otherwise React sees
+  // (for example) 0 edited cells on the server and 796 on the client.
+  const [removedLegoCells, setRemovedLegoCells] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [legoPreferences, setLegoPreferences] = useState(
+    () => parseLegoBuilderPreferences(null)
+  );
+  const [legoStorageReady, setLegoStorageReady] = useState(false);
+  const [legoReady, setLegoReady] = useState(false);
+  const [sketchReady, setSketchReady] = useState(false);
+  useEffect(() => {
+    // The next frame is deliberately after hydration: the initial client DOM
+    // remains identical to the server DOM, then saved browser artwork can be
+    // applied without React treating it as a hydration discrepancy.
+    const frame = requestAnimationFrame(() => {
+      setLegoReady(false);
+      try {
+        const storedLayout = window.localStorage.getItem(LEGO_LAYOUT_STORAGE_KEY);
+        const cells = storedLayout ? JSON.parse(storedLayout) : [];
+        setRemovedLegoCells(
+          Array.isArray(cells)
+            ? new Set(cells.filter((cell): cell is string => typeof cell === "string"))
+            : new Set()
+        );
+        setLegoPreferences(parseLegoBuilderPreferences(
+          window.localStorage.getItem(LEGO_BUILDER_STORAGE_KEY)
+        ));
+      } catch {
+        setRemovedLegoCells(new Set());
+        setLegoPreferences(parseLegoBuilderPreferences(null));
+      } finally {
+        setLegoStorageReady(true);
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const legoCellTiles = useMemo(
+    () => new Map(Object.entries(legoPreferences.cells)),
+    [legoPreferences.cells]
+  );
+  const legoCanvasArea = useMemo(() => legoGrid ? {
+    left: -legoGrid.x,
+    // Keep the bitmap geometry stable while the stack moves. The extra lower
+    // overscan preserves the interactive viewport after the headline rises.
+    top: -legoGrid.y,
+    width: legoGrid.width,
+    height: Math.ceil(legoGrid.height * 1.3),
+  } : undefined, [legoGrid]);
+  const legoBackground = legoTileOptionForPath(legoPreferences.backgroundTilePath);
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === LEGO_BUILDER_STORAGE_KEY) {
+        setLegoPreferences(parseLegoBuilderPreferences(event.newValue));
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
   const interactionLockedRef = useRef(false);
-  const intro = useHeadlineIntro(playIntro);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const headlineRef = useRef<HTMLDivElement>(null);
+  const headlineFrameRef = useRef<HTMLDivElement>(null);
+  const markLegoReady = useCallback(() => setLegoReady(true), []);
+  const markSketchReady = useCallback(() => setSketchReady(true), []);
+  // Do not start the treatment clock until the browser-restored LEGO frame is
+  // ready. Otherwise its synchronous canvas work can consume Sketch's entire
+  // 250ms window and the first painted treatment appears to be LEGO.
+  const introAssetsReady =
+    !WAIT_FOR_LEGO_BEFORE_INTRO || (legoStorageReady && legoReady && sketchReady);
+  const intro = useHeadlineIntro(playIntro, introAssetsReady);
   const rgbSplitFilterId = useId();
   const [rgbFlash, setRgbFlash] = useState(false);
   // Alternates sign each cut (into ascii, into warp, into final each land on
@@ -183,8 +310,8 @@ export function Hero({
   const [noiseBursting, setNoiseBursting] = useState(false);
   const [channelChanging, setChannelChanging] = useState(false);
   const [noiseUrl, setNoiseUrl] = useState("");
-  // intro.phase only ever changes during the scripted intro (four times:
-  // into sketch, ascii, warp, then final) and never again afterward -- a
+  // intro.phase only ever changes during the scripted intro (five times:
+  // into sketch, LEGO, ASCII, warp, then final) and never again afterward -- a
   // later hover swap is driven by hoverEffect, a separate piece of state.
   // That means watching this alone is enough to catch every intro cut and
   // nothing else, with no need to also check intro.done: phase becomes
@@ -219,7 +346,12 @@ export function Hero({
     }
     if (
       cutEffect === "channel" &&
-      (intro.phase === "sketch" || intro.phase === "ascii" || intro.phase === "warp")
+      (
+        intro.phase === "sketch"
+        || intro.phase === "lego"
+        || intro.phase === "ascii"
+        || intro.phase === "warp"
+      )
     ) {
       setChannelChanging(true);
       const timer = setTimeout(() => setChannelChanging(false), INTRO_CUT_CHANNEL_BURST_MS);
@@ -293,12 +425,15 @@ export function Hero({
   const introEffect: HeadlineEffect | null =
     intro.phase === "sketch"
       ? "stroke"
-      : intro.phase === "ascii"
-        ? "ascii"
-        : intro.phase === "warp"
-          ? "warp"
-          : null;
+      : intro.phase === "lego"
+        ? "lego"
+        : intro.phase === "ascii"
+          ? "ascii"
+          : intro.phase === "warp"
+            ? "warp"
+            : null;
   const activeEffect = intro.done ? hoverEffect : introEffect;
+  const treatmentColorTransition = hoverColorTransition;
   const [asciiStageColor, setAsciiStageColor] = useState(ASCII_BG_COLOR);
   const nextEffectIndexRef = useRef(0);
   const isHeadlinePointerInsideRef = useRef(false);
@@ -310,14 +445,18 @@ export function Hero({
       ? ASCII_ACCENT_COLOR
       : activeEffect === "warp"
         ? WARP_ACCENT_COLOR
-        : activeEffect === "stroke"
+      : activeEffect === "stroke"
           ? SKETCH_INK
+          : activeEffect === "lego"
+            ? LEGO_ACCENT_COLOR
           : RESTING_ACCENT_COLOR;
   const stageBackground =
     activeEffect === "ascii"
       ? asciiStageColor
       : activeEffect === "stroke"
         ? paperTextureConfig.colorBack
+        : activeEffect === "lego"
+          ? legoBackground.swatch
         : isHeadlineActive
           ? SELECTED_BG_COLOR
           : DEFAULT_BG_COLOR;
@@ -327,12 +466,70 @@ export function Hero({
   // warp treatment, so rest and "warp" share an identity and never remount --
   // which is why that one transition was always clean.
   const treatment =
-    activeEffect === "ascii" ? "ascii" : activeEffect === "stroke" ? "stroke" : "warp";
+    activeEffect === "ascii"
+      ? "ascii"
+      : activeEffect === "stroke"
+        ? "stroke"
+        : activeEffect === "lego"
+          ? "lego"
+          : "warp";
   const showCoolS = activeEffect === "stroke";
   const arrowOpacity = 1 - Math.min(1, fanProgress * 2);
   // The resting word is quiet grey, but the hand-drawn prompt needs enough
   // contrast to read as an affordance before any treatment has been invoked.
   const arrowColor = activeEffect === null ? DEFAULT_INK_COLOR : accentColor;
+
+  const alignLegoBackground = useCallback((studSize: number) => {
+    const hero = heroRef.current;
+    const headline = headlineRef.current;
+    const frame = headlineFrameRef.current;
+    if (!hero || !headline || !frame) return;
+    // offsetLeft/offsetTop are local layout coordinates. Unlike bounding
+    // rectangles, they ignore the rotating/fanning PaperSheet transform and
+    // remain stable through browser resizing. The only transform inside this
+    // coordinate system is the known headline lift, applied in CSS below.
+    const next = {
+      size: studSize,
+      x: headline.offsetLeft + frame.offsetLeft,
+      y: headline.offsetTop + frame.offsetTop,
+      width: hero.offsetWidth,
+      height: hero.offsetHeight,
+    };
+    setLegoGrid((current) =>
+      current
+      && current.size === next.size
+      && Math.abs(current.x - next.x) < 0.25
+      && Math.abs(current.y - next.y) < 0.25
+      && current.width === next.width
+      && current.height === next.height
+        ? current
+        : next
+    );
+  }, []);
+
+  const toggleLegoCell = useCallback((cell: string) => {
+    setRemovedLegoCells((current) => {
+      const next = new Set(current);
+      if (next.has(cell)) next.delete(cell);
+      else next.add(cell);
+      return next;
+    });
+  }, []);
+
+  const handleLegoEditingChange = useCallback((
+    editing: boolean,
+    point: { x: number; y: number }
+  ) => {
+    interactionLockedRef.current = editing;
+    if (editing) return;
+    const word = wordRef.current?.getBoundingClientRect();
+    const tagline = taglineNode?.getBoundingClientRect();
+    const box = word ? unionBox(word, tagline) : undefined;
+    if (box && !isOverHeadline(point, box)) {
+      isHeadlinePointerInsideRef.current = false;
+      setHoverEffect(null);
+    }
+  }, [taglineNode]);
 
   const activateHeadline = (pointerPosition?: { x: number; y: number }) => {
     if (suppressHeadlineHover || !intro.done) return;
@@ -346,6 +543,9 @@ export function Hero({
         : ASCII_BG_COLOR;
       setAsciiStageColor(nextStageColor);
     }
+    setHoverColorTransition(
+      effect === "lego" ? "140ms ease-out" : TREATMENT_COLOR_TRANSITION
+    );
     setHoverEffect(effect);
     nextEffectIndexRef.current = (nextEffectIndexRef.current + 1) % HEADLINE_EFFECT_SEQUENCE.length;
   };
@@ -354,6 +554,9 @@ export function Hero({
     if (interactionLockedRef.current) return;
     if (!isHeadlinePointerInsideRef.current) return;
     isHeadlinePointerInsideRef.current = false;
+    setHoverColorTransition(
+      hoverEffect === "lego" ? "140ms ease-out" : TREATMENT_COLOR_TRANSITION
+    );
     setHoverEffect(null);
   };
 
@@ -364,6 +567,17 @@ export function Hero({
   // so hovering the subheader activates a treatment exactly like hovering
   // the name itself does.
   const handleHeadlinePointer = (event: PointerEvent<HTMLDivElement>) => {
+    // Keep LEGO open beyond the word only while a captured paint gesture is
+    // actually in progress. Merely moving across its full-page canvas must
+    // still deactivate the treatment as soon as the pointer leaves the text.
+    if (
+      activeEffect === "lego"
+      && interactionLockedRef.current
+      && event.target instanceof HTMLCanvasElement
+      && event.target.getAttribute("aria-label")?.includes("editable LEGO tiles")
+    ) {
+      return;
+    }
     const over = isPointOverHeadline({ x: event.clientX, y: event.clientY });
     if (over) activateHeadline({ x: event.clientX, y: event.clientY });
     else deactivateHeadline();
@@ -375,9 +589,14 @@ export function Hero({
     const box = word ? unionBox(word, tagline) : undefined;
     return !box || isOverHeadline(point, box);
   };
+  const showIntroLoader =
+    playIntro
+    && WAIT_FOR_LEGO_BEFORE_INTRO
+    && !introAssetsReady;
 
   return (
     <div
+      ref={heroRef}
       // The 500ms background fade is for hover, after the intro -- switching
       // treatments by hand deserves a soft crossfade. The intro itself is a
       // hard cut with no fade anywhere else (HEADLINE_HANDOVER_MS is 0), so
@@ -390,20 +609,34 @@ export function Hero({
       style={{
         backgroundColor: stageBackground,
         transition: colorTransitionsReady
-          ? `background-color ${TREATMENT_COLOR_TRANSITION}`
+          ? `background-color ${treatmentColorTransition}`
           : undefined,
         // The sketch lettering, tagline, and arrow share blue-pencil ink;
         // the correction mark stays red to remain visibly distinct.
-        color: isHeadlineActive && activeEffect !== "stroke" ? "#FFFFFF" : DEFAULT_INK_COLOR,
+        color:
+          isHeadlineActive && activeEffect !== "stroke" && activeEffect !== "lego"
+            ? "#FFFFFF"
+            : DEFAULT_INK_COLOR,
         // The custom Windows95Cursor is the only visible pointer in this
         // state; the CSS-module class hides the native cursor on descendants.
         cursor: activeEffect === "ascii" ? "none" : undefined,
       }}
     >
+      {showIntroLoader && (
+        <div className={styles.introLoader} data-testid="intro-loader">
+          <CircularText
+            text="LOADING*LOADING*"
+            spinDuration={8}
+            onHover="speedUp"
+            className={`${styles.introLoaderSpinner} boil-line`}
+          />
+        </div>
+      )}
       <Windows95Cursor
         active={activeEffect === "ascii"}
         initialPosition={asciiCursorStart}
       />
+      <LegoLayoutPersistence cells={removedLegoCells} ready={legoStorageReady} />
       {/* Sits outside the headline block so it stays put while the name and
           tagline ride up on liftPercent. It fades before the stack opens far
           enough for the two to overlap. */}
@@ -416,7 +649,12 @@ export function Hero({
         onSelect={onJumpToCaseStudy}
         revealedCount={heroReveal.dotsRevealed}
       />
-      {activeEffect === "stroke" && <SketchPaperShader config={paperTextureConfig} />}
+      {/* The GPU paper shader is ornamental and expensive to initialise. The
+          intro uses the CSS paper texture; load the shader only for a later,
+          settled hover so it cannot consume Sketch's short intro window. */}
+      {intro.done && activeEffect === "stroke" && (
+        <SketchPaperShader config={paperTextureConfig} />
+      )}
       <div
         aria-hidden="true"
         data-testid="sketch-paper-surface"
@@ -428,6 +666,24 @@ export function Hero({
         data-testid="ascii-crt-surface"
         data-active={activeEffect === "ascii"}
         className={`${styles.surface} ${styles.asciiSurface} ${activeEffect === "ascii" ? styles.visible : ""}`}
+      />
+      <div
+        aria-hidden="true"
+        data-testid="lego-baseplate-surface"
+        data-active={activeEffect === "lego"}
+        className={`${styles.surface} ${styles.legoSurface} ${activeEffect === "lego" ? styles.visible : ""}`}
+        style={{
+          backgroundColor: legoBackground.swatch,
+          backgroundImage: `url(${legoBackground.path})`,
+          ...(legoGrid ? {
+            "--lego-base-tile": `${legoGrid.size}px`,
+            backgroundPosition: legoBackgroundPosition(
+              legoGrid.x,
+              legoGrid.y,
+              liftPercent
+            ),
+          } : {}),
+        } as CSSProperties}
       />
       {activeEffect === "ascii" && (
         <div
@@ -489,6 +745,7 @@ export function Hero({
         />
       )}
       <div
+        ref={headlineRef}
         data-testid="hero-headline"
         className="relative z-10 flex flex-col items-center"
         style={{
@@ -534,6 +791,7 @@ export function Hero({
             mix-blend-mode is the ascii gradient pre, which is display:none in
             the default colour mode and whose own root isolates when it is not. */}
         <div
+          ref={headlineFrameRef}
           data-testid="headline-frame"
           className="relative w-[min(94vw,72rem)] max-lg:w-[min(98vw,72rem)]"
           style={{
@@ -659,6 +917,53 @@ export function Hero({
               boosted={activeEffect === "warp" && warpPressed}
             />
           </div>
+          {/* LEGO also stays warm beneath the active treatment. Its canvas is
+              relatively expensive to assemble, so mounting it only when the
+              intro reaches LEGO steals frames from that 250ms beat. Hidden
+              here, it prepares during the opening/default frame and the cut
+              merely reveals an already-rendered bitmap. */}
+          <div
+            data-testid="treatment-layer-lego"
+            className={styles.treatmentLayer}
+            data-active={treatment === "lego"}
+            aria-hidden={treatment !== "lego"}
+          >
+            <LegoText
+              text={NAME}
+              fontSize={HEADLINE_SIZE}
+              fontWeight={HEADLINE_FONT_WEIGHT}
+              fontFamily={HEADLINE_FONT_FAMILY}
+              showDefaultText={legoPreferences.showDefaultText}
+              onGridChange={alignLegoBackground}
+              toggledCells={removedLegoCells}
+              cellTiles={legoCellTiles}
+              onToggleCell={toggleLegoCell}
+              onEditingChange={handleLegoEditingChange}
+              onReady={markLegoReady}
+              shadowOffsetX={legoShadowOffsetX}
+              shadowOffsetY={legoShadowOffsetY}
+              canvasArea={legoCanvasArea}
+            />
+          </div>
+          {/* Like LEGO, the finished sketch is measured before the intro
+              clock starts and merely revealed during its own phase. */}
+          <div
+            data-testid="treatment-layer-stroke"
+            className={styles.treatmentLayer}
+            data-active={treatment === "stroke"}
+            aria-hidden={treatment !== "stroke"}
+          >
+            <StrokeText
+              text={NAME}
+              {...strokeConfig}
+              fontSize={HEADLINE_SIZE}
+              fontWeight={HEADLINE_FONT_WEIGHT}
+              correctionIndex={NAME.length - 1}
+              animate={false}
+              onReady={markSketchReady}
+              style={{ fontFamily: HEADLINE_FONT_FAMILY }}
+            />
+          </div>
           {activeEffect === "ascii" ? (
             <div className={styles.treatmentLayer} data-active="true">
             <ASCIIText
@@ -670,22 +975,6 @@ export function Hero({
               // motion, same as sketch shows itself already drawn.
               typeProgress={1}
               interactive={intro.done}
-            />
-            </div>
-          ) : activeEffect === "stroke" ? (
-            <div className={styles.treatmentLayer} data-active="true">
-            <StrokeText
-              text={NAME}
-              {...strokeConfig}
-              fontSize={HEADLINE_SIZE}
-              fontWeight={HEADLINE_FONT_WEIGHT}
-              correctionIndex={NAME.length - 1}
-              // Always shown drawn, filled, and corrected already -- during
-              // the flip-through and on every hover afterwards alike. Its
-              // whole appeal is the finished hand-inked look, which a still
-              // frame shows off in an instant instead of over several seconds.
-              animate={false}
-              style={{ fontFamily: HEADLINE_FONT_FAMILY }}
             />
             </div>
           ) : null}
@@ -714,7 +1003,7 @@ export function Hero({
             lineHeight: 1.1,
             marginTop: TAGLINE_OFFSET,
             color: accentColor,
-            transition: `color ${TREATMENT_COLOR_TRANSITION}`,
+            transition: `color ${treatmentColorTransition}`,
             // The full sentence fades through a soft focus rather than
             // typing in. Its baseline stays fixed throughout the reveal.
             // Once sharp, remove the inline filter altogether so the global
@@ -744,7 +1033,7 @@ export function Hero({
           opacity: arrowOpacity * heroReveal.arrowProgress,
           color: arrowColor,
           fontSize: ARROW_SIZE,
-          transition: `color ${TREATMENT_COLOR_TRANSITION}`,
+          transition: `color ${treatmentColorTransition}`,
         }}
       >
         ↓

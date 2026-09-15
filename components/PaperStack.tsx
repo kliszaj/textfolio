@@ -14,6 +14,10 @@ import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
+import {
+  DEFAULT_LEGO_SHADOW_OFFSET_X,
+  DEFAULT_LEGO_SHADOW_OFFSET_Y,
+} from "@/lib/legoText";
 import { Hero } from "./Hero";
 import { PaperSheet } from "./PaperSheet";
 import { CaseStudyPreview } from "./CaseStudyPreview";
@@ -45,6 +49,8 @@ type PaperStackProps = {
   suppressHeadlineHover?: boolean;
   cutEffect?: IntroCutEffect;
   rgbConfig?: IntroCutRgbConfig;
+  legoShadowOffsetX?: number;
+  legoShadowOffsetY?: number;
 };
 
 export function PaperStack({
@@ -62,6 +68,8 @@ export function PaperStack({
   suppressHeadlineHover = false,
   cutEffect,
   rgbConfig,
+  legoShadowOffsetX = DEFAULT_LEGO_SHADOW_OFFSET_X,
+  legoShadowOffsetY = DEFAULT_LEGO_SHADOW_OFFSET_Y,
 }: PaperStackProps) {
   // About rides as one more sheet behind the last case study, so it takes
   // its own colour and band but never appears in the page indicator or the
@@ -80,7 +88,7 @@ export function PaperStack({
         transitionMs={transitionMs}
         zIndex={zIndexForDepth(0, sheetCount)}
       >
-        <Hero playIntro={playIntro} suppressHeadlineHover={suppressHeadlineHover} onJumpToCaseStudy={onJumpToCaseStudy} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} cutEffect={cutEffect} rgbConfig={rgbConfig} />
+        <Hero playIntro={playIntro} suppressHeadlineHover={suppressHeadlineHover} onJumpToCaseStudy={onJumpToCaseStudy} fanProgress={fanProgress} liftPercent={heroLift} asciiConfig={asciiConfig} warpConfig={warpConfig} strokeConfig={strokeConfig} paperTextureConfig={paperTextureConfig} cutEffect={cutEffect} rgbConfig={rgbConfig} legoShadowOffsetX={legoShadowOffsetX} legoShadowOffsetY={legoShadowOffsetY} />
       </PaperSheet>
       {[...caseStudies, ABOUT_PAGE].map((caseStudy, index) => {
         const depth = index + 1;

@@ -1,6 +1,6 @@
 // The headline opens in its quiet default state, then channel-cuts through
-// the three finished treatments before snapping back to default.
-export type HeadlineIntroPhase = "default" | "sketch" | "ascii" | "warp" | "final";
+// the four finished treatments before snapping back to default.
+export type HeadlineIntroPhase = "default" | "sketch" | "lego" | "ascii" | "warp" | "final";
 
 // How long the headline fades down and back up around each treatment change.
 // 0 per direct request -- a hard cut, not a crossfade, so the flip-through
@@ -16,7 +16,7 @@ export const HEADLINE_HANDOVER_MS = 0;
 export const HEADLINE_DEFAULT_DURATION_MS = 450;
 
 // Every expressive treatment gets the same quick beat before the next cut.
-export const HEADLINE_TREATMENT_DURATION_MS = 350;
+export const HEADLINE_TREATMENT_DURATION_MS = 250;
 
 export const HEADLINE_INTRO_DEMO_MS =
   HEADLINE_TREATMENT_DURATION_MS - HEADLINE_HANDOVER_MS / 2;
@@ -31,6 +31,8 @@ export const HEADLINE_INTRO_STEPS: { phase: HeadlineIntroPhase; durationMs: numb
   { phase: "default", durationMs: HEADLINE_DEFAULT_DURATION_MS },
   // Sketch is shown drawn, filled, and corrected already, with no draw-in.
   { phase: "sketch", durationMs: HEADLINE_TREATMENT_DURATION_MS },
+  // LEGO is the next material step after the hand-built sketch.
+  { phase: "lego", durationMs: HEADLINE_TREATMENT_DURATION_MS },
   // Ascii and warp keep a small scripted motion (a lean, a circle) -- unlike
   // sketch, their whole effect is invisible without something moving.
   { phase: "ascii", durationMs: ASCII_INTRO_DURATION_MS },
@@ -41,6 +43,22 @@ export const HEADLINE_INTRO_DURATION_MS = HEADLINE_INTRO_STEPS.reduce(
   (total, step) => total + step.durationMs,
   0
 );
+
+// The treatments (especially the editable LEGO canvas) can briefly occupy
+// the main thread while a frame is being prepared. Never let one delayed rAF
+// callback consume an entire treatment's screen time. At normal refresh rates
+// this cap changes nothing; after a stall it resumes the story from the last
+// visible frame instead of jumping several stages ahead.
+export const HEADLINE_MAX_FRAME_DELTA_MS = 50;
+
+export function advanceHeadlineIntroElapsed(
+  elapsedMs: number,
+  frameDeltaMs: number
+): number {
+  const safeElapsed = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
+  const safeDelta = Number.isFinite(frameDeltaMs) ? Math.max(0, frameDeltaMs) : 0;
+  return safeElapsed + Math.min(safeDelta, HEADLINE_MAX_FRAME_DELTA_MS);
+}
 
 function smoothstep(t: number): number {
   const x = Math.min(1, Math.max(0, t));
@@ -112,6 +130,16 @@ export const HEADLINE_INTRO_SETTLED: HeadlineIntroState = {
   phaseProgress: 1,
   opacity: 1,
   done: true,
+};
+
+// Used while the loader is preparing the treatment assets. This deliberately
+// looks like the opening default frame but remains unfinished, so the
+// subheader reveal cannot begin behind the loader.
+export const HEADLINE_INTRO_WAITING: HeadlineIntroState = {
+  phase: "default",
+  phaseProgress: 0,
+  opacity: 1,
+  done: false,
 };
 
 export function introStateAt(elapsedMs: number): HeadlineIntroState {

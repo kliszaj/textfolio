@@ -36,12 +36,11 @@ test("only claims the intro once even if two mounts race before any effect", () 
   expect(renderHook(() => useIntroOnce()).result.current).toBe(false);
 });
 
-test("renders the resting hero on the server, so hydration matches", () => {
-  // Claiming the intro during render consumed the flag at prerender time: the
-  // built HTML shipped the resting hero while the client, with a fresh module,
-  // hydrated into the intro. That is a mismatch on every first visit.
+test("renders the intro state on the server so the loader is the first paint", () => {
+  // serverSnapshot is fixed and side-effect-free, so it can match the first
+  // hydrated render without consuming the one-per-page-load client flag.
   const html = renderToString(createElement(Probe));
-  expect(html).toContain("false");
+  expect(html).toContain("true");
 });
 
 test("leaves the flag alone while server-rendering, so the client still plays", () => {

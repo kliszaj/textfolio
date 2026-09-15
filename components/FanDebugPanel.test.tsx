@@ -6,6 +6,10 @@ import { DEFAULT_WARP_TEXT_CONFIG } from "@/lib/warpText";
 import { DEFAULT_STROKE_TEXT_CONFIG } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
 import { DEFAULT_INTRO_CUT_RGB_CONFIG } from "@/lib/introCutEffect";
+import {
+  DEFAULT_LEGO_SHADOW_OFFSET_X,
+  DEFAULT_LEGO_SHADOW_OFFSET_Y,
+} from "@/lib/legoText";
 
 const config: FanSheetConfig = {
   mechanic: "bottom",
@@ -30,6 +34,8 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
   const onPaperTextureConfigChange = jest.fn();
   const onCutEffectChange = jest.fn();
   const onRgbConfigChange = jest.fn();
+  const onLegoShadowOffsetXChange = jest.fn();
+  const onLegoShadowOffsetYChange = jest.fn();
   render(
     <FanDebugPanel
       config={config}
@@ -54,6 +60,10 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
       onCutEffectChange={onCutEffectChange}
       rgbConfig={DEFAULT_INTRO_CUT_RGB_CONFIG}
       onRgbConfigChange={onRgbConfigChange}
+      legoShadowOffsetX={DEFAULT_LEGO_SHADOW_OFFSET_X}
+      onLegoShadowOffsetXChange={onLegoShadowOffsetXChange}
+      legoShadowOffsetY={DEFAULT_LEGO_SHADOW_OFFSET_Y}
+      onLegoShadowOffsetYChange={onLegoShadowOffsetYChange}
       {...overrides}
     />
   );
@@ -71,6 +81,8 @@ function renderPanel(overrides: Partial<Parameters<typeof FanDebugPanel>[0]> = {
     onPaperTextureConfigChange,
     onCutEffectChange,
     onRgbConfigChange,
+    onLegoShadowOffsetXChange,
+    onLegoShadowOffsetYChange,
   };
 }
 
@@ -99,6 +111,10 @@ function renderClosed() {
       onCutEffectChange={jest.fn()}
       rgbConfig={DEFAULT_INTRO_CUT_RGB_CONFIG}
       onRgbConfigChange={jest.fn()}
+      legoShadowOffsetX={DEFAULT_LEGO_SHADOW_OFFSET_X}
+      onLegoShadowOffsetXChange={jest.fn()}
+      legoShadowOffsetY={DEFAULT_LEGO_SHADOW_OFFSET_Y}
+      onLegoShadowOffsetYChange={jest.fn()}
     />
   );
 }
@@ -195,6 +211,21 @@ test("updates Warp Text settings independently", () => {
   fireEvent.click(screen.getByRole("tab", { name: "Warp Text" }));
   fireEvent.change(screen.getByLabelText(/^Warp strength/i), { target: { value: "0.31" } });
   expect(onWarpConfigChange).toHaveBeenCalledWith({ ...DEFAULT_WARP_TEXT_CONFIG, warpStrength: 0.31 });
+});
+
+test("exposes independent LEGO shadow offsets", () => {
+  const { onLegoShadowOffsetXChange, onLegoShadowOffsetYChange } = renderPanel();
+  fireEvent.click(screen.getByRole("tab", { name: "LEGO Text" }));
+  expect(screen.getByTestId("lego-text-settings")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Open full LEGO Builder/i })).toHaveAttribute(
+    "href",
+    "/lego-builder"
+  );
+
+  fireEvent.change(screen.getByLabelText(/Shadow X/i), { target: { value: "7.5" } });
+  fireEvent.change(screen.getByLabelText(/Shadow Y/i), { target: { value: "-2" } });
+  expect(onLegoShadowOffsetXChange).toHaveBeenCalledWith(7.5);
+  expect(onLegoShadowOffsetYChange).toHaveBeenCalledWith(-2);
 });
 
 test("switches to Stroke Text and exposes all of its animation controls", () => {

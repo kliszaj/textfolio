@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
-import { HEADLINE_INTRO_SETTLED, introStateAt } from "@/lib/headlineIntro";
+import {
+  HEADLINE_INTRO_SETTLED,
+  HEADLINE_INTRO_WAITING,
+  advanceHeadlineIntroElapsed,
+  introStateAt,
+} from "@/lib/headlineIntro";
 import type { HeadlineIntroState } from "@/lib/headlineIntro";
 
-// Drives the headline's sketch -> prototype -> finished story once on mount.
+// Drives the headline's sketch -> LEGO -> ASCII -> warp story once on mount.
 // Skipped for anyone who has asked for reduced motion: the story is
 // decorative, and the finished treatment is the one that matters.
-export function useHeadlineIntro(enabled: boolean): HeadlineIntroState {
+export function useHeadlineIntro(enabled: boolean, ready = true): HeadlineIntroState {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const active = enabled && !reducedMotion;
+  const active = enabled && ready && !reducedMotion;
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -25,16 +30,23 @@ export function useHeadlineIntro(enabled: boolean): HeadlineIntroState {
 
   useEffect(() => {
     if (!active) return;
-    const start = performance.now();
+    let accumulated = 0;
+    let previousFrameTime = performance.now();
     let frame = 0;
     const step = (now: number) => {
-      const next = now - start;
-      setElapsed(next);
-      if (!introStateAt(next).done) frame = requestAnimationFrame(step);
+      accumulated = advanceHeadlineIntroElapsed(
+        accumulated,
+        now - previousFrameTime
+      );
+      previousFrameTime = now;
+      setElapsed(accumulated);
+      if (!introStateAt(accumulated).done) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
   }, [active]);
 
-  return active ? introStateAt(elapsed) : HEADLINE_INTRO_SETTLED;
+  if (!enabled || reducedMotion) return HEADLINE_INTRO_SETTLED;
+  if (!ready) return HEADLINE_INTRO_WAITING;
+  return introStateAt(elapsed);
 }

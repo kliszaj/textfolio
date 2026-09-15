@@ -52,7 +52,7 @@ test("uses one shared headline frame and typography baseline across treatments",
   });
 });
 
-test("starts the hover cycle with ASCII text", () => {
+test("uses the full ASCII treatment on its third hover beat", () => {
   const { container } = render(
     <Hero
       playIntro={false}
@@ -65,7 +65,15 @@ test("starts the hover cycle with ASCII text", () => {
   // inside it does, so it is not a stable handle.
   const headline = screen.getByTestId("headline-frame");
 
-  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  // LEGO is pre-rendered under the active intro/hover treatment so its turn
+  // can be a cheap reveal instead of a synchronous canvas mount.
+  expect(screen.getByTestId("treatment-layer-lego")).toHaveAttribute("data-active", "false");
+  expect(screen.getByTestId("treatment-layer-stroke")).toHaveAttribute("data-active", "false");
+
+  for (let index = 0; index < 3; index += 1) {
+    fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+    if (index < 2) fireEvent.pointerLeave(headline);
+  }
   expect(screen.getByTestId("ascii-text")).toHaveAttribute("aria-label", "ADRIAN");
   expect(screen.getByTestId("ascii-desktop-icons").querySelectorAll("img")).toHaveLength(3);
   expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "true");
@@ -87,7 +95,7 @@ test("starts the hover cycle with ASCII text", () => {
   expect(screen.queryByTestId("win95-cursor")).not.toBeInTheDocument();
 });
 
-test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries", () => {
+test("cycles Sketch, LEGO, ASCII, Warp, then back to Sketch on distinct hover entries", () => {
   const { container } = render(
     <Hero
       playIntro={false}
@@ -101,20 +109,9 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
   const headline = screen.getByTestId("headline-frame");
 
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
-  expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
-  expect(screen.getByTestId("ascii-desktop-icons")).toBeInTheDocument();
-  expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
-  fireEvent.pointerLeave(headline);
-  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
-  expect(screen.getByTestId("warp-text")).toBeInTheDocument();
   expect(screen.queryByTestId("ascii-desktop-icons")).not.toBeInTheDocument();
-  expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
-  expect(hero).toHaveStyle({ backgroundColor: "#050505" });
-  expect(hero).toHaveStyle({ color: "#FFFFFF" });
-  fireEvent.pointerLeave(headline);
-  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
-  expect(screen.queryByTestId("ascii-desktop-icons")).not.toBeInTheDocument();
+  expect(screen.getByTestId("treatment-layer-stroke")).toHaveAttribute("data-active", "true");
   expect(screen.getByTestId("cool-s")).toBeInTheDocument();
   expect(screen.getByTestId("sketch-paper-surface")).toHaveAttribute("data-active", "true");
   expect(screen.getByTestId("ascii-crt-surface")).toHaveAttribute("data-active", "false");
@@ -127,19 +124,47 @@ test("cycles ASCII, Warp, Stroke, then back to ASCII on distinct hover entries",
     color: SKETCH_INK,
     fontSize: "3.25rem",
   });
+
+  fireEvent.pointerLeave(headline);
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  expect(screen.getByTestId("lego-text")).toBeInTheDocument();
+  expect(screen.getByTestId("treatment-layer-lego")).toHaveAttribute("data-active", "true");
+  expect(screen.getByTestId("treatment-mount")).toHaveAttribute("data-treatment", "lego");
+  expect(screen.getByTestId("lego-baseplate-surface")).toHaveAttribute("data-active", "true");
+  expect(screen.getByTestId("hero-tagline")).toHaveStyle({ color: "#000000" });
+  expect(screen.getByTestId("scroll-hint")).toHaveStyle({ color: "#000000" });
+  expect(hero).toHaveStyle({ backgroundColor: "#C00000", color: "#1C1C1C" });
+  expect(screen.getByTestId("lego-baseplate-surface")).toHaveStyle({
+    backgroundColor: "#C00000",
+  });
+
   fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   expect(screen.getByTestId("ascii-text")).toBeInTheDocument();
+  expect(screen.getByTestId("ascii-desktop-icons")).toBeInTheDocument();
   expect(hero).toHaveStyle({ backgroundColor: "#05AEAE" });
+
+  fireEvent.pointerLeave(headline);
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  expect(screen.getByTestId("warp-text")).toBeInTheDocument();
+  expect(screen.queryByTestId("ascii-desktop-icons")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("cool-s")).not.toBeInTheDocument();
+  expect(hero).toHaveStyle({ backgroundColor: "#050505" });
+  expect(hero).toHaveStyle({ color: "#FFFFFF" });
+
+  fireEvent.pointerLeave(headline);
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  expect(screen.getByTestId("stroke-text")).toBeInTheDocument();
 });
 
 test("boosts the warp while held and restores it on release", () => {
   render(<Hero playIntro={false} fanProgress={0} />);
   const headline = screen.getByTestId("hero-headline");
 
-  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
-  fireEvent.pointerLeave(headline);
-  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+  for (let index = 0; index < 4; index += 1) {
+    fireEvent.pointerEnter(headline, { pointerType: "mouse" });
+    if (index < 3) fireEvent.pointerLeave(headline);
+  }
   const warp = screen.getByTestId("warp-text");
   expect(warp).toHaveAttribute("data-boosted", "false");
 
@@ -152,10 +177,7 @@ test("boosts the warp while held and restores it on release", () => {
 test("mounts the persistent drawing layer with the sketch treatment", () => {
   const { container } = render(<Hero playIntro={false} fanProgress={0} />);
   const headline = screen.getByTestId("hero-headline");
-  for (let index = 0; index < 3; index += 1) {
-    fireEvent.pointerEnter(headline, { pointerType: "mouse" });
-    if (index < 2) fireEvent.pointerLeave(headline);
-  }
+  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
   const annotations = screen.getByTestId("sketch-annotations");
   expect(annotations).toHaveAttribute("data-active", "true");
   // The SVG belongs to the whole hero sheet, not the headline frame, so a
@@ -276,10 +298,13 @@ test("tagline and arrow take the yellow accent under the ASCII treatment", () =>
   const tagline = screen.getByTestId("hero-tagline");
   const arrow = screen.getByTestId("scroll-hint");
 
-  // The hover handlers now live on hero-headline itself (so the tagline
-  // shares the same touch target as the word), and the hover cycle always
-  // starts on ASCII for a fresh render.
-  fireEvent.pointerEnter(screen.getByTestId("hero-headline"));
+  // The hover handlers live on hero-headline itself, so the tagline shares
+  // the same touch target as the word. ASCII is the third treatment now.
+  const headline = screen.getByTestId("hero-headline");
+  for (let index = 0; index < 3; index += 1) {
+    fireEvent.pointerEnter(headline);
+    if (index < 2) fireEvent.pointerLeave(headline);
+  }
   expect(tagline).toHaveStyle({ color: ASCII_INK_LIME });
   expect(arrow).toHaveStyle({ color: ASCII_INK_LIME });
 });
@@ -324,7 +349,7 @@ test("ignores the headline already under the cursor while the return settles", (
   // Once the return has settled, a new intentional pointer event resumes the
   // ordinary hover sequence.
   fireEvent.pointerMove(headline, { pointerType: "mouse" });
-  expect(screen.getByTestId("ascii-text")).toHaveAttribute("aria-label", "ADRIAN");
+  expect(screen.getByTestId("stroke-text")).toHaveAttribute("aria-label", "ADRIAN");
 });
 
 test("fades a freshly mounted treatment in, and does not remount an unchanged one", () => {
@@ -346,7 +371,7 @@ test("fades a freshly mounted treatment in, and does not remount an unchanged on
   expect(mount).toHaveAttribute("data-treatment", "warp");
 
   fireEvent.pointerEnter(screen.getByTestId("headline-frame"), { pointerType: "mouse" });
-  expect(screen.getByTestId("treatment-mount")).toHaveAttribute("data-treatment", "ascii");
+  expect(screen.getByTestId("treatment-mount")).toHaveAttribute("data-treatment", "stroke");
 
   expect(container).toBeTruthy();
 });
@@ -362,11 +387,6 @@ test("pins the lightning sketch to the sketch treatment, opposite the cool-s", (
   const headline = screen.getByTestId("headline-frame");
   expect(screen.queryByTestId("lightning")).not.toBeInTheDocument();
 
-  // ascii, then warp, then stroke.
-  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
-  fireEvent.pointerLeave(headline);
-  fireEvent.pointerEnter(headline, { pointerType: "mouse" });
-  fireEvent.pointerLeave(headline);
   fireEvent.pointerEnter(headline, { pointerType: "mouse" });
 
   const lightning = screen.getByTestId("lightning");

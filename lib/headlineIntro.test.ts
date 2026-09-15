@@ -1,4 +1,6 @@
 import {
+  HEADLINE_MAX_FRAME_DELTA_MS,
+  advanceHeadlineIntroElapsed,
   ASCII_INTRO_DEMO_MS,
   ASCII_INTRO_DURATION_MS,
   HEADLINE_DEFAULT_DURATION_MS,
@@ -13,7 +15,7 @@ import {
   introStateAt,
 } from "./headlineIntro";
 
-const [opening, sketch, ascii, warp] = HEADLINE_INTRO_STEPS;
+const [opening, sketch, lego, ascii, warp] = HEADLINE_INTRO_STEPS;
 
 test("opens on the default treatment for a short resting beat", () => {
   expect(introStateAt(0).phase).toBe("default");
@@ -24,17 +26,20 @@ test("hands over to sketch after the default beat", () => {
   expect(introStateAt(opening.durationMs).phase).toBe("sketch");
 });
 
-test("hands over to ascii and warp after their authored beats", () => {
-  expect(introStateAt(opening.durationMs + sketch.durationMs).phase).toBe("ascii");
-  expect(introStateAt(opening.durationMs + sketch.durationMs + ascii.durationMs).phase).toBe("warp");
+test("hands over through LEGO, ASCII, and warp after their authored beats", () => {
+  expect(introStateAt(opening.durationMs + sketch.durationMs).phase).toBe("lego");
+  expect(introStateAt(opening.durationMs + sketch.durationMs + lego.durationMs).phase).toBe("ascii");
+  expect(
+    introStateAt(opening.durationMs + sketch.durationMs + lego.durationMs + ascii.durationMs).phase
+  ).toBe("warp");
 });
 
-test("runs all five stages of the flip-through", () => {
+test("runs all six stages of the flip-through", () => {
   const seen = new Set<string>();
   for (let t = 0; t <= HEADLINE_INTRO_DURATION_MS + 100; t += 10) {
     seen.add(introStateAt(t).phase);
   }
-  expect([...seen]).toEqual(["default", "sketch", "ascii", "warp", "final"]);
+  expect([...seen]).toEqual(["default", "sketch", "lego", "ascii", "warp", "final"]);
 });
 
 test("settles back on the plain resting treatment and stays there", () => {
@@ -48,7 +53,7 @@ test("settles back on the plain resting treatment and stays there", () => {
 });
 
 test("the phases run forwards only, never back a step", () => {
-  const order = ["default", "sketch", "ascii", "warp", "final"];
+  const order = ["default", "sketch", "lego", "ascii", "warp", "final"];
   let previous = 0;
   for (let t = 0; t <= HEADLINE_INTRO_DURATION_MS + 500; t += 50) {
     const index = order.indexOf(introStateAt(t).phase);
@@ -60,6 +65,13 @@ test("the phases run forwards only, never back a step", () => {
 test("survives nonsense elapsed values", () => {
   expect(introStateAt(-500).phase).toBe("default");
   expect(introStateAt(NaN).phase).toBe("default");
+});
+
+test("a delayed animation frame cannot skip treatments", () => {
+  expect(advanceHeadlineIntroElapsed(100, 5000)).toBe(
+    100 + HEADLINE_MAX_FRAME_DELTA_MS
+  );
+  expect(introStateAt(advanceHeadlineIntroElapsed(0, 5000)).phase).toBe("default");
 });
 
 describe("sketch shows the finished, corrected word -- no draw-in", () => {
@@ -77,6 +89,7 @@ describe("sketch shows the finished, corrected word -- no draw-in", () => {
 describe("ascii and warp keep a small scripted motion, since they need it to read", () => {
   test("every treatment gets the same beat", () => {
     expect(sketch.durationMs).toBe(HEADLINE_TREATMENT_DURATION_MS);
+    expect(lego.durationMs).toBe(HEADLINE_TREATMENT_DURATION_MS);
     expect(warp.durationMs).toBe(HEADLINE_TREATMENT_DURATION_MS);
     expect(ascii.durationMs).toBe(ASCII_INTRO_DURATION_MS);
     expect(ASCII_INTRO_DURATION_MS).toBe(HEADLINE_TREATMENT_DURATION_MS);
@@ -95,11 +108,16 @@ describe("ascii and warp keep a small scripted motion, since they need it to rea
   });
 });
 
-test("uses the requested 450ms default and 350ms treatment cadence", () => {
+test("uses the requested 450ms default and 250ms treatment cadence", () => {
   expect(opening).toEqual({ phase: "default", durationMs: 450 });
   expect(HEADLINE_DEFAULT_DURATION_MS).toBe(450);
-  expect(HEADLINE_TREATMENT_DURATION_MS).toBe(350);
-  expect([sketch.durationMs, ascii.durationMs, warp.durationMs]).toEqual([350, 350, 350]);
+  expect(HEADLINE_TREATMENT_DURATION_MS).toBe(250);
+  expect([sketch.durationMs, lego.durationMs, ascii.durationMs, warp.durationMs]).toEqual([
+    250,
+    250,
+    250,
+    250,
+  ]);
 });
 
 describe("glitchFlicker -- the shape of the fade, independent of whether it's in use", () => {
@@ -167,7 +185,7 @@ test("runs the whole flip-through in well under the old nine-second story", () =
   // A quick reel proving the range exists, not a narrative watching it
   // arrive. Pin the authored composition as well as the broad upper bound.
   expect(HEADLINE_INTRO_DURATION_MS).toBe(
-    HEADLINE_DEFAULT_DURATION_MS + HEADLINE_TREATMENT_DURATION_MS * 3
+    HEADLINE_DEFAULT_DURATION_MS + HEADLINE_TREATMENT_DURATION_MS * 4
   );
   expect(HEADLINE_INTRO_DURATION_MS).toBeLessThan(6000);
 });

@@ -1,7 +1,10 @@
 import { act, render, screen } from "@testing-library/react";
 import { LazyVideo } from "./LazyVideo";
 
-let notifyIntersection: IntersectionObserverCallback;
+const intersectionObservers: Array<{
+  callback: IntersectionObserverCallback;
+  options?: IntersectionObserverInit;
+}> = [];
 const originalIntersectionObserver = global.IntersectionObserver;
 
 beforeEach(() => {
@@ -14,11 +17,12 @@ beforeEach(() => {
     disconnect = jest.fn();
     takeRecords = jest.fn(() => []);
 
-    constructor(callback: IntersectionObserverCallback) {
-      notifyIntersection = callback;
+    constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+      intersectionObservers.push({ callback, options });
     }
   }
 
+  intersectionObservers.length = 0;
   global.IntersectionObserver = ControlledIntersectionObserver;
 });
 
@@ -34,8 +38,51 @@ test("waits to assign a video source until the player is near the viewport", () 
   expect(video).toHaveAttribute("preload", "none");
 
   act(() => {
-    notifyIntersection([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    intersectionObservers[0].callback(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver
+    );
   });
 
   expect(video).toHaveAttribute("src", "/assets/showreel.mp4");
+});
+
+test("loads immediately and follows row-controlled playback", () => {
+  const play = jest
+    .spyOn(HTMLMediaElement.prototype, "play")
+    .mockResolvedValue(undefined);
+  const pause = jest
+    .spyOn(HTMLMediaElement.prototype, "pause")
+    .mockImplementation(() => undefined);
+
+  render(
+    <LazyVideo
+      data-testid="video"
+      src="/assets/showreel.mp4"
+      loadImmediately
+      playing
+      muted
+    />
+  );
+
+  const video = screen.getByTestId("video");
+  expect(video).toHaveAttribute("src", "/assets/showreel.mp4");
+  expect(video).toHaveAttribute("preload", "auto");
+  expect(video).not.toHaveAttribute("autoplay");
+  expect(play).toHaveBeenCalled();
+
+  pause.mockClear();
+  render(
+    <LazyVideo
+      data-testid="paused-video"
+      src="/assets/paused.mp4"
+      loadImmediately
+      playing={false}
+      muted
+    />
+  );
+
+  expect(pause).toHaveBeenCalled();
+  play.mockRestore();
+  pause.mockRestore();
 });

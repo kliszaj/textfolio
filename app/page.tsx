@@ -41,6 +41,10 @@ import {
   sanitizeIntroCutRgbConfig,
 } from "@/lib/introCutEffect";
 import type { IntroCutEffect, IntroCutRgbConfig } from "@/lib/introCutEffect";
+import {
+  DEFAULT_LEGO_SHADOW_OFFSET_X,
+  DEFAULT_LEGO_SHADOW_OFFSET_Y,
+} from "@/lib/legoText";
 
 const DEFAULT_CONFIG: FanSheetConfig = {
   mechanic: "bottom",
@@ -118,6 +122,8 @@ export default function HomePage() {
   const [asciiConfig, setAsciiConfig] = useState<ASCIITextConfig>(DEFAULT_ASCII_TEXT_CONFIG);
   const [warpConfig, setWarpConfig] = useState<WarpTextConfig>(DEFAULT_WARP_TEXT_CONFIG);
   const [strokeConfig, setStrokeConfig] = useState<StrokeTextConfig>(DEFAULT_STROKE_TEXT_CONFIG);
+  const [legoShadowOffsetX, setLegoShadowOffsetX] = useState(DEFAULT_LEGO_SHADOW_OFFSET_X);
+  const [legoShadowOffsetY, setLegoShadowOffsetY] = useState(DEFAULT_LEGO_SHADOW_OFFSET_Y);
   const [paperTextureConfig, setPaperTextureConfig] = useState<PaperTextureConfig>(
     DEFAULT_PAPER_TEXTURE_CONFIG
   );
@@ -223,6 +229,8 @@ export default function HomePage() {
           paperTextureConfig={paperTextureConfig}
           cutEffect={cutEffect}
           rgbConfig={rgbConfig}
+          legoShadowOffsetX={legoShadowOffsetX}
+          legoShadowOffsetY={legoShadowOffsetY}
           suppressHeadlineHover={collapseTravel !== null || shuffle.travel !== null}
           onSelectCaseStudy={liftCaseStudy}
           onJumpToCaseStudy={jumpToCaseStudy}
@@ -265,6 +273,10 @@ export default function HomePage() {
         onCutEffectChange={setCutEffect}
         rgbConfig={rgbConfig}
         onRgbConfigChange={setRgbConfig}
+        legoShadowOffsetX={legoShadowOffsetX}
+        onLegoShadowOffsetXChange={setLegoShadowOffsetX}
+        legoShadowOffsetY={legoShadowOffsetY}
+        onLegoShadowOffsetYChange={setLegoShadowOffsetY}
       />
       )}
     </>
