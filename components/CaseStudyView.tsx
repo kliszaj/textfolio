@@ -358,7 +358,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               <h1
                 ref={titleContainerRef}
                 data-testid="case-study-title"
-                className="case-study-title min-w-0 flex-1 font-display leading-none"
+                className="case-study-title min-w-0 flex-1 overflow-hidden font-display leading-none"
               >
                 <button
                   ref={titleButtonRef}

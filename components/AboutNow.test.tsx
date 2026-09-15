@@ -45,7 +45,8 @@ test("shows current books as linked covers and embeds the current playlist", () 
   );
   const playlist = screen.getByTitle("sept '26 on Spotify");
   expect(playlist).toHaveAttribute("src", now.playlist.embedSrc);
-  expect(playlist).toHaveClass("h-[352px]");
+  expect(playlist).toHaveClass("h-[352px]", "pointer-events-none");
+  expect(playlist).toHaveAttribute("tabindex", "-1");
 });
 
 test("puts the portrait in its own column alongside reading and listening", () => {

@@ -94,8 +94,8 @@ const HEADLINE_SIZE = "clamp(3rem, min(var(--headline-vw), 18vh), 14.5rem)";
 export const TAGLINE_OFFSET = "clamp(-6rem, -2.6rem - 1.4vw, -2.6rem)";
 // The ASCII treatment puts the name on its own stage, where the ink reads as
 // this blue rather than the page's.
-// Supporting type and the scroll cue share Spotify Jam's electric green.
-const ASCII_ACCENT_COLOR = "#15FF76";
+// Supporting type and the scroll cue share the ASCII treatment's acid green.
+const ASCII_ACCENT_COLOR = "#C9F43A";
 const WARP_ACCENT_COLOR = "#FF04FF";
 // Match the supporting text and scroll cue to the yellow LEGO face bricks.
 const LEGO_ACCENT_COLOR = LEGO_TEXT_PALETTE[0];

@@ -20,8 +20,9 @@ export type ProjectExperiment = {
 export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
   {
     id: "word-snap",
-    title: "wordsnap",
-    description: "A pocket instrument for catching language in motion.",
+    title: "wordsnap.",
+    description:
+      "A device for language learners that you use to quickly capture, words, phrases, idioms out in the wild. The wordsnaps are automatically translated and uploaded to Anki so you can practice them",
     assets: [
       {
         src: "/assets/wordsnap.jpg",
@@ -39,23 +40,36 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
     ],
   },
   {
-    id: "project-02",
-    title: "Project 02",
-    description: "Project title and description coming soon.",
+    id: "spellbook-and-tome",
+    title: "Spellbook & Tome",
+    description:
+      "A webserver and a python app to manage your Magic: The Gathering decks and help you get tips to build a better deck. Helping me get better at a nerdy hobby I picked up last winter.",
     assets: [
-      { alt: "Project 02 asset 1 coming soon" },
-      { alt: "Project 02 asset 2 coming soon" },
-      { alt: "Project 02 wide asset coming soon" },
+      { alt: "Spellbook & Tome asset 1 coming soon" },
+      { alt: "Spellbook & Tome asset 2 coming soon" },
+      { alt: "Spellbook & Tome wide asset coming soon" },
     ],
   },
   {
-    id: "project-03",
-    title: "Project 03",
-    description: "Project title and description coming soon.",
+    id: "e-ink-displays",
+    title: "e-ink displays",
+    description:
+      "A webserver and a python app to manage your Magic: The Gathering decks and help you get tips to build a better deck. Helping me get better at a nerdy hobby I picked up last winter.",
     assets: [
-      { alt: "Project 03 asset 1 coming soon" },
-      { alt: "Project 03 asset 2 coming soon" },
-      { alt: "Project 03 wide asset coming soon" },
+      { alt: "e-ink displays asset 1 coming soon" },
+      { alt: "e-ink displays asset 2 coming soon" },
+      { alt: "e-ink displays wide asset coming soon" },
+    ],
+  },
+  {
+    id: "llaminders",
+    title: "llaminders",
+    description:
+      "A sort of clone of the iOS Notes app that talks to a Vikunja instances that I have running on my home server.",
+    assets: [
+      { alt: "llaminders asset 1 coming soon" },
+      { alt: "llaminders asset 2 coming soon" },
+      { alt: "llaminders wide asset coming soon" },
     ],
   },
 ];

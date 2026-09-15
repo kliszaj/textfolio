@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { ProjectsCollection } from "./ProjectsCollection";
 import type { ProjectExperiment } from "@/data/projectsExperiments";
 
@@ -49,4 +49,24 @@ test("uses two primary columns plus an optional full-width third asset", () => {
   expect(primaryRows[1]).toHaveAttribute("data-count", "1");
   expect(primaryRows[1]).toHaveClass("grid-cols-1");
   expect(screen.getAllByTestId("project-wide-asset")).toHaveLength(1);
+  expect(within(screen.getAllByTestId("project-wide-asset")[0]).getByTestId("project-asset"))
+    .toHaveClass("aspect-[21/9]");
+});
+
+test("alternates the split-rail text and media sides by project", () => {
+  render(<ProjectsCollection projects={projects} layout="split" />);
+
+  const entries = screen.getAllByTestId("project-entry");
+  expect(entries[0]).toHaveAttribute("data-text-side", "left");
+  expect(entries[1]).toHaveAttribute("data-text-side", "right");
+  expect(entries[1]).toHaveClass(
+    "lg:grid-cols-[minmax(0,1.8fr)_minmax(14rem,0.7fr)]"
+  );
+});
+
+test("closes the collection with an open-ended experiments note", () => {
+  render(<ProjectsCollection projects={projects} />);
+
+  expect(screen.getByRole("heading", { name: "more coming soon..." })).toBeInTheDocument();
+  expect(screen.getByText("I'm always tinkering")).toBeInTheDocument();
 });

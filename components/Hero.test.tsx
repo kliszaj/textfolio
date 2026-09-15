@@ -305,7 +305,7 @@ test("moves the sketch paper grid with the lifted foreground", () => {
   });
 });
 
-test("tagline and arrow take the Spotify Jam green under the ASCII treatment", () => {
+test("tagline and arrow take the acid green under the ASCII treatment", () => {
   render(<Hero playIntro={false} fanProgress={0} asciiConfig={undefined} />);
   const tagline = screen.getByTestId("hero-tagline");
   const arrow = screen.getByTestId("scroll-hint");
@@ -317,8 +317,8 @@ test("tagline and arrow take the Spotify Jam green under the ASCII treatment", (
     fireEvent.pointerEnter(headline);
     if (index < 2) fireEvent.pointerLeave(headline);
   }
-  expect(tagline).toHaveStyle({ color: "#15FF76" });
-  expect(arrow).toHaveStyle({ color: "#15FF76" });
+  expect(tagline).toHaveStyle({ color: "#C9F43A" });
+  expect(arrow).toHaveStyle({ color: "#C9F43A" });
 });
 
 test("keeps the background, tagline, and arrow colour changes in sync", () => {

@@ -124,7 +124,12 @@ export function AboutNow({ now }: AboutNowProps) {
             <iframe
               title={`${now.playlist.title} on Spotify`}
               src={now.playlist.embedSrc}
-              className="mt-5 h-[352px] w-full rounded-xl border-0"
+              // A cross-origin player swallows wheel and touch gestures when
+              // it fills most of a narrow viewport. Keep it as the visual
+              // preview and route interaction through the link below so the
+              // About page can always scroll past it.
+              className="pointer-events-none mt-5 h-[352px] w-full rounded-xl border-0"
+              tabIndex={-1}
               loading="lazy"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             />

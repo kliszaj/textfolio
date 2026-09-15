@@ -2,6 +2,66 @@
 
 Last updated: 2026-09-15
 
+## Current state: projects layout, LEGO default, and About scroll fix (2026-09-15)
+
+This section supersedes older notes below wherever behavior differs. The user
+explicitly approved committing and pushing this work to `origin/main`.
+
+### Projects & Experiments
+
+- The selected production layout is **Split Rail**. `ProjectsCollection`
+  defaults to `layout="split"`: Wordsnap places copy on the left and media on
+  the right, and each following project alternates those sides on desktop.
+  Mobile remains copy-first for every project.
+- Three temporary comparison routes remain available at
+  `/projects-layout-lab/gallery`, `/projects-layout-lab/split`, and
+  `/projects-layout-lab/ledger`. They share the production project data and
+  can be removed once the layout direction is fully settled.
+- Each project supports up to three assets: two primary tiles plus an optional
+  panoramic 21:9 third asset. The collection ends with “more coming soon...”
+  and “I'm always tinkering.”
+- Current entries are `wordsnap.`, `Spellbook & Tome`, `e-ink displays`, and
+  `llaminders`. Copy was transcribed from the supplied mockup. The mockup
+  repeats the Spellbook Magic: The Gathering description under e-ink displays,
+  so the data currently preserves that repetition; confirm replacement copy
+  with the user later rather than inventing it.
+- `CaseStudyView` now clips title overflow so long single-line titles cannot
+  create horizontal page overflow at narrow widths.
+
+### Homepage treatments
+
+- `data/lego-default.json` is the visitor-facing default imported from the
+  user's latest `lego-default (1).json`. It uses block 20 for the pink
+  background, block 11 for yellow faces, block 16 for blue extrusion, 3×3
+  extrusion offsets, and 136 explicit cell overrides.
+- The LEGO tagline and arrow remain yellow (`LEGO_TEXT_PALETTE[0]`). The ASCII
+  tagline and arrow now use `#C9F43A`.
+- There is currently **no active loading-screen overlay**. `CircularText`
+  remains in the repository but is not mounted by the homepage. The intro
+  starts only after its Sketch and LEGO assets report ready, then runs Sketch
+  → LEGO → ASCII → Warp → default.
+
+### About page scrolling
+
+- The page itself had enough document height and could reach its bottom, but
+  the cross-origin Spotify iframe occupied most of a narrow viewport and
+  swallowed wheel/touch gestures. The iframe is now a pointer-inert,
+  non-tabbable visual preview (`pointer-events-none`, `tabIndex={-1}`); the
+  existing “Open … in Spotify” link remains the interactive path. This keeps
+  scrolling reliable through the Now section on desktop and mobile.
+
+### Release and repository notes
+
+- Run npm commands with `env -u NPM_CONFIG_REGISTRY`; dependencies must always
+  resolve from the public registry configured in `.npmrc`, never Spotify's
+  private Artifactory.
+- Release verification is green: 55 Jest suites / 653 tests, ESLint, and the
+  Next.js production build all pass. The static export contains 15 pages,
+  including the three layout-lab variants.
+- Do not add the root-level `Codex Image Sep 9, 2026, 10_09_30 PM.png`, `Codex
+  Image Sep 9, 2026, 10_09_35 PM.png`, or `wordsnap-brand-guidelines.pdf`.
+  They are intentionally untracked reference/source files.
+
 ## Release: LEGO treatment, deterministic intro, and focused video playback (2026-09-15)
 
 The user explicitly approved committing and pushing this release to
