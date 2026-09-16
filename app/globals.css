@@ -411,7 +411,15 @@ body {
 }
 
 .case-study-title {
-  font-size: clamp(2.75rem, 7.5vw, 6rem);
+  /* The header's own height is 22vh (see --case-study-header-height), so a
+     short window shrinks the bar but this was sized off width alone -- the
+     title kept its full size and read over the top of the home icon, which
+     sits a fixed distance from the header's top regardless of how little
+     height is left below the title. Capping the preferred size against the
+     header's real height, minus the icon and the padding it and the title
+     both sit inside, keeps a paragraph of clearance between them at any
+     window size instead of just on tall ones. */
+  font-size: clamp(2.75rem, min(7.5vw, calc(var(--case-study-header-height) - 6rem)), 6rem);
   /* PP Frama's g/y descenders extend below its nominal line box. The title
      must stay overflow-clipped horizontally for one-line fitting, so enlarge
      that clipping box below the baseline and cancel the added layout space. */

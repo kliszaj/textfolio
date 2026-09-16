@@ -7,6 +7,7 @@ import {
   CORRECTION_LETTER_VIEWBOX,
   correctionSequenceMs,
   boxMoved,
+  charBoxFromSubstringLengths,
   CORRECTION_DRAW_MS,
   CORRECTION_INK,
   DEFAULT_STROKE_TEXT_CONFIG,
@@ -215,6 +216,31 @@ describe("correction marks", () => {
       expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
       expect(Math.max(...ys)).toBeLessThanOrEqual(bounds.height);
     }
+  });
+
+  test("locates a character from advance lengths alone, immune to an engine's own anchor/baseline handling", () => {
+    // getExtentOfChar returns an absolute on-screen position, and some
+    // engines compute that as if the run were left-anchored on the
+    // alphabetic baseline -- ignoring the real text-anchor="middle" and
+    // dominant-baseline="central" the text actually renders with, which
+    // pushes the reported position right and down from the glyph's true
+    // spot. getSubStringLength/getComputedTextLength measure pure advance
+    // length along the run, which text-anchor and dominant-baseline don't
+    // touch, so recovering the glyph's x from those lengths ourselves can't
+    // inherit that mixup.
+    const wordBox = { y: 40, height: 80 };
+    // A 6-character run, each character 20 units wide: "N" (index 5) starts
+    // 100 units into a 120-unit-long run.
+    const next = charBoxFromSubstringLengths({
+      totalLength: 120,
+      beforeLength: 100,
+      charLength: 20,
+      anchorX: 300,
+      wordBox,
+    });
+    // anchorX (300) is the run's centre, so the run starts at 300 - 60 = 240,
+    // and the character 100 units in lands at 340.
+    expect(next).toEqual({ x: 340, y: 40, width: 20, height: 80 });
   });
 
   test("mirroring flips about the glyph's own centre, holding its place", () => {

@@ -331,6 +331,22 @@ export function ASCIIText({
         texture = nextTexture;
         if (material) material.uniforms.uTexture.value = nextTexture;
         previousTexture?.dispose();
+        // The real headline face can land after this first texture was built
+        // from a fallback font, and a display face rarely shares a generic
+        // fallback's aspect ratio for the same word. applyPlaneScale's frame
+        // fit sizes against *this* texture's aspect, but a scale is uniform
+        // and can't change the plane's shape -- left at the fallback's
+        // geometry, the fit would bound a shape the mesh isn't actually
+        // using, and the real word could render wider than the frame on
+        // whatever viewport made that mismatch large enough to matter (seen
+        // on a phone, where the fallback is on screen longest). This only
+        // runs once, when the face swaps in, not on every resize -- the
+        // frequent path still costs a scale write, not a geometry rebuild.
+        if (mesh) {
+          const previousGeometry = mesh.geometry;
+          mesh.geometry = new THREE.PlaneGeometry(textCanvas.width / textCanvas.height, 1, 36, 36);
+          previousGeometry.dispose();
+        }
         applyPlaneScale();
       };
 

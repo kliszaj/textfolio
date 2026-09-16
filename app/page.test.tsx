@@ -2,6 +2,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import HomePage from "./page";
 import { useFanProgress } from "@/hooks/useFanProgress";
 import { usePointerType } from "@/hooks/usePointerType";
+import { useShortViewport } from "@/hooks/useShortViewport";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import { markReturningHome, resetReturningHomeForTests } from "@/hooks/useStackCollapse";
@@ -9,6 +10,7 @@ import { STACK_SHUFFLE_HOLD_MS, STACK_SHUFFLE_OPEN_MS } from "@/hooks/useStackSh
 
 jest.mock("@/hooks/useFanProgress");
 jest.mock("@/hooks/usePointerType");
+jest.mock("@/hooks/useShortViewport");
 const mockPush = jest.fn();
 const mockPrefetch = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -17,12 +19,14 @@ jest.mock("next/navigation", () => ({
 
 const mockUseFanProgress = useFanProgress as jest.Mock;
 const mockUsePointerType = usePointerType as jest.Mock;
+const mockUseShortViewport = useShortViewport as jest.Mock;
 
 beforeEach(() => {
   mockPush.mockClear();
   mockPrefetch.mockClear();
   mockUseFanProgress.mockReturnValue({ fanProgress: 0, sweepProgress: 0 });
   mockUsePointerType.mockReturnValue("fine");
+  mockUseShortViewport.mockReturnValue(false);
 });
 
 test("renders the hero and all case study sheets", () => {
@@ -84,6 +88,27 @@ test("the stack opens further on touch than it does on a pointer", () => {
   const touchHero = parseFloat(touch.getByTestId("paper-sheet-0").style.bottom);
 
   expect(touchHero).toBeGreaterThan(desktopHero);
+});
+
+test("also opens further on a short desktop window, not just on touch", () => {
+  // A resting band sized as a percentage of the viewport needs real pixels
+  // to hold a title and blurb without the two overlapping -- a desktop
+  // window resized short runs into that with a perfectly ordinary mouse,
+  // so the same wider reveal touch gets has to apply there too.
+  mockUseFanProgress.mockReturnValue({ fanProgress: 1, sweepProgress: 1 });
+
+  mockUsePointerType.mockReturnValue("fine");
+  mockUseShortViewport.mockReturnValue(false);
+  const tall = render(<HomePage />);
+  const tallHero = parseFloat(tall.getByTestId("paper-sheet-0").style.bottom);
+  tall.unmount();
+
+  mockUsePointerType.mockReturnValue("fine");
+  mockUseShortViewport.mockReturnValue(true);
+  const short = render(<HomePage />);
+  const shortHero = parseFloat(short.getByTestId("paper-sheet-0").style.bottom);
+
+  expect(shortHero).toBeGreaterThan(tallHero);
 });
 
 test("the fully swept stack still reveals a substantial portion of the viewport", () => {

@@ -6,6 +6,7 @@ import { useFanProgress } from "@/hooks/useFanProgress";
 import { peekReturningFromSlug, useStackCollapse } from "@/hooks/useStackCollapse";
 import { useStackShuffle } from "@/hooks/useStackShuffle";
 import { usePointerType } from "@/hooks/usePointerType";
+import { useShortViewport } from "@/hooks/useShortViewport";
 import { PaperStack } from "@/components/PaperStack";
 import { useIntroOnce } from "@/hooks/useIntroOnce";
 import { FanDebugPanel } from "@/components/FanDebugPanel";
@@ -153,7 +154,12 @@ export default function HomePage() {
     }
   }
   const pointerType = usePointerType();
-  const isMobileLayout = pointerType === "coarse";
+  const isShortViewport = useShortViewport();
+  // A phone in portrait gets here through pointer type; a desktop window
+  // resized short gets here through the height check instead -- either way
+  // there isn't room for a resting band sized off a tall viewport's
+  // percentage to still hold a title and blurb without the two overlapping.
+  const isMobileLayout = pointerType === "coarse" || isShortViewport;
   // Touch drives the same stack by scrolling rather than getting a different
   // layout: the reveal is the interaction, so it belongs on every screen.
   const pointerFan = useFanProgress(thresholdPx, fanSplit, smoothingMs, true);

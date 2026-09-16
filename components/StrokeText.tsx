@@ -15,6 +15,7 @@ import {
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
   STROKE_INK_LIFT_PX,
+  charBoxFromSubstringLengths,
   correctionMarks,
   boxMoved,
   inkCentringOffset,
@@ -268,13 +269,49 @@ export function StrokeText({
     const measureMark = () => {
       if (cancelled || correctionIndex === undefined || !rootRef.current) return;
 
+      const textEl = textRef.current;
+
+      // getSubStringLength/getComputedTextLength measure pure advance length
+      // along the run, which text-anchor="middle" and dominant-baseline=
+      // "central" don't touch -- so recovering the glyph's x from those
+      // lengths ourselves can't inherit the mixup some engines apply to
+      // getExtentOfChar's absolute answer below (observed on WebKit/iOS:
+      // the correction lands well off from the glyph it's meant to
+      // replace, as if the run were left-anchored on the alphabetic
+      // baseline instead of centred and vertically middled). Preferred over
+      // getExtentOfChar for that reason, not just as a fallback.
+      if (
+        textEl &&
+        typeof textEl.getSubStringLength === "function" &&
+        typeof textEl.getComputedTextLength === "function"
+      ) {
+        try {
+          const totalLength = textEl.getComputedTextLength();
+          const beforeLength = correctionIndex > 0 ? textEl.getSubStringLength(0, correctionIndex) : 0;
+          const charLength = textEl.getSubStringLength(correctionIndex, 1);
+          const wordBox = textEl.getBBox();
+          if (totalLength > 0 && charLength > 0 && wordBox.height > 0) {
+            const next = charBoxFromSubstringLengths({
+              totalLength,
+              beforeLength,
+              charLength,
+              anchorX: centreX,
+              wordBox,
+            });
+            setMarkBox((previous) => (boxMoved(previous, next) ? next : previous));
+            return;
+          }
+        } catch {
+          // Falls through to getExtentOfChar, then the tspan measurement.
+        }
+      }
+
       // getExtentOfChar measures one character's real rendered extent
       // directly off the text run, so it can't fall back to a sibling's or
       // the whole word's box the way a bare tspan.getBBox() can on engines
       // that don't give an unpositioned tspan its own bounding box (observed
       // on WebKit/iOS: the correction ends up sized and centred on the whole
       // word instead of the one glyph it's meant to replace).
-      const textEl = textRef.current;
       if (textEl && typeof textEl.getExtentOfChar === "function") {
         try {
           const extent = textEl.getExtentOfChar(correctionIndex);
@@ -341,6 +378,11 @@ export function StrokeText({
       cancelAnimationFrame(frame);
       document.fonts?.removeEventListener?.("loadingdone", settle);
     };
+    // centreX is deliberately omitted: it is derived purely from hostSize,
+    // which is already listed, and it is declared further down this
+    // component (after inkOffset/inkOffsetX) -- listing it here would be a
+    // temporal-dead-zone reference, not just a redundant one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characters, fontSize, fontWeight, letterSpacing, strokeWidth, hostSize, correctionIndex]);
 
   useLayoutEffect(() => {

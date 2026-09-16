@@ -313,6 +313,38 @@ export function mirrorAboutBox(box: MarkBox): string {
   return `translate(${centre * 2}, 0) scale(-1, 1)`;
 }
 
+// Locates one character purely from advance-length measurements
+// (getSubStringLength/getComputedTextLength), rather than trusting an
+// engine's own absolute per-character extent (getExtentOfChar). Some
+// engines compute that extent as if the run were left-anchored on the
+// alphabetic baseline, ignoring the run's real text-anchor="middle" and
+// dominant-baseline="central" -- which reads as the correction landing well
+// off from the glyph it's meant to replace. Advance length along the run is
+// untouched by either of those, so recovering x from it here can't inherit
+// that mixup. y/height still come from the whole word's own measured box:
+// every character in a single, one-size run sits in the same vertical band.
+export function charBoxFromSubstringLengths({
+  totalLength,
+  beforeLength,
+  charLength,
+  anchorX,
+  wordBox,
+}: {
+  totalLength: number;
+  beforeLength: number;
+  charLength: number;
+  anchorX: number;
+  wordBox: { y: number; height: number };
+}): MarkBox {
+  const runStartX = anchorX - totalLength / 2;
+  return {
+    x: runStartX + beforeLength,
+    y: wordBox.y,
+    width: charLength,
+    height: wordBox.height,
+  };
+}
+
 export type MeasuredBox = { x: number; y: number; width: number; height: number };
 
 // Whether a fresh measurement is worth committing. Compares every edge: the

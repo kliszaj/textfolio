@@ -43,3 +43,14 @@ export function sketchBackgroundPosition(liftPercent: number): string {
   const safeLift = Number.isFinite(liftPercent) ? liftPercent : 0;
   return `0px calc(0px - ${safeLift}vh)`;
 }
+
+// The cool-S and lightning bolt are drawn in the corners of the same sheet
+// as the headline, not stuck to the viewport above it -- without this they
+// stayed put as the page rose, breaking the one illusion the whole treatment
+// is built on. Same upward carry as the paper texture itself, layered under
+// each mark's own fixed tilt (translate first, so the tilt still turns
+// around the mark's own centre rather than the page's).
+export function sketchMarkTransform(liftPercent: number, rotateDeg: number): string {
+  const safeLift = Number.isFinite(liftPercent) ? liftPercent : 0;
+  return `translateY(calc(0px - ${safeLift}vh)) rotate(${rotateDeg}deg)`;
+}

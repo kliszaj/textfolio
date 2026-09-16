@@ -19,7 +19,7 @@ import {
 } from "@/lib/strokeText";
 import type { StrokeTextConfig } from "@/lib/strokeText";
 import { DEFAULT_PAPER_TEXTURE_CONFIG } from "@/lib/paperTexture";
-import { sketchBackgroundPosition } from "@/lib/paperTexture";
+import { sketchBackgroundPosition, sketchMarkTransform } from "@/lib/paperTexture";
 import type { PaperTextureConfig } from "@/lib/paperTexture";
 import { useHeadlineIntro } from "@/hooks/useHeadlineIntro";
 import { useHeroReveal } from "@/hooks/useHeroReveal";
@@ -639,6 +639,12 @@ export function Hero({
           alt=""
           aria-hidden="true"
           priority
+          // Drawn on the same sheet as the headline: it has to ride up with
+          // the lift too, or it reads as pinned to the glass while the page
+          // rises beneath it. Matches .coolS's own rotate(15deg) in
+          // Hero.module.css -- an inline transform replaces the class's
+          // rather than adding to it, so the tilt has to come along here.
+          style={{ transform: sketchMarkTransform(liftPercent, 15) }}
         />
       )}
       {showCoolS && (
@@ -651,6 +657,9 @@ export function Hero({
           alt=""
           aria-hidden="true"
           priority
+          // Same reasoning as cool-S above; matches .lightning's own
+          // rotate(-6deg).
+          style={{ transform: sketchMarkTransform(liftPercent, -6) }}
         />
       )}
       {activeEffect === "stroke" && (
