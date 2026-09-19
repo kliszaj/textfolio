@@ -10,7 +10,7 @@ import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudyRoute } from "@/data/caseStudies";
 import { HEADER_SETTLE_MS, HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
-import type { CaseStudy, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
+import type { CaseStudy, CaseStudyFact, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
 import type { ReactNode } from "react";
 
 type CaseStudyViewProps = {
@@ -72,6 +72,46 @@ export function caseStudyMediaRows(media: CaseStudyMedia[]): number[] {
   });
 }
 
+// Two videos sharing a row both playing at once, unprompted, reads as noise
+// rather than evidence -- scroll can only pick one active row, not one tile
+// within it. A row like that plays on hover instead (see the tile map in the
+// render below), and this is where "does this tile need that" gets decided.
+export function isPairedVideoTile(
+  media: CaseStudyMedia[],
+  mediaRows: number[],
+  index: number
+): boolean {
+  const item = media[index];
+  if (!item || item.kind !== "video") return false;
+  const row = mediaRows[index];
+  return media.some((other, otherIndex) =>
+    otherIndex !== index && other.kind === "video" && mediaRows[otherIndex] === row
+  );
+}
+
+// Which of a paired row's videos plays, going purely off where the cursor
+// sits across the row's full width -- not just whether it's directly over
+// one of the tiles. The margin on either side of the row (and the gap
+// between the two tiles) still belongs to whichever tile is on that side,
+// so the row is never silent just because the cursor hasn't landed exactly
+// on a video, and it plays the one the cursor is actually closest to rather
+// than always defaulting to the first. xRatio is the cursor's position
+// across the row as a 0-1 fraction (0 = left edge, 1 = right edge).
+export function pairedVideoIndexForPointer(
+  media: CaseStudyMedia[],
+  mediaRows: number[],
+  row: number,
+  xRatio: number
+): number {
+  const indices = media
+    .map((_, index) => index)
+    .filter((index) => media[index].kind === "video" && mediaRows[index] === row);
+  if (indices.length === 0) return -1;
+  const clamped = Math.min(1, Math.max(0, xRatio));
+  const slot = Math.min(indices.length - 1, Math.floor(clamped * indices.length));
+  return indices[slot];
+}
+
 type PlaybackRowBounds = {
   row: string;
   top: number;
@@ -126,12 +166,39 @@ const ASPECT_CLASS: Record<NonNullable<CaseStudyMedia["aspect"]>, string> = {
   wide: "aspect-[3/1]",
 };
 
+// Wraps every occurrence of each phrase in <strong>, for the odd stat that
+// wants weight without becoming a link -- a fact number sitting inline in a
+// sentence, not pulled into its own rail entry. Phrases are matched against
+// the plain-text stretches renderLinkedCopy already isn't handing to a link,
+// so a bold phrase and a link phrase never fight over the same substring.
+function boldPhrasesIn(text: string, phrases: string[]): React.ReactNode {
+  if (phrases.length === 0) return text;
+
+  const matches = phrases
+    .map((phrase) => ({ phrase, start: text.indexOf(phrase) }))
+    .filter((match) => match.start !== -1)
+    .sort((a, b) => a.start - b.start);
+  if (matches.length === 0) return text;
+
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const { phrase, start } of matches) {
+    if (start < cursor) continue; // Overlaps a phrase already claimed.
+    nodes.push(text.slice(cursor, start));
+    nodes.push(<strong key={`${phrase}-${start}`}>{phrase}</strong>);
+    cursor = start + phrase.length;
+  }
+  nodes.push(text.slice(cursor));
+  return <>{nodes}</>;
+}
+
 function renderLinkedCopy(
   copy: string,
   links?: CaseStudyOverviewLink | CaseStudyOverviewLink[],
   // The NEXT case study's color -- previews read as a bridge onward, not a
   // restatement of the page the reader is already on.
-  accentColor?: string
+  accentColor?: string,
+  boldPhrases: string[] = []
 ) {
   const requestedLinks = Array.isArray(links) ? links : links ? [links] : [];
   const parts: React.ReactNode[] = [];
@@ -141,7 +208,7 @@ function renderLinkedCopy(
     const start = copy.indexOf(link.label, cursor);
     if (start === -1) continue;
 
-    parts.push(copy.slice(cursor, start));
+    parts.push(boldPhrasesIn(copy.slice(cursor, start), boldPhrases));
     parts.push(
       <InlineLinkPreview
         key={`${link.href}-${start}`}
@@ -152,29 +219,58 @@ function renderLinkedCopy(
     cursor = start + link.label.length;
   }
 
-  return parts.length === 0 ? copy : <>{parts}{copy.slice(cursor)}</>;
+  return parts.length === 0
+    ? boldPhrasesIn(copy, boldPhrases)
+    : <>{parts}{boldPhrasesIn(copy.slice(cursor), boldPhrases)}</>;
+}
+
+// Shared between the sticky rail and the top columns row -- the same fact
+// shape, just placed differently.
+function renderFactValue(fact: CaseStudyFact) {
+  if (!Array.isArray(fact.value)) return fact.value;
+  return (
+    <ul className="case-study-fact-list">
+      {fact.value.map((item) =>
+        typeof item === "string" ? (
+          <li key={item}>{item}</li>
+        ) : (
+          <li key={item.href}>
+            <a href={item.href} className="underline underline-offset-2 hover:opacity-70">
+              {item.label}
+            </a>
+          </li>
+        )
+      )}
+    </ul>
+  );
 }
 
 export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps) {
   const {
+    oneLiner,
     overview,
     overviewLink,
     overviewContactLinks,
     facts = [],
+    factsLayout = "rail",
     introImage,
     sections = [],
     media = [],
     mediaLayout = "mosaic",
+    mediaPadded = false,
     videoSrc,
   } = caseStudy;
   const hasMedia = Boolean(videoSrc) || media.length > 0;
+  const factsInRail = factsLayout === "rail" && facts.length > 0;
   // A dedicated rail column with nothing in it (About has neither facts nor
   // a portrait, once both moved elsewhere) just leaves the reading column
   // narrower than it needs to be for no reason -- drop it and let the text
-  // run full width instead of reserving empty space beside it.
-  const hasRail = Boolean(introImage) || facts.length > 0;
-  // A page with nothing of its own to say here (Projects & Experiments,
-  // which hands the whole page over to its own children) shouldn't still
+  // run full width instead of reserving empty space beside it. Facts lifted
+  // into their own row above the text don't count -- that's what makes the
+  // row possible in the first place.
+  const hasRail = Boolean(introImage) || factsInRail;
+  // A page with nothing of its own to say here (Tinkering, which hands the
+  // whole page over to its own children) shouldn't still
   // pay for this section's padding -- that reads as a dead gap between the
   // header and whatever the children actually render.
   const hasBodyContent = hasRail || Boolean(overview) || sections.length > 0 || hasMedia || !children;
@@ -188,10 +284,20 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   const [exiting, setExiting] = useState(false);
   const [isLongReadExpanded, setIsLongReadExpanded] = useState(false);
   const [activePlaybackRow, setActivePlaybackRow] = useState<string | null>(null);
+  // Scroll can only pick one active row, not one tile within it -- a row
+  // holding two videos side by side needs its own signal, or both play
+  // together the instant the row scrolls into view. Tracked as the
+  // pointer's fractional x position across the whole grid (not which tile
+  // it's directly over), so a margin or the gap between the two tiles still
+  // belongs to whichever side it's on, the same as the render below reads
+  // it via pairedVideoIndexForPointer.
+  const [mediaPointerXRatio, setMediaPointerXRatio] = useState<number | null>(null);
   const titleContainerRef = useRef<HTMLHeadingElement>(null);
   const titleButtonRef = useRef<HTMLButtonElement>(null);
   const mediaSectionRef = useRef<HTMLElement>(null);
+  const mediaGridRef = useRef<HTMLDivElement>(null);
   const mediaRows = caseStudyMediaRows(media);
+  const hasPairedVideoRow = media.some((_, index) => isPairedVideoTile(media, mediaRows, index));
   const hasPlayableMedia = Boolean(videoSrc) || media.some((item) => item.kind === "video");
   const hasCollapsibleLongRead = sections.length > COLLAPSIBLE_SECTION_MINIMUM;
   const visibleSections = hasCollapsibleLongRead && !isLongReadExpanded
@@ -261,6 +367,27 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
       resizeObserver?.disconnect();
     };
   }, [hasPlayableMedia]);
+
+  // Tracked at the window rather than the grid: the grid's own box ends
+  // where the tiles do, so a listener scoped to it never sees the margins
+  // on either side of the row -- exactly the space this is meant to cover.
+  // Reading which side of the row the cursor is on only matters once a
+  // paired row is actually active, so this stays a plain position tracker
+  // and leaves that decision to pairedVideoIndexForPointer in the render.
+  useEffect(() => {
+    if (!hasPairedVideoRow) return;
+
+    const onPointerMove = (event: PointerEvent) => {
+      const grid = mediaGridRef.current;
+      if (!grid) return;
+      const rect = grid.getBoundingClientRect();
+      if (!rect.width) return;
+      setMediaPointerXRatio((event.clientX - rect.left) / rect.width);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    return () => window.removeEventListener("pointermove", onPointerMove);
+  }, [hasPairedVideoRow]);
 
   useLayoutEffect(() => {
     const container = titleContainerRef.current;
@@ -434,7 +561,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             <HomeIconAnimation shrunk={shrunk} />
             </Link>
 
-            <div className="case-study-header-row flex items-end justify-between gap-6">
+            <div className="case-study-header-row flex items-center justify-between gap-6">
               <h1
                 ref={titleContainerRef}
                 data-testid="case-study-title"
@@ -487,7 +614,12 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         {hasBodyContent && (
         <div
           data-testid="case-study-body"
-          className="case-study-body px-6 py-10 md:px-10 md:py-14 2xl:px-14"
+          data-padded={mediaPadded}
+          className={`case-study-body py-10 md:py-14 ${
+            mediaPadded
+              ? "px-6 md:px-16 lg:px-24 2xl:px-32"
+              : "px-6 md:px-10 2xl:px-14"
+          }`}
         >
           {/* Overview rail beside the long read. One column on narrow screens:
               the rail reads as the intro it is, rather than a squeezed sidebar. */}
@@ -517,7 +649,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   />
                 </figure>
               )}
-              {facts.length > 0 && (
+              {factsInRail && (
                 <dl className="case-study-facts">
                   {facts.map((fact) => (
                     <div
@@ -525,26 +657,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                       className="case-study-fact"
                     >
                       <dt>{fact.label}</dt>
-                      <dd>
-                        {Array.isArray(fact.value) ? (
-                          <ul className="case-study-fact-list">
-                            {fact.value.map((item) =>
-                              typeof item === "string" ? (
-                                <li key={item}>{item}</li>
-                              ) : (
-                                <li key={item.href}>
-                                  <a
-                                    href={item.href}
-                                    className="underline underline-offset-2 hover:opacity-70"
-                                  >
-                                    {item.label}
-                                  </a>
-                                </li>
-                              )
-                            )}
-                          </ul>
-                        ) : fact.value}
-                      </dd>
+                      <dd>{renderFactValue(fact)}</dd>
                     </div>
                   ))}
                 </dl>
@@ -562,6 +675,11 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 hasRail ? " lg:col-start-2" : ""
               }`}
             >
+              {oneLiner && (
+                <p className="case-study-one-liner font-condensed font-bold mb-6">
+                  {oneLiner}
+                </p>
+              )}
               {overview && (
                 <p className="case-study-copy case-study-intro-copy mb-8">
                   {renderLinkedCopy(overview, overviewLink, next?.thumbnailColor)}
@@ -574,7 +692,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     {section.heading && (
                       <h2 className="font-body font-bold text-2xl leading-none mb-3">{section.heading}</h2>
                     )}
-                    <p>{renderLinkedCopy(section.body, section.bodyLinks ?? section.bodyLink, next?.thumbnailColor)}</p>
+                    <p>{renderLinkedCopy(section.body, section.bodyLinks ?? section.bodyLink, next?.thumbnailColor, section.boldPhrases)}</p>
                     {section.bullets && section.bullets.length > 0 && (
                       <ul className="mt-3 list-disc space-y-2 pl-5">
                         {section.bullets.map((bullet) => (
@@ -620,6 +738,25 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             </div>
           </div>
 
+          {/* An even row below the text rather than a sidebar beside it --
+              for a short fact list this reads as a stat strip instead of a
+              sparse column of its own. Stacks on narrow screens, where three
+              columns would squeeze each fact's value onto its own tiny lane. */}
+          {factsLayout === "columns" && facts.length > 0 && (
+            <dl
+              data-testid="case-study-facts-columns"
+              data-layout="columns"
+              className="case-study-facts font-body font-medium mx-auto mt-10 w-full max-w-[100rem] md:mt-14"
+            >
+              {facts.map((fact) => (
+                <div key={fact.label} className="case-study-fact">
+                  <dt>{fact.label}</dt>
+                  <dd>{renderFactValue(fact)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+
           {/* Evidence follows the reading columns on the same left and right
               edges, so video and media feel part of the editorial page rather
               than a separate full-width gallery. */}
@@ -627,6 +764,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             <section
               ref={mediaSectionRef}
               data-testid="case-study-media"
+              data-padded={mediaPadded}
               className="mx-auto mt-10 w-full max-w-[100rem]"
             >
               {videoSrc && (
@@ -646,6 +784,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               )}
               {media.length > 0 && (
                 <div
+                  ref={mediaGridRef}
                   data-testid="case-study-media-grid"
                   data-layout={mediaLayout}
                   className={`mt-8 grid grid-cols-2 gap-4 md:gap-6 ${
@@ -657,6 +796,19 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     const tileLayout = mediaLayout === "sequence"
                       ? `${SEQUENCE_SPAN_CLASS[span]} ${item.aspect ? ASPECT_CLASS[item.aspect] : ""}`
                       : SPAN_CLASS[span];
+                    const row = mediaRows[index];
+                    const paired = isPairedVideoTile(media, mediaRows, index);
+                    // The pointer's x position across the whole row decides
+                    // which of the paired videos plays -- the margin on
+                    // either side, and the gap between the tiles, belong to
+                    // whichever side they're on. No pointer at all (touch,
+                    // or the cursor is elsewhere on the page) still plays
+                    // the earlier one rather than leaving the row silent.
+                    const pairedPlayingIndex = paired
+                      ? mediaPointerXRatio === null
+                        ? pairedVideoIndexForPointer(media, mediaRows, row, 0)
+                        : pairedVideoIndexForPointer(media, mediaRows, row, mediaPointerXRatio)
+                      : -1;
                     return (
                       <figure
                         key={item.src ?? `${item.alt}-${index}`}
@@ -670,9 +822,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                             <LazyVideo
                               className="size-full object-cover"
                               src={item.src}
-                              data-playback-row={`media-${mediaRows[index]}`}
+                              data-playback-row={`media-${row}`}
                               loadImmediately
-                              playing={activePlaybackRow === `media-${mediaRows[index]}`}
+                              playing={activePlaybackRow === `media-${row}`
+                                && (!paired || index === pairedPlayingIndex)}
                               muted
                               loop
                               playsInline

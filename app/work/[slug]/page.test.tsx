@@ -10,14 +10,16 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 
-test("renders the case study title and its overview for a known slug", async () => {
+test("renders the case study title and its opening line for a known slug", async () => {
   const jsx = await CaseStudyPage({ params: Promise.resolve({ slug: caseStudies[0].slug }) });
   render(jsx as React.ReactElement);
   expect(screen.getByText(caseStudies[0].title)).toBeInTheDocument();
-  // The rail leads with the overview once one is written; the blurb is the
-  // fallback for a study that has none, and the home stack's subheading.
-  const overview = document.querySelector(".case-study-intro-copy");
-  expect(overview).toHaveTextContent(caseStudies[0].overview!.split(/\s{2,}/)[0]);
+  // The detail column leads with the overview once one is written -- or,
+  // for a case study that trims its overview down to just the one-liner
+  // above it (Jam), the one-liner stands in as the opening line instead.
+  const opener = caseStudies[0].oneLiner ?? caseStudies[0].overview!;
+  const detail = document.querySelector('[data-testid="case-study-detail"]');
+  expect(detail).toHaveTextContent(opener.split(/\s{2,}/)[0]);
 });
 
 test("sends the last case study's next arrow to About, not back to Jam", async () => {
@@ -29,7 +31,7 @@ test("sends the last case study's next arrow to About, not back to Jam", async (
   expect(nextLink).toHaveStyle({ backgroundColor: ABOUT_PAGE.thumbnailColor });
 });
 
-test("adds the project collection to Projects & Experiments", async () => {
+test("adds the project collection to Tinkering", async () => {
   const jsx = await CaseStudyPage({
     params: Promise.resolve({ slug: "projects-and-experiments" }),
   });

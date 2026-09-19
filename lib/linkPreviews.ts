@@ -37,6 +37,14 @@ const LINK_PREVIEWS: Record<string, LinkPreview> = {
     color: "#15FF76",
     image: "https://storage.googleapis.com/pr-newsroom-wp/1/2026/05/Spotify-Investor-Day-logo.jpeg",
   },
+  "https://newsroom.spotify.com/2026-01-07/listening-activity-request-to-jam-messages-updates/": {
+    source: "Spotify Newsroom",
+    title: "Introducing Listening Activity and Request to Jam in Messages on Spotify",
+    description:
+      "We know people use Spotify not just to listen, but to share the songs, podcasts, and audiobooks they love with their friends and family.",
+    color: "#15FF76",
+    image: "https://storage.googleapis.com/pr-newsroom-wp/1/2026/01/FTR-1440x820-11647134-scaled.jpg",
+  },
   "/archive/2019/pmf.html": {
     source: "Adrian Klisz — archive",
     title: "Focals product-market-fit archive",

@@ -28,6 +28,20 @@ const scriptFont = localFont({
   display: "swap",
 });
 
+// A condensed companion to the display face, reserved for the case-study
+// overview's pulled-out one-liner -- narrow enough to carry a full sentence
+// at a size that would otherwise run wide.
+const condensedFont = localFont({
+  src: [
+    { path: "./fonts/PPFormulaCondensed-Light.otf", weight: "300", style: "normal" },
+    { path: "./fonts/PPFormulaCondensed-Regular.otf", weight: "400", style: "normal" },
+    { path: "./fonts/PPFormulaCondensed-Bold.otf", weight: "700", style: "normal" },
+    { path: "./fonts/PPFormulaCondensed-Black.otf", weight: "900", style: "normal" },
+  ],
+  variable: "--font-pp-formula-condensed",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   // Needed to resolve the og:image/twitter:image URLs to an absolute
   // address; without it Next.js defaults to localhost in production.
@@ -54,7 +68,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${displayFont.variable} ${scriptFont.variable} ${bodyFont.variable}`}>
+      <body className={`${displayFont.variable} ${scriptFont.variable} ${bodyFont.variable} ${condensedFont.variable}`}>
         <LineBoil />
         {children}
       </body>

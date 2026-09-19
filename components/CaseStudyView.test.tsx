@@ -14,6 +14,8 @@ import {
   CaseStudyView,
   activePlaybackRowForViewport,
   caseStudyMediaRows,
+  pairedVideoIndexForPointer,
+  isPairedVideoTile,
   caseStudyTitleScale,
 } from "./CaseStudyView";
 import { getCaseStudyBySlug } from "@/data/caseStudies";
@@ -119,6 +121,56 @@ test("groups side-by-side media into one playback row", () => {
     { src: "/right.mp4", alt: "Right", kind: "video", span: "half" },
     { src: "/last.mp4", alt: "Last", kind: "video", span: "full" },
   ])).toEqual([0, 1, 1, 2]);
+});
+
+test("flags only the videos that actually share a row with another video", () => {
+  const media = [
+    { src: "/wide.mp4", alt: "Wide", kind: "video" as const, span: "full" as const },
+    { src: "/left.mp4", alt: "Left", kind: "video" as const, span: "half" as const },
+    { src: "/right.mp4", alt: "Right", kind: "video" as const, span: "half" as const },
+    { alt: "Placeholder photo", span: "half" as const },
+    { src: "/last.mp4", alt: "Last", kind: "video" as const, span: "half" as const },
+  ];
+  const rows = caseStudyMediaRows(media);
+  expect(rows).toEqual([0, 1, 1, 2, 2]);
+  expect(media.map((_, index) => isPairedVideoTile(media, rows, index))).toEqual([
+    false, // alone in its own row
+    true, // shares row 1 with another video
+    true,
+    false, // a photo, not a video
+    false, // shares row 2 with a photo, not a second video
+  ]);
+});
+
+describe("choosing which of a paired row's videos plays", () => {
+  const media = [
+    { src: "/wide.mp4", alt: "Wide", kind: "video" as const, span: "full" as const },
+    { src: "/left.mp4", alt: "Left", kind: "video" as const, span: "half" as const },
+    { src: "/right.mp4", alt: "Right", kind: "video" as const, span: "half" as const },
+  ];
+  const rows = caseStudyMediaRows(media);
+
+  test("picks the left tile for the left half of the row, margin included", () => {
+    expect(pairedVideoIndexForPointer(media, rows, 1, 0)).toBe(1);
+    expect(pairedVideoIndexForPointer(media, rows, 1, 0.2)).toBe(1);
+  });
+
+  test("picks the right tile for the right half of the row, margin included", () => {
+    // Exactly matters here: this is the bug report -- the right margin (a
+    // pointer ratio near 1) was defaulting to the left tile regardless.
+    expect(pairedVideoIndexForPointer(media, rows, 1, 0.99)).toBe(2);
+    expect(pairedVideoIndexForPointer(media, rows, 1, 1)).toBe(2);
+    expect(pairedVideoIndexForPointer(media, rows, 1, 0.6)).toBe(2);
+  });
+
+  test("clamps out-of-range ratios instead of picking neither tile", () => {
+    expect(pairedVideoIndexForPointer(media, rows, 1, -0.4)).toBe(1);
+    expect(pairedVideoIndexForPointer(media, rows, 1, 1.4)).toBe(2);
+  });
+
+  test("returns -1 for a row with no video in it", () => {
+    expect(pairedVideoIndexForPointer(media, rows, 99, 0.5)).toBe(-1);
+  });
 });
 
 test("activates the row nearest the viewport centre during ordinary scrolling", () => {
@@ -264,6 +316,20 @@ test("aligns video and media with the text container", () => {
   expect(screen.getByTestId("case-study-media")).toHaveClass("max-w-[100rem]");
 });
 
+test("insets both the text and the media together when the case study asks for it, so a full-width video doesn't dwarf the reading column", () => {
+  render(<CaseStudyView caseStudy={{ ...written, mediaPadded: true }} />);
+  const body = screen.getByTestId("case-study-body");
+  expect(body).toHaveAttribute("data-padded", "true");
+  expect(body).toHaveClass("px-6", "md:px-16", "lg:px-24", "2xl:px-32");
+});
+
+test("leaves the case study body at its ordinary padding by default", () => {
+  render(<CaseStudyView caseStudy={written} />);
+  const body = screen.getByTestId("case-study-body");
+  expect(body).toHaveAttribute("data-padded", "false");
+  expect(body).toHaveClass("px-6", "md:px-10", "2xl:px-14");
+});
+
 test("keeps the placeholder note while a case study is still unwritten", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
   expect(screen.getByTestId("case-study-detail")).toHaveTextContent(/Placeholder body copy/);
@@ -383,11 +449,50 @@ test("renders the Jam nudge-theory source on proactive nudging", () => {
   );
 });
 
+test("bolds a section's called-out stats without disturbing its own link", () => {
+  const tiled = {
+    ...caseStudy,
+    sections: [
+      {
+        body: "Jam is now part of Spotify's multiplayer strategy and reaches 50 million users.",
+        bodyLink: { label: "multiplayer strategy", href: "https://example.com/strategy" },
+        boldPhrases: ["50 million"],
+      },
+    ],
+  };
+  render(<CaseStudyView caseStudy={tiled} next={nextStudy} />);
+
+  expect(screen.getByRole("link", { name: "multiplayer strategy" })).toHaveAttribute(
+    "href",
+    "https://example.com/strategy"
+  );
+  const bolded = screen.getByText("50 million");
+  expect(bolded.tagName).toBe("STRONG");
+});
+
 test("sets the overview apart from the following narrative paragraph", () => {
   render(<CaseStudyView caseStudy={written} />);
   expect(
     screen.getByText("Rebuilding a retailer's identity system from the crest outward.")
   ).toHaveClass("mb-8");
+});
+
+test("sets a case study's one-liner above the overview, in the condensed face", () => {
+  render(
+    <CaseStudyView
+      caseStudy={{ ...written, oneLiner: "Listen together with friends from anywhere in the world." }}
+    />
+  );
+  const oneLiner = screen.getByText("Listen together with friends from anywhere in the world.");
+  expect(oneLiner).toHaveClass("case-study-one-liner", "font-condensed");
+  const overview = screen.getByText("Rebuilding a retailer's identity system from the crest outward.");
+  // Bit 4 is DOCUMENT_POSITION_FOLLOWING: the overview comes after the one-liner.
+  expect(oneLiner.compareDocumentPosition(overview) & 4).toBeTruthy();
+});
+
+test("skips the one-liner entirely when a case study doesn't have one", () => {
+  render(<CaseStudyView caseStudy={written} />);
+  expect(screen.queryByTestId("case-study-detail")?.querySelector(".case-study-one-liner")).not.toBeInTheDocument();
 });
 
 test("sets the rail beside the long read once there's something in it", () => {
@@ -406,6 +511,25 @@ test("drops the rail and runs the text full width when there are no facts and no
   expect(screen.getByTestId("case-study-columns")).not.toHaveClass(
     "lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
   );
+});
+
+test("lifts facts into a row above the text instead of the sidebar, when asked to", () => {
+  render(<CaseStudyView caseStudy={{ ...written, factsLayout: "columns" }} />);
+  const row = screen.getByTestId("case-study-facts-columns");
+  expect(row).toHaveAttribute("data-layout", "columns");
+  expect(row).toHaveTextContent("Role");
+  expect(row).toHaveTextContent("Lead Designer");
+  // No sidebar left to hold them, or to reserve width for.
+  expect(screen.queryByTestId("case-study-overview")).not.toBeInTheDocument();
+  expect(screen.getByTestId("case-study-columns")).not.toHaveClass(
+    "lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
+  );
+});
+
+test("keeps facts in the sidebar by default, not the top row", () => {
+  render(<CaseStudyView caseStudy={written} />);
+  expect(screen.queryByTestId("case-study-facts-columns")).not.toBeInTheDocument();
+  expect(screen.getByTestId("case-study-overview")).toHaveTextContent("Role");
 });
 
 test("offers a way home and a way to the next project", () => {

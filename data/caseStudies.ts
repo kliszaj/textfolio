@@ -15,6 +15,9 @@ export type CaseStudySection = {
   body: string;
   bodyLink?: CaseStudyOverviewLink;
   bodyLinks?: CaseStudyOverviewLink[];
+  // A fact worth weight without being a link -- a stat sitting inline in
+  // the sentence rather than pulled into its own rail entry.
+  boldPhrases?: string[];
   bullets?: string[];
 };
 
@@ -52,6 +55,12 @@ export type CaseStudy = {
   blurb: string;
   // Optional showreel for the case study, played on its own page.
   videoSrc?: string;
+  // A short, hand-trimmed restatement of the overview's opening thought,
+  // set above it in the condensed display face -- authored rather than
+  // sliced out of overview, so it can drop words like the project's own
+  // name (already said once, in the header) without reading as a quote
+  // taken out of context.
+  oneLiner?: string;
   // Left column: what the work was, read in a glance.
   overview?: string;
   overviewLink?: CaseStudyOverviewLink;
@@ -60,6 +69,11 @@ export type CaseStudy = {
   // rail (About), contact details still need a tappable home.
   overviewContactLinks?: CaseStudyFactLink[];
   facts?: CaseStudyFact[];
+  // "rail" keeps facts in the sticky sidebar beside the long read (the
+  // default). "columns" lifts them out into an even row above the text --
+  // reads better when there are few enough facts that a column each doesn't
+  // feel sparse, and pairs with mediaPadded's narrower measure.
+  factsLayout?: "rail" | "columns";
   introImage?: CaseStudyIntroImage;
   // Right column: the long read, in order.
   sections?: CaseStudySection[];
@@ -68,6 +82,11 @@ export type CaseStudy = {
   // Sequence keeps authored aspect ratios instead of using the placeholder
   // mosaic's fixed-height rows.
   mediaLayout?: "mosaic" | "sequence";
+  // Insets the media section from the same edges the reading columns sit
+  // inside of, instead of running it out to the full 100rem page width --
+  // a full-bleed showreel like Jam's reads as oversized next to a measure
+  // built for reading.
+  mediaPadded?: boolean;
 };
 
 // Post-it brights: each sheet in the fanned stack reads as a stuck note, and
@@ -80,8 +99,7 @@ export const caseStudies: CaseStudy[] = [
     title: "Spotify Jam",
     thumbnailColor: "#15FF76",
     blurb: "Listen with friends from anywhere, on any device.",
-    overview:
-      "Spotify Jam lets you listen together with friends from anywhere in the world, on any device.  Jam is now one of Spotify's fastest growing features with 50 million monthly active users and over 100 million monthly listening hours.",
+    oneLiner: "Listen together with friends from anywhere in the world, on any device.",
     facts: [
       { label: "Role • 2023-Present", value: "Design Lead" },
       { label: "Scope", value: "Design Strategy, Product Strategy" },
@@ -90,26 +108,35 @@ export const caseStudies: CaseStudy[] = [
         value: ["50M+ monthly users", "100M+ monthly listening hours"],
       },
     ],
+    factsLayout: "columns",
     sections: [
       {
         body:
-          "As Design Lead, I was responsible for value framing and positioning of the early feature concept, designing a safe and seamless proactive nudging system that was key to getting people to try it and find product-market-fit, working with other designers in the organization to adapt the mobile experience to platforms like Car, Desktop, and TV, and growing the remote Jam use case (i.e. two people listening together who are in different locations) by designing a co-ordination layer via Listening Activity and Messages to help users know when friends are available to listen and have a way to give communicate with each other to make the session great.",
-        bodyLink: {
-          label: "proactive nudging",
-          href: "https://en.wikipedia.org/wiki/Nudge_theory",
-        },
+          "I was responsible for finding the right value proposition communication of the feature, designing a safe and seamless proactive nudging system (which was key to scaling and finding product-market-fit), working with other designers to adapt and scale the feature to platforms like Car, Desktop, and TV, and designing a way to enable remote Jams (i.e. when two people listening together from different locations) through Listening Activity and Messages.",
+        bodyLinks: [
+          {
+            label: "proactive nudging",
+            href: "https://en.wikipedia.org/wiki/Nudge_theory",
+          },
+          {
+            label: "Listening Activity",
+            href: "https://newsroom.spotify.com/2026-01-07/listening-activity-request-to-jam-messages-updates/",
+          },
+        ],
       },
       {
         body:
-          "Jam is now a cornerstone of Spotify's new long-term multiplayer strategy.",
+          "Jam is now a cornerstone of Spotify's new long-term multiplayer strategy and is one of Spotify's fastest growing features with 50 million monthly active users and over 100 million monthly listening hours.",
         bodyLink: {
           label: "multiplayer strategy",
           href: "https://newsroom.spotify.com/2026-05-21/investor-day-recap/",
         },
+        boldPhrases: ["50 million", "100 million"],
       },
     ],
     videoSrc: "/assets/jam.mp4",
     mediaLayout: "sequence",
+    mediaPadded: true,
     media: [
       {
         src: "/assets/jam-main-flow.mp4",
@@ -164,6 +191,7 @@ export const caseStudies: CaseStudy[] = [
       { label: "Scope", value: "Design Strategy, Product Strategy, Research" },
       { label: "Impact", value: "Co-created core business strategy that impacts over 500 million users" },
     ],
+    factsLayout: "columns",
     sections: [
       {
         body:
@@ -174,6 +202,7 @@ export const caseStudies: CaseStudy[] = [
           "The Seamless Strategy remains a core focus for the business and the Product Area now employs over 60 people."
       },  
     ],
+    mediaPadded: true,
     media: [
       { alt: "Seamless strategy overview deck", span: "full" },
       { alt: "Cross-device opportunity mapping workshop", span: "half" },
@@ -198,6 +227,7 @@ export const caseStudies: CaseStudy[] = [
       { label: "Scope", value: "0→1 interaction model, hardware-software co-design, information architecture" },
       { label: "Impact", value: "Alexa on Focals certified by Amazon, late 2018" },
     ],
+    factsLayout: "columns",
     videoSrc: "/assets/focals.mp4",
     sections: [
       {
@@ -228,6 +258,7 @@ export const caseStudies: CaseStudy[] = [
       },
     ],
     mediaLayout: "sequence",
+    mediaPadded: true,
     media: [
       {
         src: "/assets/focals-home-modules.gif",
@@ -259,7 +290,7 @@ export const caseStudies: CaseStudy[] = [
   },
   {
     slug: "projects-and-experiments",
-    title: "Projects & Experiments",
+    title: "Tinkering",
     thumbnailColor: "#219EFA",
     blurb: "Personal projects, small experiments, and the things I tinker with on evenings and weekends.",
   },
