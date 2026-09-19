@@ -306,6 +306,20 @@ body {
   }
 }
 
+/* A 14-inch laptop commonly lands just below the 96rem breakpoint. Give the
+   home mark a little more breathing room there and counter the SVG's optical
+   right bias without moving the title or the rest of the header controls. */
+@media (min-width: 80rem) and (max-width: 95.999rem) {
+  .case-study-home {
+    left: calc(
+      max(
+        var(--case-study-header-inline-inset),
+        calc((100% - 100rem) / 2)
+      ) - 0.25rem
+    );
+  }
+}
+
 /* Home has no room in the collapsed bar. It leaves with the compact header;
    its rebuild waits in HomeIconAnimation until the full header has opened. */
 .case-study-header[data-shrunk="true"] .case-study-home {

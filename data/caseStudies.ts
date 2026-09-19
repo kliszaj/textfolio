@@ -133,14 +133,16 @@ export const caseStudies: CaseStudy[] = [
         aspect: "portrait",
       },
       {
-        src: "/assets/jam-desktop.png",
+        src: "/assets/jam-desktop.mp4",
         alt: "Spotify Jam desktop experience",
+        kind: "video",
         span: "full",
         aspect: "landscape",
       },
       {
-        src: "/assets/jam-tv.png",
+        src: "/assets/jam-tv.mp4",
         alt: "Spotify Jam TV experience",
+        kind: "video",
         span: "full",
         aspect: "landscape",
       },

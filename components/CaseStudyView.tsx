@@ -72,6 +72,42 @@ export function caseStudyMediaRows(media: CaseStudyMedia[]): number[] {
   });
 }
 
+type PlaybackRowBounds = {
+  row: string;
+  top: number;
+  bottom: number;
+};
+
+export function activePlaybackRowForViewport(
+  rows: PlaybackRowBounds[],
+  viewportHeight: number,
+  atDocumentEnd = false
+): string | null {
+  const visibleRows = rows.filter(
+    ({ top, bottom }) => bottom > 0 && top < viewportHeight
+  );
+
+  if (visibleRows.length === 0) return null;
+
+  // The final row can never reach the viewport centre because the document
+  // ends beneath it. Once the reader reaches the page bottom, prefer the
+  // lowest visible row so that the last video can still become active.
+  if (atDocumentEnd) {
+    return visibleRows.reduce((lowest, row) =>
+      row.bottom > lowest.bottom ? row : lowest
+    ).row;
+  }
+
+  const viewportCenter = viewportHeight / 2;
+  return visibleRows.reduce((closest, row) => {
+    const closestCenter = (closest.top + closest.bottom) / 2;
+    const rowCenter = (row.top + row.bottom) / 2;
+    return Math.abs(rowCenter - viewportCenter) < Math.abs(closestCenter - viewportCenter)
+      ? row
+      : closest;
+  }).row;
+}
+
 const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
   full: "col-span-2 row-span-2",
   tall: "col-span-1 row-span-2",
@@ -176,7 +212,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     const updateActiveRow = () => {
       frame = null;
       const viewportHeight = window.innerHeight;
-      const viewportCenter = viewportHeight / 2;
       const rowBounds = new Map<string, { top: number; bottom: number }>();
 
       section.querySelectorAll<HTMLElement>("[data-playback-row]").forEach((element) => {
@@ -190,13 +225,16 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         });
       });
 
-      const closestVisibleRow = Array.from(rowBounds.entries())
-        .filter(([, bounds]) => bounds.bottom > 0 && bounds.top < viewportHeight)
-        .sort(([, a], [, b]) => {
-          const aCenter = (a.top + a.bottom) / 2;
-          const bCenter = (b.top + b.bottom) / 2;
-          return Math.abs(aCenter - viewportCenter) - Math.abs(bCenter - viewportCenter);
-        })[0]?.[0] ?? null;
+      const documentHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight
+      );
+      const atDocumentEnd = window.scrollY + viewportHeight >= documentHeight - 8;
+      const closestVisibleRow = activePlaybackRowForViewport(
+        Array.from(rowBounds, ([row, bounds]) => ({ row, ...bounds })),
+        viewportHeight,
+        atDocumentEnd
+      );
 
       setActivePlaybackRow((current) =>
         current === closestVisibleRow ? current : closestVisibleRow
@@ -387,7 +425,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 leave();
               }}
               aria-label="Home"
-              className="case-study-home absolute top-5 md:top-7"
+              className="case-study-home absolute top-5 md:top-7 xl:top-8"
             >
               {/* boil-line redraws the icon's edges each frame with the same
                   turbulence displacement as the rest of the hand-drawn marks,

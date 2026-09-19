@@ -10,7 +10,12 @@ beforeEach(() => {
   window.scrollY = 0;
 });
 
-import { CaseStudyView, caseStudyMediaRows, caseStudyTitleScale } from "./CaseStudyView";
+import {
+  CaseStudyView,
+  activePlaybackRowForViewport,
+  caseStudyMediaRows,
+  caseStudyTitleScale,
+} from "./CaseStudyView";
 import { getCaseStudyBySlug } from "@/data/caseStudies";
 
 const caseStudy = {
@@ -114,6 +119,20 @@ test("groups side-by-side media into one playback row", () => {
     { src: "/right.mp4", alt: "Right", kind: "video", span: "half" },
     { src: "/last.mp4", alt: "Last", kind: "video", span: "full" },
   ])).toEqual([0, 1, 1, 2]);
+});
+
+test("activates the row nearest the viewport centre during ordinary scrolling", () => {
+  expect(activePlaybackRowForViewport([
+    { row: "media-0", top: -120, bottom: 480 },
+    { row: "media-1", top: 510, bottom: 1110 },
+  ], 900)).toBe("media-0");
+});
+
+test("activates the lowest visible video when the document reaches its end", () => {
+  expect(activePlaybackRowForViewport([
+    { row: "media-3", top: -20, bottom: 580 },
+    { row: "media-4", top: 610, bottom: 1210 },
+  ], 900, true)).toBe("media-4");
 });
 
 test("shows that video exactly once", () => {
