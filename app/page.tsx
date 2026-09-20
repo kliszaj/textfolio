@@ -7,6 +7,7 @@ import { peekReturningFromSlug, useStackCollapse } from "@/hooks/useStackCollaps
 import { useStackShuffle } from "@/hooks/useStackShuffle";
 import { usePointerType } from "@/hooks/usePointerType";
 import { useShortViewport } from "@/hooks/useShortViewport";
+import { useCompactViewport } from "@/hooks/useCompactViewport";
 import { PaperStack } from "@/components/PaperStack";
 import { useIntroOnce } from "@/hooks/useIntroOnce";
 import { FanDebugPanel } from "@/components/FanDebugPanel";
@@ -160,6 +161,7 @@ export default function HomePage() {
   // there isn't room for a resting band sized off a tall viewport's
   // percentage to still hold a title and blurb without the two overlapping.
   const isMobileLayout = pointerType === "coarse" || isShortViewport;
+  const isCompactDesktop = useCompactViewport();
   // Touch drives the same stack by scrolling rather than getting a different
   // layout: the reveal is the interaction, so it belongs on every screen.
   const pointerFan = useFanProgress(thresholdPx, fanSplit, smoothingMs, true);
@@ -181,7 +183,13 @@ export default function HomePage() {
         bandPercents: config.bandPercents.map((band) => band * 1.5),
         emphasisBonusPercent: config.emphasisBonusPercent * 1.35,
       }
-    : config;
+    : isCompactDesktop
+      ? {
+          ...config,
+          bandPercents: config.bandPercents.map((band) => band * 1.1),
+          emphasisBonusPercent: config.emphasisBonusPercent * 1.1,
+        }
+      : config;
 
   // Warm every case study route so the push at the end of the lift is instant
   // and the colour carries straight through. Defer that unrelated work until
