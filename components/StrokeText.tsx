@@ -15,7 +15,6 @@ import {
   SKETCH_BOIL_SEEDS,
   getSketchSpec,
   STROKE_INK_LIFT_PX,
-  charBoxFromSubstringLengths,
   correctionMarks,
   boxMoved,
   inkCentringOffset,
@@ -271,35 +270,36 @@ export function StrokeText({
 
       const textEl = textRef.current;
 
-      // getSubStringLength/getComputedTextLength measure pure advance length
-      // along the run, which text-anchor="middle" and dominant-baseline=
-      // "central" don't touch -- so recovering the glyph's x from those
-      // lengths ourselves can't inherit the mixup some engines apply to
-      // getExtentOfChar's absolute answer below (observed on WebKit/iOS:
-      // the correction lands well off from the glyph it's meant to
-      // replace, as if the run were left-anchored on the alphabetic
-      // baseline instead of centred and vertically middled). Preferred over
-      // getExtentOfChar for that reason, not just as a fallback.
-      if (
-        textEl &&
-        typeof textEl.getSubStringLength === "function" &&
-        typeof textEl.getComputedTextLength === "function"
-      ) {
+      // Map the correction character's position proportionally inside
+      // the word's bounding box. Individual getSubStringLength(i, 1)
+      // calls, summed, give a self-consistent total even on engines
+      // where getSubStringLength(0, N) disagrees with
+      // getComputedTextLength about letter-spacing or tspan boundaries
+      // (observed on WebKit/iOS, where the old charBoxFromSubstringLengths
+      // approach placed the mark at the wrong character).
+      if (textEl && typeof textEl.getSubStringLength === "function") {
         try {
-          const totalLength = textEl.getComputedTextLength();
-          const beforeLength = correctionIndex > 0 ? textEl.getSubStringLength(0, correctionIndex) : 0;
-          const charLength = textEl.getSubStringLength(correctionIndex, 1);
           const wordBox = textEl.getBBox();
-          if (totalLength > 0 && charLength > 0 && wordBox.height > 0) {
-            const next = charBoxFromSubstringLengths({
-              totalLength,
-              beforeLength,
-              charLength,
-              anchorX: centreX,
-              wordBox,
-            });
-            setMarkBox((previous) => (boxMoved(previous, next) ? next : previous));
-            return;
+          if (wordBox.width > 0 && wordBox.height > 0) {
+            let cumBefore = 0;
+            let cumTotal = 0;
+            let charW = 0;
+            for (let i = 0; i < characters.length; i++) {
+              const w = textEl.getSubStringLength(i, 1);
+              if (i < correctionIndex) cumBefore += w;
+              if (i === correctionIndex) charW = w;
+              cumTotal += w;
+            }
+            if (cumTotal > 0 && charW > 0) {
+              const next = {
+                x: wordBox.x + wordBox.width * (cumBefore / cumTotal),
+                y: wordBox.y,
+                width: wordBox.width * (charW / cumTotal),
+                height: wordBox.height,
+              };
+              setMarkBox((previous) => (boxMoved(previous, next) ? next : previous));
+              return;
+            }
           }
         } catch {
           // Falls through to getExtentOfChar, then the tspan measurement.

@@ -209,29 +209,26 @@ describe("the correction mark", () => {
     }
   });
 
-  test("prefers substring-length advance math over getExtentOfChar, immune to an engine's own anchor/baseline handling", () => {
+  test("prefers individual-character advance math over getExtentOfChar, immune to an engine's own anchor/baseline handling", () => {
     // Simulates the WebKit bug this measurement route exists to avoid:
     // getExtentOfChar reporting an absolute position as if the run were
     // left-anchored on the alphabetic baseline, well off from the glyph's
     // real position under text-anchor="middle" and dominant-baseline=
-    // "central". getSubStringLength/getComputedTextLength measure pure
-    // advance length, which neither of those touches, so this path should
-    // win even when getExtentOfChar is available and returns something.
+    // "central". The preferred path measures each character's advance
+    // individually via getSubStringLength(i, 1) and maps proportionally
+    // into the word's getBBox, so it wins even when getExtentOfChar is
+    // available and returns something.
     const getExtentOfChar = jest.fn(() => ({ x: 5000, y: 5000, width: 25, height: 80 }) as DOMRect);
-    const getComputedTextLength = jest.fn(() => 120);
     const getSubStringLength = jest.fn((charnum: number) => (charnum === 0 ? 100 : 20));
     (
       SVGElement.prototype as unknown as { getExtentOfChar: typeof getExtentOfChar }
     ).getExtentOfChar = getExtentOfChar;
     (
-      SVGElement.prototype as unknown as { getComputedTextLength: typeof getComputedTextLength }
-    ).getComputedTextLength = getComputedTextLength;
-    (
       SVGElement.prototype as unknown as { getSubStringLength: typeof getSubStringLength }
     ).getSubStringLength = getSubStringLength;
     try {
       render(<StrokeText text="ADRIAN" animate={false} correctionIndex={5} />);
-      expect(getComputedTextLength).toHaveBeenCalled();
+      expect(getSubStringLength).toHaveBeenCalled();
       expect(getExtentOfChar).not.toHaveBeenCalled();
       const letter = screen.getByTestId("stroke-text").querySelector("[data-correction-letter]")!;
       const x = Number(letter.getAttribute("transform")!.match(/translate\(([\d.-]+)/)![1]);
@@ -239,7 +236,6 @@ describe("the correction mark", () => {
       expect(x).toBeLessThan(1000);
     } finally {
       delete (SVGElement.prototype as unknown as { getExtentOfChar?: unknown }).getExtentOfChar;
-      delete (SVGElement.prototype as unknown as { getComputedTextLength?: unknown }).getComputedTextLength;
       delete (SVGElement.prototype as unknown as { getSubStringLength?: unknown }).getSubStringLength;
     }
   });
