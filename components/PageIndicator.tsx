@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CaseStudy } from "@/data/caseStudies";
 import { SHEET_OVERSCAN_PERCENT } from "@/lib/fanSheet";
+import { FAN_THRESHOLD_PX, FAN_SPLIT } from "@/lib/fanProgress";
 
 type PageIndicatorProps = {
   caseStudies: CaseStudy[];
@@ -33,9 +34,30 @@ export function PageIndicator({
   revealedCount = caseStudies.length,
 }: PageIndicatorProps) {
   const [revealed, setRevealed] = useState<number | null>(null);
-  const opacity = 1 - Math.min(1, fanProgress * 2);
-  const interactive = opacity > 0;
   const rootRef = useRef<HTMLDivElement>(null);
+  const [fadeStart, setFadeStart] = useState(0);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const bottom = el.getBoundingClientRect().bottom;
+      const distFromBottom = window.innerHeight - bottom;
+      if (distFromBottom <= 0) { setFadeStart(0); return; }
+      const travel = Math.max(0, 1 - distFromBottom / FAN_THRESHOLD_PX);
+      setFadeStart(Math.min(1, travel / FAN_SPLIT));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const fadeRange = Math.max(0.01, 1 - fadeStart);
+  const opacity = fanProgress <= fadeStart
+    ? 1
+    : 1 - Math.min(1, ((fanProgress - fadeStart) / fadeRange) * 2);
+  const interactive = opacity > 0;
 
   // Wheel input does not touch this rail at all -- it drives the stack's own
   // reveal instead (see useFanProgress), and mixing the two read as the wheel

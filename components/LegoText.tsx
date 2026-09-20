@@ -48,7 +48,7 @@ type LegoTextProps = {
 };
 
 type CellPlan = { defaultFilled: boolean; defaultTilePath: string };
-type GridPlan = { key: string; cells: Map<string, CellPlan> };
+type GridPlan = { key: string; cells: Map<string, CellPlan>; resolvedFontSize: number };
 type VisibleCell = { tilePath: string; startX: number; startY: number };
 type CanvasSnapshot = {
   context: CanvasRenderingContext2D;
@@ -612,7 +612,7 @@ export const LegoText = memo(function LegoText({
           ),
         });
       });
-      return { key: geometryKey, cells };
+      return { key: geometryKey, cells, resolvedFontSize: resolvedSize };
     };
 
     const draw = async (version: number) => {
@@ -647,7 +647,16 @@ export const LegoText = memo(function LegoText({
         gridPlanRef.current = plan;
       }
 
-      const studSize = legoStudSizeForWidth(textFrameWidth);
+      const fallback = root.querySelector(`.${styles.fallback}`);
+      const computedFontSize = fallback
+        ? parseFloat(window.getComputedStyle(fallback).fontSize) || 0
+        : 0;
+      const studSize = computedFontSize && plan.resolvedFontSize
+        ? Math.min(
+            LEGO_CANONICAL_STUD_SIZE,
+            LEGO_CANONICAL_STUD_SIZE * computedFontSize / plan.resolvedFontSize
+          )
+        : legoStudSizeForWidth(textFrameWidth);
       const gridWidth = LEGO_CANONICAL_COLUMNS * studSize;
       const gridHeight = LEGO_CANONICAL_ROWS * studSize;
       const gridOriginX = (textFrameWidth - gridWidth) / 2;
