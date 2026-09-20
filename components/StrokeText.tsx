@@ -882,8 +882,9 @@ export function StrokeText({
                 <text
                   data-correction-fill
                   data-fill-char
-                  x={markBox.x}
+                  x={markBox.x + markBox.width / 2}
                   y={centreY}
+                  textAnchor="middle"
                   dominantBaseline="central"
                   fill={useHatchFill ? "none" : mirroredFillPaint}
                   stroke="none"
@@ -895,8 +896,9 @@ export function StrokeText({
                 <text
                   data-correction-stroke
                   data-stroke-char
-                  x={markBox.x}
+                  x={markBox.x + markBox.width / 2}
                   y={centreY}
+                  textAnchor="middle"
                   dominantBaseline="central"
                   fill="none"
                   stroke={inked.strokeColor}
