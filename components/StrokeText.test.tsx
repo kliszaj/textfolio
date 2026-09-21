@@ -54,15 +54,15 @@ test("keeps the corrected final N hatch at the page-wide pencil angle", () => {
     render(<StrokeText text="ADRIAN" animate={false} fillMode="hatch" correctionIndex={5} />);
     const root = screen.getByTestId("stroke-text");
     const correction = root.querySelector('[data-testid="stroke-text-correction"]')!;
-    const mirroredGlyph = correction.querySelector("g[transform]")!;
+    const correctionFill = correction.querySelector("[data-correction-fill]") as HTMLElement;
     const hatch = correction.querySelector('[data-testid="stroke-text-correction-hatch-fill"]')!;
     const mainHatch = screen.getByTestId("stroke-text-hatch-fill");
     const hatchMask = screen.getByTestId("stroke-text-hatch-mask");
 
-    expect(mirroredGlyph.getAttribute("transform")).toContain("scale(-1, 1)");
+    expect(correctionFill.style.transform).toBe("scaleX(-1)");
     expect(hatch).toBeInTheDocument();
     expect(hatch.querySelectorAll("[data-correction-hatch-stroke]")).not.toHaveLength(0);
-    expect(mirroredGlyph.contains(hatch)).toBe(false);
+    expect(correctionFill.contains(hatch)).toBe(false);
     const firstHatchStroke = hatch.querySelector<SVGLineElement>("[data-correction-hatch-stroke]")!;
     expect(Number(firstHatchStroke.getAttribute("x1"))).toBeLessThan(
       Number(firstHatchStroke.getAttribute("x2"))

@@ -878,39 +878,37 @@ export function StrokeText({
           {markBox && correctionIndex !== undefined && (
             <g data-testid="stroke-text-correction">
               {/* The letter drawn back to front in its own place. */}
-              <g transform={mirrorAboutBox(markBox)}>
-                <text
-                  data-correction-fill
-                  data-fill-char
-                  x={markBox.x + markBox.width / 2}
-                  y={centreY}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill={useHatchFill ? "none" : mirroredFillPaint}
-                  stroke="none"
-                  style={fontStyle}
-                  clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}
-                >
-                  {characters[correctionIndex]}
-                </text>
-                <text
-                  data-correction-stroke
-                  data-stroke-char
-                  x={markBox.x + markBox.width / 2}
-                  y={centreY}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill="none"
-                  stroke={inked.strokeColor}
-                  strokeWidth={strokeWidth}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  style={fontStyle}
-                  clipPath={box && isFirefox ? `url(#${outlineWipeId})` : undefined}
-                >
-                  {characters[correctionIndex]}
-                </text>
-              </g>
+              <text
+                data-correction-fill
+                data-fill-char
+                x={markBox.x + markBox.width / 2}
+                y={centreY}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={useHatchFill ? "none" : mirroredFillPaint}
+                stroke="none"
+                style={{ ...fontStyle, transformBox: "fill-box" as const, transformOrigin: "center", transform: "scaleX(-1)" }}
+                clipPath={fillMode === "wipe" && box ? `url(#${wipeId})` : undefined}
+              >
+                {characters[correctionIndex]}
+              </text>
+              <text
+                data-correction-stroke
+                data-stroke-char
+                x={markBox.x + markBox.width / 2}
+                y={centreY}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="none"
+                stroke={inked.strokeColor}
+                strokeWidth={strokeWidth}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                style={{ ...fontStyle, transformBox: "fill-box" as const, transformOrigin: "center", transform: "scaleX(-1)" }}
+                clipPath={box && isFirefox ? `url(#${outlineWipeId})` : undefined}
+              >
+                {characters[correctionIndex]}
+              </text>
 
               {useHatchFill && (
                 // Keep the strokes at the same page-wide slope as every
