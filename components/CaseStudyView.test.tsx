@@ -80,9 +80,8 @@ test("scrolls to the top from the sticky title and reveals the full header", () 
 
 test("carries the case study's colour through into the header", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
-  expect(screen.getByTestId("case-study-header")).toHaveStyle({
-    backgroundColor: "#15FF76",
-  });
+  const header = screen.getByTestId("case-study-header");
+  expect(header.style.getPropertyValue("--case-study-color")).toBe("#15FF76");
 });
 
 test("leaves the body on the homepage cream rather than the case study colour", () => {
@@ -217,11 +216,11 @@ const written = {
   media: [{ src: "/assets/crest.png", alt: "Crest variations" }],
 };
 
-test("sets the overview column beside the in-depth column", () => {
+test("sets the detail column beside the facts column", () => {
   render(<CaseStudyView caseStudy={written} />);
   const columns = screen.getByTestId("case-study-columns");
-  expect(columns).toContainElement(screen.getByTestId("case-study-overview"));
   expect(columns).toContainElement(screen.getByTestId("case-study-detail"));
+  expect(columns).toContainElement(screen.getByTestId("case-study-facts-aside"));
 });
 
 test("uses the medium body face for the right-hand reading column", () => {
@@ -233,16 +232,16 @@ test("keeps the framing headline close to the first paragraph while preserving t
   render(<CaseStudyView caseStudy={written} />);
   expect(screen.getByTestId("case-study-columns")).toHaveClass(
     "gap-y-8",
-    "lg:gap-x-20"
+    "gap-x-12"
   );
 });
 
-test("lists the at-a-glance facts in the overview column", () => {
+test("lists the at-a-glance facts in the right-hand column", () => {
   render(<CaseStudyView caseStudy={written} />);
-  const overview = screen.getByTestId("case-study-overview");
-  expect(overview).toContainElement(screen.getByText("Role"));
-  expect(overview).toContainElement(screen.getByText("Lead Designer"));
-  expect(overview).toContainElement(screen.getByText("Timeline"));
+  const aside = screen.getByTestId("case-study-facts-aside");
+  expect(aside).toContainElement(screen.getByText("Role"));
+  expect(aside).toContainElement(screen.getByText("Lead Designer"));
+  expect(aside).toContainElement(screen.getByText("Timeline"));
   expect(screen.getByTestId("case-study-detail")).toContainElement(
     screen.getByText("Rebuilding a retailer's identity system from the crest outward.")
   );
@@ -320,14 +319,12 @@ test("insets both the text and the media together when the case study asks for i
   render(<CaseStudyView caseStudy={{ ...written, mediaPadded: true }} />);
   const body = screen.getByTestId("case-study-body");
   expect(body).toHaveAttribute("data-padded", "true");
-  expect(body).toHaveClass("px-6", "md:px-16", "lg:px-24", "2xl:px-32");
 });
 
 test("leaves the case study body at its ordinary padding by default", () => {
   render(<CaseStudyView caseStudy={written} />);
   const body = screen.getByTestId("case-study-body");
   expect(body).toHaveAttribute("data-padded", "false");
-  expect(body).toHaveClass("px-6", "md:px-10", "2xl:px-14");
 });
 
 test("keeps the placeholder note while a case study is still unwritten", () => {
@@ -484,7 +481,7 @@ test("sets a case study's one-liner above the overview, in the condensed face", 
     />
   );
   const oneLiner = screen.getByText("Listen together with friends from anywhere in the world.");
-  expect(oneLiner).toHaveClass("case-study-one-liner", "font-condensed");
+  expect(oneLiner).toHaveClass("case-study-one-liner", "font-body", "font-medium");
   const overview = screen.getByText("Rebuilding a retailer's identity system from the crest outward.");
   // Bit 4 is DOCUMENT_POSITION_FOLLOWING: the overview comes after the one-liner.
   expect(oneLiner.compareDocumentPosition(overview) & 4).toBeTruthy();
@@ -495,41 +492,35 @@ test("skips the one-liner entirely when a case study doesn't have one", () => {
   expect(screen.queryByTestId("case-study-detail")?.querySelector(".case-study-one-liner")).not.toBeInTheDocument();
 });
 
-test("sets the rail beside the long read once there's something in it", () => {
+test("sets the facts column beside the long read once there are facts in it", () => {
   render(<CaseStudyView caseStudy={written} />);
-  expect(screen.getByTestId("case-study-overview")).toBeInTheDocument();
+  expect(screen.getByTestId("case-study-facts-aside")).toBeInTheDocument();
   expect(screen.getByTestId("case-study-columns")).toHaveClass(
-    "lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
+    "xl:grid-cols-[1fr_18rem]"
   );
 });
 
-test("drops the rail and runs the text full width when there are no facts and no portrait", () => {
-  // About has neither: a dedicated rail column with nothing in it just
-  // leaves the reading column narrower than it needs to be for no reason.
+test("drops the facts column and runs the text full width when there are no facts", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
-  expect(screen.queryByTestId("case-study-overview")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("case-study-facts-aside")).not.toBeInTheDocument();
   expect(screen.getByTestId("case-study-columns")).not.toHaveClass(
-    "lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
+    "xl:grid-cols-[1fr_18rem]"
   );
 });
 
-test("lifts facts into a row above the text instead of the sidebar, when asked to", () => {
+test("renders facts in the right column regardless of factsLayout", () => {
   render(<CaseStudyView caseStudy={{ ...written, factsLayout: "columns" }} />);
-  const row = screen.getByTestId("case-study-facts-columns");
-  expect(row).toHaveAttribute("data-layout", "columns");
-  expect(row).toHaveTextContent("Role");
-  expect(row).toHaveTextContent("Lead Designer");
-  // No sidebar left to hold them, or to reserve width for.
-  expect(screen.queryByTestId("case-study-overview")).not.toBeInTheDocument();
-  expect(screen.getByTestId("case-study-columns")).not.toHaveClass(
-    "lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
+  const aside = screen.getByTestId("case-study-facts-aside");
+  expect(aside).toHaveTextContent("Role");
+  expect(aside).toHaveTextContent("Lead Designer");
+  expect(screen.getByTestId("case-study-columns")).toHaveClass(
+    "xl:grid-cols-[1fr_18rem]"
   );
 });
 
-test("keeps facts in the sidebar by default, not the top row", () => {
+test("keeps facts in the right column by default", () => {
   render(<CaseStudyView caseStudy={written} />);
-  expect(screen.queryByTestId("case-study-facts-columns")).not.toBeInTheDocument();
-  expect(screen.getByTestId("case-study-overview")).toHaveTextContent("Role");
+  expect(screen.getByTestId("case-study-facts-aside")).toHaveTextContent("Role");
 });
 
 test("offers a way home and a way to the next project", () => {
@@ -544,9 +535,8 @@ test("offers a way home and a way to the next project", () => {
 test("inks the next control in the colour of the project it leads to", () => {
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
   // The header stays this project's colour; only the arrow previews the next.
-  expect(screen.getByTestId("case-study-header")).toHaveStyle({
-    backgroundColor: "#15FF76",
-  });
+  const header = screen.getByTestId("case-study-header");
+  expect(header.style.getPropertyValue("--case-study-color")).toBe("#15FF76");
   expect(screen.getByTestId("case-study-next")).toHaveStyle({
     backgroundColor: "#F850C0",
   });

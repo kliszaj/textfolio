@@ -252,7 +252,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     overviewLink,
     overviewContactLinks,
     facts = [],
-    factsLayout = "rail",
     introImage,
     sections = [],
     media = [],
@@ -261,19 +260,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     videoSrc,
   } = caseStudy;
   const hasMedia = Boolean(videoSrc) || media.length > 0;
-  const factsInRail = factsLayout === "rail" && facts.length > 0;
-  // A dedicated rail column with nothing in it (About has neither facts nor
-  // a portrait, once both moved elsewhere) just leaves the reading column
-  // narrower than it needs to be for no reason -- drop it and let the text
-  // run full width instead of reserving empty space beside it. Facts lifted
-  // into their own row above the text don't count -- that's what makes the
-  // row possible in the first place.
-  const hasRail = Boolean(introImage) || factsInRail;
-  // A page with nothing of its own to say here (Tinkering, which hands the
-  // whole page over to its own children) shouldn't still
-  // pay for this section's padding -- that reads as a dead gap between the
-  // header and whatever the children actually render.
-  const hasBodyContent = hasRail || Boolean(overview) || sections.length > 0 || hasMedia || !children;
+  const hasFacts = facts.length > 0;
+  const hasBodyContent = hasFacts || Boolean(overview) || Boolean(introImage) || sections.length > 0 || hasMedia || !children;
   const router = useRouter();
 
   const [shrunk, setShrunk] = useState(false);
@@ -303,6 +291,16 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   const visibleSections = hasCollapsibleLongRead && !isLongReadExpanded
     ? sections.slice(0, COLLAPSED_SECTION_COUNT)
     : sections;
+
+  const [hasWideMargin, setHasWideMargin] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 80rem)");
+    setHasWideMargin(mql.matches);
+    const onChange = () => setHasWideMargin(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setSettled(true), 620);
@@ -521,8 +519,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
           data-testid="case-study-header"
           data-shrunk={shrunk}
           data-settled={settled}
-          className="case-study-header sticky top-0 z-30 relative flex flex-col justify-end px-6 pb-5 md:px-10 md:pb-7 2xl:px-14"
-          style={{ backgroundColor: caseStudy.thumbnailColor }}
+          className="case-study-header sticky top-0 z-30 relative flex flex-col justify-end pb-5 md:pb-7"
+          style={{ '--case-study-color': caseStudy.thumbnailColor } as React.CSSProperties}
         >
           {/* Same max-width-and-centre box the columns use below (case-study-body
               provides the padding the way this header does, outside the max-width,
@@ -558,7 +556,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   turbulence displacement as the rest of the hand-drawn marks,
                   so a plain raster icon still reads as sketched rather than
                   a clean UI glyph. */}
-            <HomeIconAnimation shrunk={shrunk} />
+            <HomeIconAnimation shrunk={shrunk && !hasWideMargin} />
             </Link>
 
             <div className="case-study-header-row flex items-center justify-between gap-6">
@@ -615,24 +613,17 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         <div
           data-testid="case-study-body"
           data-padded={mediaPadded}
-          className={`case-study-body py-10 md:py-14 ${
-            mediaPadded
-              ? "px-6 md:px-16 lg:px-24 2xl:px-32"
-              : "px-6 md:px-10 2xl:px-14"
-          }`}
+          className="case-study-body py-10 md:py-14"
         >
-          {/* Overview rail beside the long read. One column on narrow screens:
-              the rail reads as the intro it is, rather than a squeezed sidebar. */}
           <div
             data-testid="case-study-columns"
             className={`mx-auto grid w-full max-w-[100rem] gap-x-12 gap-y-8${
-              hasRail ? " lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-x-20" : ""
+              hasFacts ? " xl:grid-cols-[1fr_18rem] xl:gap-x-16" : ""
             }`}
           >
-            {hasRail && (
-            <aside
-              data-testid="case-study-overview"
-              className="font-body order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-32 lg:self-start"
+            <div
+              data-testid="case-study-detail"
+              className="font-body font-medium"
             >
               {introImage && (
                 <figure
@@ -644,39 +635,13 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     alt={introImage.alt}
                     width={introImage.width}
                     height={introImage.height}
-                    sizes="(min-width: 1024px) 22rem, calc(100vw - 3rem)"
+                    sizes="(min-width: 1280px) calc(100vw - 28rem), calc(100vw - 3rem)"
                     className="h-auto w-full"
                   />
                 </figure>
               )}
-              {factsInRail && (
-                <dl className="case-study-facts">
-                  {facts.map((fact) => (
-                    <div
-                      key={fact.label}
-                      className="case-study-fact"
-                    >
-                      <dt>{fact.label}</dt>
-                      <dd>{renderFactValue(fact)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </aside>
-            )}
-
-            {/* The page is wide, prose is not: the measure stays readable even
-                when the gallery below runs the full width. Short titled beats
-                keep these as an invitation to a conversation, not a full case
-                study document. */}
-            <div
-              data-testid="case-study-detail"
-              className={`font-body font-medium order-3 lg:order-none lg:row-start-1${
-                hasRail ? " lg:col-start-2" : ""
-              }`}
-            >
               {oneLiner && (
-                <p className="case-study-one-liner font-condensed font-bold mb-6">
+                <p className="case-study-one-liner font-body font-medium mb-6">
                   {oneLiner}
                 </p>
               )}
@@ -736,26 +701,23 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 </p>
               )}
             </div>
-          </div>
 
-          {/* An even row below the text rather than a sidebar beside it --
-              for a short fact list this reads as a stat strip instead of a
-              sparse column of its own. Stacks on narrow screens, where three
-              columns would squeeze each fact's value onto its own tiny lane. */}
-          {factsLayout === "columns" && facts.length > 0 && (
-            <dl
-              data-testid="case-study-facts-columns"
-              data-layout="columns"
-              className="case-study-facts font-body font-medium mx-auto mt-10 w-full max-w-[100rem] md:mt-14"
-            >
-              {facts.map((fact) => (
-                <div key={fact.label} className="case-study-fact">
-                  <dt>{fact.label}</dt>
-                  <dd>{renderFactValue(fact)}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
+            {hasFacts && (
+              <aside
+                data-testid="case-study-facts-aside"
+                className="case-study-facts-aside font-body font-medium xl:sticky xl:top-32 xl:self-start"
+              >
+                <dl className="case-study-facts">
+                  {facts.map((fact) => (
+                    <div key={fact.label} className="case-study-fact">
+                      <dt>{fact.label}</dt>
+                      <dd>{renderFactValue(fact)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </aside>
+            )}
+          </div>
 
           {/* Evidence follows the reading columns on the same left and right
               edges, so video and media feel part of the editorial page rather

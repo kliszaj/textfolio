@@ -208,12 +208,18 @@ body {
    The header carries the case study's colour through from the stack; the body
    below it returns to the homepage cream. On arrival the header starts
    full-bleed -- exactly where the sheet lift finished -- and settles down to
-   its own height, so the colour contracts instead of popping. */
+   its own height, so the colour contracts instead of popping.
+
+   On wide viewports the header colour is inset by --case-study-page-margin on
+   each side, leaving cream-coloured margins where the home and next buttons
+   sit. The body, media, and every other horizontal ruler all honour the same
+   margin so edges align. */
 
 :root {
   --case-study-header-height: 22vh;
   --case-study-header-shrunk-height: 5.25rem;
   --case-study-header-inline-inset: 1.5rem;
+  --case-study-page-margin: 0px;
 }
 
 @media (min-width: 48rem) {
@@ -222,15 +228,30 @@ body {
   }
 }
 
+@media (min-width: 80rem) {
+  :root {
+    --case-study-page-margin: 5rem;
+  }
+}
+
 @media (min-width: 96rem) {
   :root {
     --case-study-header-inline-inset: 3.5rem;
+    --case-study-page-margin: 5.5rem;
   }
 }
 
 .case-study-header {
   height: var(--case-study-header-height);
+  background-color: var(--case-study-color, transparent);
+  padding-inline: var(--case-study-header-inline-inset);
   animation: case-study-header-settle 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (min-width: 80rem) {
+  .case-study-header {
+    padding-inline: calc(var(--case-study-page-margin) + var(--case-study-header-inline-inset));
+  }
 }
 
 @keyframes case-study-header-settle {
@@ -294,11 +315,38 @@ body {
   );
 }
 
-/* Home has no room in the collapsed bar. It leaves with the compact header;
-   its rebuild waits in HomeIconAnimation until the full header has opened. */
+@media (min-width: 80rem) {
+  .case-study-home {
+    left: calc((var(--case-study-page-margin) + var(--case-study-header-inline-inset)) / 2);
+    transform: translateX(-50%);
+  }
+
+  .case-study-next {
+    position: absolute;
+    right: calc((var(--case-study-page-margin) + var(--case-study-header-inline-inset)) / 2 - 2rem);
+    bottom: 1.75rem;
+  }
+
+  .case-study-header[data-shrunk="true"] .case-study-next {
+    bottom: 50%;
+    transform: translateY(50%);
+  }
+}
+
+/* Home has no room in the collapsed bar on narrow viewports. At 80rem+ the
+   icon lives in its own margin and stays visible. */
 .case-study-header[data-shrunk="true"] .case-study-home {
   opacity: 0;
   pointer-events: none;
+}
+
+@media (min-width: 80rem) {
+  .case-study-header[data-shrunk="true"] .case-study-home {
+    opacity: 1;
+    pointer-events: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
 }
 
 /* Rests as a circle around the arrow and opens into a pill naming the next
@@ -310,7 +358,8 @@ body {
   transition:
     max-width 320ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 200ms ease-out,
-    padding-left 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    padding-left 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    padding-right 320ms cubic-bezier(0.22, 1, 0.36, 1);
   padding-left: 0;
   font-size: clamp(1rem, 1.4vw, 1.25rem);
 }
@@ -388,32 +437,23 @@ body {
   list-style: disc outside;
 }
 
-/* Lifted above the text as an even row instead of a stacked sidebar list --
-   sized to its own content and left-aligned, on a fixed gap, rather than
-   justified across the full width or divided by rules. Specificity (an
-   attribute selector plus two classes) beats the plain .case-study-fact
-   rules above regardless of source order, so this only has to state what
-   changes. */
-.case-study-facts[data-layout="columns"] {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.case-study-facts[data-layout="columns"] .case-study-fact {
+/* Right-column facts: stacked vertically, no separators, compact spacing. */
+.case-study-facts-aside .case-study-fact {
   padding: 0;
   border: none;
 }
 
-@media (min-width: 40rem) {
-  .case-study-facts[data-layout="columns"] {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 5.5rem;
-  }
+.case-study-facts-aside .case-study-fact + .case-study-fact {
+  margin-top: 1.5rem;
+  border: none;
 }
 
-.case-study-facts[data-layout="columns"] .case-study-fact-list {
+.case-study-facts-aside .case-study-fact dd {
+  margin-top: 0.25rem;
+  font-size: 1.25rem;
+}
+
+.case-study-facts-aside .case-study-fact-list {
   margin: 0;
   padding-left: 0;
   list-style: none;
@@ -466,8 +506,32 @@ body {
 }
 
 .case-study-body {
+  padding-inline: 1.5rem;
   animation: case-study-body-in 400ms ease-out both;
   animation-delay: 240ms;
+}
+
+@media (min-width: 48rem) {
+  .case-study-body { padding-inline: 2.5rem; }
+  .case-study-body[data-padded="true"] { padding-inline: 4rem; }
+}
+
+@media (min-width: 64rem) {
+  .case-study-body[data-padded="true"] { padding-inline: 6rem; }
+}
+
+@media (min-width: 80rem) {
+  .case-study-body,
+  .case-study-body[data-padded="true"] {
+    padding-inline: calc(var(--case-study-page-margin) + var(--case-study-header-inline-inset));
+  }
+}
+
+@media (min-width: 96rem) {
+  .case-study-body,
+  .case-study-body[data-padded="true"] {
+    padding-inline: calc(var(--case-study-page-margin) + var(--case-study-header-inline-inset));
+  }
 }
 
 @keyframes case-study-body-in {
