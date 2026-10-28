@@ -1,6 +1,183 @@
 # Textfolio — Handoff
 
-Last updated: 2026-09-15
+Last updated: 2026-10-28
+
+## Spike: 3D desk landing page (branch `spike/desk-hybrid`, 2026-10-28)
+
+This section covers only the throwaway desk spike. It lives on the
+`spike/desk-hybrid` branch, which the user asked to be pushed to GitHub. It
+is **not** merged into `main` and was never approved as production work. The
+sections below this one still describe `main`.
+
+### The idea
+
+A variant of the portfolio inspired by Henry Heffernan's site
+(github.com/henryjeff/portfolio-website). The landing page is a 3D model of
+the user's desk on textfolio's cream background. The monitor shows a browser
+window running a random textfolio case study, live but untouchable. Tapping
+the monitor zooms the camera through the browser window into the real case
+study page. The case study's Home icon zooms back out to the desk. The user
+decided the desk should be the **only** landing page for this variant, so the
+ADRIAN stack homepage is not part of the flow. They will put their name and
+intro somewhere else themselves.
+
+### Running it
+
+- Worktree: `Documents/Coding/textfolio-desk-spike` (a separate git worktree
+  of this repo, so the user's uncommitted `ASCIIText` work on `main` in the
+  main checkout was never touched).
+- `npm ci`, then `npx next dev -p 3100`. Port 3000 was taken by
+  office-portfolio during the session.
+- `/desk` is a small index. `/desk/c` is the current direction. `/desk/a`
+  (case study opens on the monitor itself, Henry-style) and `/desk/b` (zoom
+  through a colour card into the case study) are earlier comparison spikes,
+  kept for reference.
+- The first load in dev takes roughly 20–40 seconds; see Known issues.
+
+### How `/desk/c` behaves (verified in the browser)
+
+- The monitor shows a dark desktop with the user's wallpaper and a browser
+  window (traffic lights, `adrianklisz.com/work/<slug>` in the address bar).
+  Inside it a random case study runs in an iframe that has pointer events off.
+- The window has the **visitor's viewport shape**: the iframe renders at
+  `window.innerWidth × innerHeight` and is CSS-scaled into the window. When
+  the camera zooms until the window's page area exactly fills the viewport,
+  the embedded page and the real page are the same pixels. That is what makes
+  the handoff invisible.
+- Tapping the monitor runs a timed `easeInOutCubic` zoom (1.7s) that swings
+  around the screen in spherical coordinates, so a zoom started from behind
+  the desk arcs around instead of passing through the monitor. On arrival it
+  calls `router.push('/work/<slug>')`. The page starts with its header already
+  settled and skips the body's fade-in, so nothing replays.
+- Home on the case study scrolls the page to the top, asks the hidden desk to
+  load that case study onto its monitor, and waits until it has loaded and
+  settled. Then it pushes `/desk/c` and the camera eases back out (1.3s).
+  There is no loading screen, because the desk is never unmounted. Using the
+  next arrow to browse first, then pressing Home, brings the monitor back
+  showing the last case study read (verified Focals → Tinkering).
+- textfolio's own `PageIndicator` dot rail sits beside the desk. Tapping a dot
+  zooms into the monitor, then plays textfolio's normal "lift" `CaseStudyFocus`
+  animation in that case study's colour and pushes its route.
+- Dragging anywhere off the monitor orbits the camera around the whole desk
+  (drei `OrbitControls`: no pan, distance 1.6–5.5, never below the floor). The
+  monitor's HTML is hidden when the camera is behind the screen plane, because
+  DOM always draws over the canvas.
+
+### Files
+
+New, spike-only:
+
+- `lib/workspace/{model,scenes,batch}.ts` plus `LICENSE`: the procedural desk,
+  copied verbatim from the user's office-portfolio repo (MIT, Wes Bos; keep
+  the LICENSE with it). `public/models/mx-master-3s.glb` (7.4 MB) is the mouse.
+- `components/desk/DeskModel.tsx`: builds the workstation, freezes it at
+  `SCENE_HOUR = 14` (the "coding" scene), and reports the world pose of the
+  `Illustrated editor display` mesh, which the case study is laid over.
+- `components/desk/DeskStage.tsx`: Canvas, lights, the browser window
+  (`BrowserWindow`), the screen surface (drei `Html transform`, with
+  `distanceFactor = 400 * screenWidth / 1536`), and the camera rig
+  (`CameraRig`: tweens plus orbit). It also has the dot rail, the hint, and
+  the three variants. It takes `active`: when false it stays mounted but is
+  invisible (opacity 0, `inert`, `z-index:-1`, `frameloop="never"`) and its
+  iframe is unloaded.
+- `components/desk/DeskHost.tsx`: mounted in `app/layout.tsx`. It loads
+  `DeskStage` (via `next/dynamic`, `ssr:false`) only after the first visit to
+  `/desk/c`, and keeps it alive across routes. People who never visit the desk
+  download none of the 3D code.
+- `lib/deskSession.ts`: the shared state that connects the desk and the case
+  study pages:
+  - a `desk-session` sessionStorage flag, so Home leads to the desk
+  - `setArrivingFromDesk` / `peekArrivingFromDesk`, so a page can start settled
+  - a `desk-return` note, so a fresh desk mount after a refresh starts zoomed
+    in on the right case study
+  - a preparer handshake (`registerDeskPreparer` / `prepareDeskReturn`)
+- `app/desk/**`: the routes. `app/desk/c/page.tsx` renders `null`;
+  `DeskHost` does the work.
+- `public/desk/wallpaper.webp`: the user's
+  `Documents/Wallpapers/mono_dark_distortion_2.heic`, a 6×6 HEVC tile grid
+  (6016×3388), stitched and converted with ffmpeg to 2560px WebP (about
+  50 KB). Command shape: `ffmpeg -i in.heic -filter_complex
+  "[0:0]...[0:35]xstack=inputs=36:layout=<col*1024>_<row*576>|...,crop=6016:3388:0:0,scale=2560:-2"
+  -c:v libwebp -quality 80`.
+
+Changed textfolio code. Normal visitors see no difference, because each
+change only activates in a desk session:
+
+- `components/CaseStudyView.tsx`: `fromDesk` (read once from
+  `peekArrivingFromDesk`) starts the header settled and sets
+  `data-from-desk`. In a desk session, `leave()` scrolls up, prepares the
+  desk, and pushes `DESK_ROUTE` instead of dropping to `/`.
+- `app/globals.css`: `[data-from-desk="true"] .case-study-body { animation:
+  none; }`.
+- `app/layout.tsx`: mounts `<DeskHost />` after `{children}`.
+- `package.json`: adds `@react-three/fiber@9.5.0` and
+  `@react-three/drei@10.7.7`, the versions office-portfolio uses.
+- The homepage (`app/page.tsx`, `Hero.tsx`) is **unchanged**. An earlier
+  iteration that pinned a treatment there was reverted.
+
+`CaseStudyView.test.tsx` plus the `app/work` and `app/about` suites pass
+(75/75), and `tsc --noEmit` is clean.
+
+### Gotchas already solved (don't reintroduce)
+
+- **Clicks on the monitor undoing themselves.** drei's `Html` content lives
+  inside the R3F container, so its DOM clicks bubble to R3F, and
+  `onPointerMissed` read them as "clicked outside". Only treat a miss as
+  outside when `event.target` is the `<canvas>`.
+- **Strict Mode in dev runs effects twice.** The desk's mount effect consumes
+  the return note, so it is guarded by a ref and runs once per mount.
+- **Hiding the desk.** Use opacity, not `visibility`: the screen surface sets
+  its own `visibility` every frame, and a child's explicit value overrides a
+  hidden parent.
+
+### Known issues / not verified
+
+- **Load time.** The procedural desk is built in the browser on every first
+  visit: hundreds of tiny meshes, plus the 7.4 MB GLB for a mouse a few
+  centimetres wide. `buildWorkstation` can draw its own mouse without the GLB.
+  It was agreed in conversation as worth doing but not started: strip the desk
+  to its essentials (desk, monitor, keyboard, mouse), go neutral so the screen
+  is the only colour, and later bake it to one compressed GLB the way Henry
+  does.
+- **Dot rail path** (dot → zoom → lift → case study) worked before the
+  `DeskHost` restructure but was **not re-tested after it**.
+- **Browser back button** from a case study, as opposed to the Home icon, was
+  not tested in the final version. The monitor may briefly show an empty
+  window while its iframe reloads.
+- The dot rail only renders at `lg` (≥1024px), which is `PageIndicator`'s
+  existing rule. The window layout is computed at mount and on resize, but
+  resizing mid-zoom was not tested.
+- In dev, Next's "N" badge also appears inside the embedded page.
+
+### Next task: requested by the user, not started
+
+The user's latest request, with a reference screenshot showing "ADRIAN KLISZ"
+in the heavy display face and "‹ 10:12 · Stockholm" below it, bottom right:
+
+1. **Right-align the pagination dots.** `PageIndicator` positions itself from
+   the left and opens its name chip to the right of the dot. On the right
+   edge the chip must open leftwards, so add something like an
+   `align="right"` prop. The desk currently wraps it in a frame offset by
+   `-SHEET_OVERSCAN_PERCENT vw` to undo its homepage overscan maths.
+2. **Bottom-right block:** "ADRIAN KLISZ" (`font-display`, black weight),
+   then the time with a location delimiter ("10:12 · Stockholm") and **left
+   and right arrows** that step through times, like office-portfolio's clock.
+   See office-portfolio `components/TimeDisplay.tsx` (`sceneHours = [2, 9, 11,
+   14, 19, 23]`) and `lib/time.ts` (Stockholm time via `Intl`, `getTimeOfDay`).
+3. **Don't change the page colours per time**, unlike office-portfolio's
+   blue/orange themes; keep textfolio's palette. The user would still like
+   the **desk to change with the time**. `lib/workspace/scenes.ts` already
+   rearranges the scene by hour (`sleep` / `design` / `meeting` / `coding` /
+   `video`: the mic swings in, coffee or a water glass appears, the chair
+   moves, the screen texture changes). `DeskModel` freezes it at hour 14, so
+   pass the selected hour through instead. "Change the position of the desk"
+   is ambiguous: it could mean that scene rearrangement, the camera angle, or
+   the standing desk's height. **Confirm with the user.**
+4. **Light and dark modes:** for example, cream by day and ink-dark at night,
+   with dimmer lights and the monitor glowing. office-portfolio's
+   `components/DeskScene.tsx` has night lighting to borrow from (`MonitorGlow`,
+   night key light, floor pool, crossfade timings). Note that the monitor here
+   shows live HTML, not a texture.
 
 ## Current state: projects layout, LEGO default, and About scroll fix (2026-09-15)
 

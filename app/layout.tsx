@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { LineBoil } from "@/components/LineBoil";
+import { DeskHost } from "@/components/desk/DeskHost";
 import "./globals.css";
 
 const displayFont = localFont({
@@ -71,6 +72,7 @@ export default function RootLayout({
       <body className={`${displayFont.variable} ${scriptFont.variable} ${bodyFont.variable} ${condensedFont.variable}`}>
         <LineBoil />
         {children}
+        <DeskHost />
       </body>
     </html>
   );

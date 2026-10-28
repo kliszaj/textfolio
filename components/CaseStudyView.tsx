@@ -10,6 +10,14 @@ import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudyRoute } from "@/data/caseStudies";
 import { HEADER_SETTLE_MS, HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
+import {
+  DESK_ROUTE,
+  clearArrivingFromDesk,
+  isDeskSession,
+  noteDeskReturn,
+  peekArrivingFromDesk,
+  prepareDeskReturn,
+} from "@/lib/deskSession";
 import type { CaseStudy, CaseStudyFact, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
 import type { ReactNode } from "react";
 
@@ -267,8 +275,11 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   const [shrunk, setShrunk] = useState(false);
   // The settle animation fills forwards, which pins height and beats any
   // declarative rule. Once it is done the header goes back to plain CSS so the
-  // scroll shrink can transition.
-  const [settled, setSettled] = useState(false);
+  // scroll shrink can transition. Zoomed into from the desk's monitor, where
+  // the page was already at rest, it starts settled and skips the body's
+  // entrance so the handoff doesn't replay either.
+  const [fromDesk] = useState(peekArrivingFromDesk);
+  const [settled, setSettled] = useState(fromDesk);
   const [exiting, setExiting] = useState(false);
   const [isLongReadExpanded, setIsLongReadExpanded] = useState(false);
   const [activePlaybackRow, setActivePlaybackRow] = useState<string | null>(null);
@@ -303,6 +314,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   }, []);
 
   useEffect(() => {
+    clearArrivingFromDesk();
     const timer = setTimeout(() => setSettled(true), 620);
     return () => clearTimeout(timer);
   }, []);
@@ -474,7 +486,33 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   // Home is an intentional click, not a hidden scroll gesture. The page still
   // drops back onto the stack so this explicit route change carries the same
   // visual language as the sheet lift that opened it.
+  const leavingRef = useRef(false);
   const leave = useCallback(() => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+
+    // Entered through the desk: Home zooms back out to it instead. The page
+    // rises to the top while the desk puts this case study on its monitor, so
+    // the route change lands on a matching frame and the camera pulls back.
+    if (isDeskSession()) {
+      noteDeskReturn(`monitor:${caseStudy.slug}`);
+      shrunkRef.current = false;
+      setShrunk(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      const atTop = new Promise<void>((resolve) => {
+        const startedAt = performance.now();
+        const check = () => {
+          if (window.scrollY <= 1 || performance.now() - startedAt > 900) resolve();
+          else requestAnimationFrame(check);
+        };
+        check();
+      });
+      void Promise.all([atTop, prepareDeskReturn(caseStudy.slug)]).then(() =>
+        router.push(DESK_ROUTE)
+      );
+      return;
+    }
+
     markReturningHome(caseStudy.slug);
     setExiting(true);
     setTimeout(() => router.push("/"), EXIT_ANIMATION_MS);
@@ -500,6 +538,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
       <main
         data-testid="case-study-view"
         data-exiting={exiting}
+        data-from-desk={fromDesk}
         // Not min-h-screen: a short page (About, with no media) doesn't need
         // padding out to a full viewport, and the fixed cream layer above
         // already covers the screen regardless of this element's real height.

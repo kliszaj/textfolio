@@ -511,6 +511,11 @@ body {
   animation-delay: 240ms;
 }
 
+/* Zoomed into from the desk's monitor, which already showed the body at rest. */
+[data-from-desk="true"] .case-study-body {
+  animation: none;
+}
+
 @media (min-width: 48rem) {
   .case-study-body { padding-inline: 2.5rem; }
   .case-study-body[data-padded="true"] { padding-inline: 4rem; }
