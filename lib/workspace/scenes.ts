@@ -71,7 +71,9 @@ function screenTexture(scene: WorkspaceScene) {
   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=8;return texture;
 }
 
-export function prepareScenes(root:T.Group) {
+// illustratedScreen: false leaves the display's own texture alone, for a host
+// that lays its own content over the screen.
+export function prepareScenes(root:T.Group,{illustratedScreen=true}:{illustratedScreen?:boolean}={}) {
   const coffee=root.getObjectByName('Coffee mug')!;
   const drink=root.getObjectByName('Coffee surface')!;
   const crema=root.getObjectByName('Crema at rim')!;
@@ -92,9 +94,27 @@ export function prepareScenes(root:T.Group) {
   const diffuser=root.getObjectByName('Diffuser') as T.Mesh<T.BufferGeometry,T.MeshStandardMaterial>;
   // Preserve moving parts as separate batching roots; keep the screen material editable.
   screen.userData.noMerge=true;diffuser.userData.noMerge=true;
-  const textures:Record<WorkspaceScene,T.Texture>={design:screenTexture('design'),meeting:screenTexture('meeting'),coding:screenTexture('coding'),video:screenTexture('video'),sleep:screenTexture('sleep')};
-  const overlay=new T.Mesh(screen.geometry,new T.MeshBasicMaterial({map:screen.material.map,transparent:true,opacity:0,depthWrite:false,toneMapped:false}));overlay.position.z=.0005;screen.add(overlay);
-  const ring=new T.Mesh(new T.RingGeometry(.038,.042,64),new T.MeshBasicMaterial({color:'#85572e',transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false}));ring.userData.noMerge=true;ring.name='Morning coffee ring';ring.rotation.x=-Math.PI/2;ring.position.set(.52,.7805,.20);root.add(ring);
+  const textures:Partial<Record<WorkspaceScene,T.Texture>>=illustratedScreen?{design:screenTexture('design'),meeting:screenTexture('meeting'),coding:screenTexture('coding'),video:screenTexture('video'),sleep:screenTexture('sleep')}:{};
+  const overlay=new T.Mesh(screen.geometry,new T.MeshBasicMaterial({map:screen.material.map,transparent:true,opacity:0,depthWrite:false,toneMapped:false}));overlay.position.z=.0005;overlay.visible=illustratedScreen;screen.add(overlay);
+  // The mug's last resting place (its meeting spot) before the water glass
+  // takes over; the ring matches the cup's base.
+  const MUG_LAST={x:.55,z:.12};
+  const ring=new T.Mesh(new T.RingGeometry(.031,.035,64),new T.MeshBasicMaterial({color:'#85572e',transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false}));ring.userData.noMerge=true;ring.name='Morning coffee ring';ring.rotation.x=-Math.PI/2;ring.position.set(MUG_LAST.x,.7785,MUG_LAST.z);root.add(ring);
+  const notebook=root.getObjectByName('Field Notes notebook')!;
+  const notebookBack=root.getObjectByName('Field Notes back')!;
+  const leaf=root.getObjectByName('Field Notes leaf')!;
+  const staples=root.getObjectByName('Field Notes staples')!;
+  const pen=root.getObjectByName('Desk pen')!;
+  // The memo book lives closed in the front-right corner with the pen on it.
+  // In the midday meeting it comes out in front of the keyboard and opens,
+  // the pen set down on the page, then goes back once the meeting is over.
+  const MAT=.7835,DESK=.778;
+  const STOWED={x:.575,y:DESK,z:.315,turn:-.08};
+  const WRITING={x:-.0355,y:MAT,z:.26,turn:.05};
+  // The pen rests on its octagonal cap's flats.
+  const CLOSED_TOP=.0036,OPEN_TOP=.0019,PEN_RADIUS=.0063;
+  // Opening takes about a second; the pen moves aside while the cover swings.
+  const OPEN_ANGLE=Math.PI,OPEN_SPEED=3.5,SETTLED=.01;
   const glass=new T.Group();glass.name='Afternoon water glass';glass.position.set(.49,.782,.02);root.add(glass);
   const shell=new T.Mesh(new T.CylinderGeometry(.032,.027,.112,40,1,true),new T.MeshPhysicalMaterial({color:'#d2f4ee',transparent:true,opacity:.28,roughness:.12,side:T.DoubleSide}));shell.position.y=.056;glass.add(shell);
   const water=new T.Mesh(new T.CylinderGeometry(.029,.025,.072,40),new T.MeshPhysicalMaterial({color:'#9fd3d9',transparent:true,opacity:.45,roughness:.16}));water.position.y=.037;glass.add(water);
@@ -103,19 +123,19 @@ export function prepareScenes(root:T.Group) {
   const backlight=new T.PointLight('#eab58b',0,1.8,2);backlight.position.set(.095,1.10,-.29);root.add(backlight);
   const spill=new T.PointLight('#adcfff',0,1.8,2);spill.position.set(.095,1.12,.06);root.add(spill);
   const led=new T.Mesh(new T.SphereGeometry(.003,12,8),new T.MeshBasicMaterial({color:'#ff675e'}));led.userData.noMerge=true;led.position.set(.14,1.52,-.181);root.add(led);
-  screen.material.map?.dispose();
-  screen.material.map=textures.coding;overlay.material.map=textures.coding;
+  if(textures.coding){screen.material.map?.dispose();screen.material.map=textures.coding;overlay.material.map=textures.coding;}
   let active:WorkspaceScene='coding',fade=1;
   return {
-    roots:[coffee,chair,glass,keyboard,mouse,tray,pivot,mat],
-    update(hour:number,delta:number,reduced:boolean) {
+    roots:[coffee,chair,glass,keyboard,mouse,tray,pivot,mat,notebookBack,leaf,staples,pen],
+    update(hour:number,delta:number,reduced:boolean,darkness=0) {
       const next=sceneForHour(hour),k=reduced?1:1-Math.exp(-delta*5);
-      if(next!==active){overlay.material.map=screen.material.map;screen.material.map=textures[next];overlay.material.opacity=1;fade=0;active=next;}
+      if(next!==active){const map=textures[next];if(map){overlay.material.map=screen.material.map;screen.material.map=map;overlay.material.opacity=1;fade=0;}active=next;}
       fade=reduced?1:Math.min(1,fade+delta*1.5);overlay.material.opacity=1-fade;
       const meeting=next==='meeting',sleep=next==='sleep',video=next==='video';
       pivot.rotation.y=T.MathUtils.lerp(pivot.rotation.y,meeting?-1.05:0,k);
       keyboard.rotation.y=T.MathUtils.lerp(keyboard.rotation.y,video?.055:meeting?-.025:0,k);
-      keyboard.position.z=T.MathUtils.lerp(keyboard.position.z,video?.155:.145,k);
+      // Pushed back a little in the meeting to make room for the open notebook.
+      keyboard.position.z=T.MathUtils.lerp(keyboard.position.z,video?.155:meeting?.115:.145,k);
       mouse.position.x=T.MathUtils.lerp(mouse.position.x,meeting?.27:video?.25:.235,k);
       mouse.position.z=T.MathUtils.lerp(mouse.position.z,video?.205:meeting?.145:.17,k);
       mouse.rotation.y=T.MathUtils.lerp(mouse.rotation.y,video?-.15:meeting?.09:0,k);
@@ -128,17 +148,41 @@ export function prepareScenes(root:T.Group) {
       drink.position.y=T.MathUtils.lerp(drink.position.y,.033+.056*remaining,k);
       crema.position.y=drink.position.y+.0005;
       steam.position.y=drink.position.y+.008;
-      coffee.position.x=T.MathUtils.lerp(coffee.position.x,meeting?.55:.52,k);
-      coffee.position.z=T.MathUtils.lerp(coffee.position.z,meeting?.12:.20,k);
+      coffee.position.x=T.MathUtils.lerp(coffee.position.x,meeting?MUG_LAST.x:.52,k);
+      coffee.position.z=T.MathUtils.lerp(coffee.position.z,meeting?MUG_LAST.z:.20,k);
+      // Coming out: carried over closed with the pen on it, the pen set aside,
+      // the cover swung open, the pen put down on the page. Going back: the
+      // same in reverse, and the book only leaves once it is shut.
+      const angle=leaf.rotation.z,shut=angle<.02,wideOpen=angle>OPEN_ANGLE-.02;
+      const spot=meeting||!shut?WRITING:STOWED;
+      notebook.position.set(T.MathUtils.lerp(notebook.position.x,spot.x,k),T.MathUtils.lerp(notebook.position.y,spot.y,k),T.MathUtils.lerp(notebook.position.z,spot.z,k));
+      notebook.rotation.y=T.MathUtils.lerp(notebook.rotation.y,spot.turn,k);
+      const atDesk=Math.hypot(notebook.position.x-WRITING.x,notebook.position.z-WRITING.z)<SETTLED;
+      const onCover={x:notebook.position.x,z:notebook.position.z,turn:notebook.rotation.y+Math.PI/2,y:notebook.position.y+CLOSED_TOP};
+      const aside={x:notebook.position.x+.075,z:notebook.position.z+.01,turn:notebook.rotation.y+Math.PI/2,y:MAT};
+      const onPage={x:notebook.position.x+.012,z:notebook.position.z+.008,turn:notebook.rotation.y-.6,y:notebook.position.y+OPEN_TOP};
+      const penAt=meeting
+        ?(!atDesk?onCover:wideOpen?onPage:aside)
+        :(shut?onCover:aside);
+      const kPen=Math.min(1,k*2);
+      pen.position.set(T.MathUtils.lerp(pen.position.x,penAt.x,kPen),T.MathUtils.lerp(pen.position.y,penAt.y+PEN_RADIUS,kPen),T.MathUtils.lerp(pen.position.z,penAt.z,kPen));
+      pen.rotation.y=T.MathUtils.lerp(pen.rotation.y,penAt.turn,kPen);
+      // The cover only moves once the pen is clear of it.
+      const penClear=Math.hypot(pen.position.x-aside.x,pen.position.z-aside.z)<SETTLED;
+      const wantOpen=meeting&&atDesk&&(wideOpen||penClear);
+      const wantShut=!meeting&&(shut||penClear);
+      const target=wantOpen?OPEN_ANGLE:wantShut?0:angle;
+      leaf.rotation.z=T.MathUtils.lerp(angle,target,reduced?1:1-Math.exp(-delta*OPEN_SPEED));
+      staples.visible=leaf.rotation.z<.3;
       steam.visible=next==='design';
       ring.visible=next==='coding'||video;glass.visible=next==='coding';
       chair.position.z=T.MathUtils.lerp(chair.position.z,sleep?.39:video?.59:.51,k);
       chair.rotation.y=T.MathUtils.lerp(chair.rotation.y,sleep?0:video?-.24:-.11,k);
-      diffuser.material.emissiveIntensity=T.MathUtils.lerp(diffuser.material.emissiveIntensity,meeting?2.5:.02,k);
+      diffuser.material.emissiveIntensity=T.MathUtils.lerp(diffuser.material.emissiveIntensity,meeting&&darkness<.5?2.5:0,k);
       key.intensity=T.MathUtils.lerp(key.intensity,meeting?.8:0,k);led.visible=meeting;
       backlight.intensity=T.MathUtils.lerp(backlight.intensity,video?1.1:0,k);
       spill.intensity=T.MathUtils.lerp(spill.intensity,video?.35:sleep?0:.05,k);
     },
-    dispose(){Object.values(textures).forEach(texture=>texture.dispose());}
+    dispose(){Object.values(textures).forEach(texture=>texture?.dispose());}
   };
 }

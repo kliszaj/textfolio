@@ -1,16 +1,12 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useGLTF } from "@react-three/drei";
+import { useGLTF, useTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { buildWorkstation, animateWorkstation } from "@/lib/workspace/model";
 import { prepareScenes } from "@/lib/workspace/scenes";
 import { batchStatic } from "@/lib/workspace/batch";
-
-// Spike: the office-portfolio workspace, frozen at an afternoon "coding" scene
-// instead of following the time-of-day theme.
-const SCENE_HOUR = 14;
 
 export type ScreenPose = {
   center: THREE.Vector3;
@@ -20,8 +16,13 @@ export type ScreenPose = {
   height: number;
 };
 
-export function DeskModel({ onScreen }: { onScreen: (pose: ScreenPose) => void }) {
+// Same wallpaper the on-screen desktop uses, and its pixel size.
+const WALLPAPER_URL = "/desk/wallpaper.webp";
+const WALLPAPER_ASPECT = 2560 / 1442;
+
+export function DeskModel({ onScreen, hour = 14, darkness = 0 }: { onScreen: (pose: ScreenPose) => void; hour?: number; darkness?: number }) {
   const { scene: mouseAsset } = useGLTF("/models/mx-master-3s.glb");
+  const wallpaper = useTexture(WALLPAPER_URL);
 
   const { workspace, scenes } = useMemo(() => {
     const parent = new THREE.Group();
@@ -31,10 +32,22 @@ export function DeskModel({ onScreen }: { onScreen: (pose: ScreenPose) => void }
     });
     mouse.userData.noMerge = true;
     const model = buildWorkstation(parent, mouse);
-    const scenes = prepareScenes(model);
+    const scenes = prepareScenes(model, { illustratedScreen: false });
+    // The live desktop is laid over the display; if it ever drops a frame
+    // (a resize), the same wallpaper shows through rather than an old
+    // illustrated screen. Cropped top and bottom to cover, like CSS `cover`.
+    const display = model.getObjectByName("Illustrated editor display") as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+    const { width, height } = display.geometry.parameters;
+    const map = wallpaper.clone();
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.repeat.set(1, WALLPAPER_ASPECT / (width / height));
+    map.offset.set(0, (1 - map.repeat.y) / 2);
+    display.material.map?.dispose();
+    display.material.map = map;
+    display.material.needsUpdate = true;
     batchStatic(model, scenes.roots, { mergeDynamic: true });
     return { workspace: model, scenes };
-  }, [mouseAsset]);
+  }, [mouseAsset, wallpaper]);
 
   // The case study is laid over the illustrated display, so report where that
   // plane sits in the world once the model is built.
@@ -55,7 +68,7 @@ export function DeskModel({ onScreen }: { onScreen: (pose: ScreenPose) => void }
   }, [workspace, onScreen]);
 
   useFrame(({ clock }, delta) => {
-    scenes.update(SCENE_HOUR, delta, false);
+    scenes.update(hour, delta, false, darkness);
     animateWorkstation(workspace, clock.elapsedTime);
   });
 
@@ -65,3 +78,4 @@ export function DeskModel({ onScreen }: { onScreen: (pose: ScreenPose) => void }
 }
 
 useGLTF.preload("/models/mx-master-3s.glb");
+useTexture.preload(WALLPAPER_URL);

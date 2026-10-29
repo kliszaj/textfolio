@@ -1,8 +1,8 @@
 # Textfolio — Handoff
 
-Last updated: 2026-10-28
+Last updated: 2026-10-29
 
-## Spike: 3D desk landing page (branch `spike/desk-hybrid`, 2026-10-28)
+## Spike: 3D desk landing page (branch `spike/desk-hybrid`, 2026-10-28 → 2026-10-29)
 
 This section covers only the throwaway desk spike. It lives on the
 `spike/desk-hybrid` branch, which the user asked to be pushed to GitHub. It
@@ -70,9 +70,13 @@ New, spike-only:
 - `lib/workspace/{model,scenes,batch}.ts` plus `LICENSE`: the procedural desk,
   copied verbatim from the user's office-portfolio repo (MIT, Wes Bos; keep
   the LICENSE with it). `public/models/mx-master-3s.glb` (7.4 MB) is the mouse.
-- `components/desk/DeskModel.tsx`: builds the workstation, freezes it at
-  `SCENE_HOUR = 14` (the "coding" scene), and reports the world pose of the
-  `Illustrated editor display` mesh, which the case study is laid over.
+- `components/desk/DeskModel.tsx`: builds the workstation, drives its scene
+  from the clock's hour (it was originally frozen at 14), puts the wallpaper
+  on the display, and reports the world pose of the `Illustrated editor
+  display` mesh, which the case study is laid over. Later additions:
+  `DeskClock`, `DuskSky`, `DeskTwilight`, `DeskFraming`, `DeskGradients`,
+  `ColorPicker`, `DesktopWindows`, `BrowserChrome` and `lib/deskDaylight.ts`
+  (see "Time of day" below).
 - `components/desk/DeskStage.tsx`: Canvas, lights, the browser window
   (`BrowserWindow`), the screen surface (drei `Html transform`, with
   `distanceFactor = 400 * screenWidth / 1536`), and the camera rig
@@ -149,35 +153,162 @@ change only activates in a desk session:
   resizing mid-zoom was not tested.
 - In dev, Next's "N" badge also appears inside the embedded page.
 
-### Next task: requested by the user, not started
+### Time of day, sky and desk props (2026-10-29)
 
-The user's latest request, with a reference screenshot showing "ADRIAN KLISZ"
-in the heavy display face and "‹ 10:12 · Stockholm" below it, bottom right:
+The "next task" that used to sit here is done. A Codex session built the
+clock, sun lighting and gradients; a Claude session then finished it and
+added much more. It was verified in the browser pane, though the pane was
+hidden, so animation timing is not representative. **Status at the end of
+the session:** 690/690 jest tests, `tsc` and eslint clean, `next build`
+succeeds.
 
-1. **Right-align the pagination dots.** `PageIndicator` positions itself from
-   the left and opens its name chip to the right of the dot. On the right
-   edge the chip must open leftwards, so add something like an
-   `align="right"` prop. The desk currently wraps it in a frame offset by
-   `-SHEET_OVERSCAN_PERCENT vw` to undo its homepage overscan maths.
-2. **Bottom-right block:** "ADRIAN KLISZ" (`font-display`, black weight),
-   then the time with a location delimiter ("10:12 · Stockholm") and **left
-   and right arrows** that step through times, like office-portfolio's clock.
-   See office-portfolio `components/TimeDisplay.tsx` (`sceneHours = [2, 9, 11,
-   14, 19, 23]`) and `lib/time.ts` (Stockholm time via `Intl`, `getTimeOfDay`).
-3. **Don't change the page colours per time**, unlike office-portfolio's
-   blue/orange themes; keep textfolio's palette. The user would still like
-   the **desk to change with the time**. `lib/workspace/scenes.ts` already
-   rearranges the scene by hour (`sleep` / `design` / `meeting` / `coding` /
-   `video`: the mic swings in, coffee or a water glass appears, the chair
-   moves, the screen texture changes). `DeskModel` freezes it at hour 14, so
-   pass the selected hour through instead. "Change the position of the desk"
-   is ambiguous: it could mean that scene rearrangement, the camera angle, or
-   the standing desk's height. **Confirm with the user.**
-4. **Light and dark modes:** for example, cream by day and ink-dark at night,
-   with dimmer lights and the monitor glowing. office-portfolio's
-   `components/DeskScene.tsx` has night lighting to borrow from (`MonitorGlow`,
-   night key light, floor pool, crossfade timings). Note that the monitor here
-   shows live HTML, not a texture.
+- **Clock (`DeskClock.tsx`, `lib/deskDaylight.ts`).**
+  - The bottom-right block is "ADRIAN KLISZ", then "10:12 · Stockholm",
+    right-aligned. Its text is ink or cream, picked by WCAG contrast against
+    the colour behind it (not blend modes).
+  - Scrolling over the desk steps the time, one step per gesture: 40px
+    threshold, 700ms lock, 250ms gesture gap; it ignores
+    `[data-desk-settings]`. Arrow keys step it too.
+  - While previewing another time, a reset icon left of the time jumps
+    straight back to now, without animating.
+  - The sun comes from suncalc for Stockholm (`deskDaylight`,
+    `nextDeskStage`, `sunsetOn`).
+- **Case study on the monitor.** Stepping the time queues the next or
+  previous case study and swaps it 1300ms later (`SCREEN_SWAP_DELAY_MS`), so
+  the page is the last thing to change. Clicking the monitor, or a dot for
+  the case study already showing, lands on it without the lift animation.
+- **Zoom.** The camera tween interpolates the radius on a log scale, so the
+  approach no longer rushes at the end. The office-portfolio "LOADING*"
+  circular-text loader shows until the desk is ready.
+- **Lighting (`DeskLighting` in `DeskStage`).**
+  - The floor shadow fades with the sun's height and turns purple
+    (`#5a3cc8`) towards dusk.
+  - At night a monitor spotlight throws a cone towards the chair, plus a
+    weak fill.
+  - The screen has a subtle 115° glare that dims at night.
+- **Sky (`DuskSky.tsx`, `DeskTwilight.tsx`).**
+  - Twilight has five styles: radial glow, horizon bands, grain mesh, dither,
+    and window light. Window light is a 3D plane on the floor that turns with
+    the room and fades at grazing angles.
+  - There are six one-click colour combos.
+  - The Desk settings panel (`DeskFraming.tsx`) has full HSV pickers
+    (`ColorPicker.tsx`) for the morning, afternoon, night and twilight
+    colours. Settings live in localStorage. **The default style and combo
+    have not been chosen yet.** The code default is radial with Lavender
+    dusk.
+- **Background apps (`DesktopWindows.tsx`).** Up to two dark-mode windows
+  behind the browser window, per scene: design = Slack and Figma, meeting = a
+  coded mobile prototype in Chrome device mode and Meet, coding = Claude Code
+  and Spotify, video = YouTube and Spotify, sleep = none. The Meet tiles use
+  silhouettes. Generating real avatars would use paid Figma AI, so the user
+  has not decided yet.
+- **Desk (`lib/workspace/model.ts`, `scenes.ts`).**
+  - The Figma Creator Micro is modelled on the user's photo.
+  - Retro cream and grey keycaps. The keyboard cable runs round to a USB plug
+    in the back of the tower.
+  - Light wood grain on the desktop. Yellow cutting-mat lines.
+  - New props: a white iPod classic, an AirPods Pro case lying flat, and ATH-M50x
+    headphones on a hook, all black and with no cable.
+  - Field Notes (kraft cover, from the user's photo) and a Kaweco Steel Sport
+    pen.
+    - The notebook is tucked at the back right, or open in front of the
+      keyboard while writing.
+    - Its cover opens and closes; the pen goes aside, then onto the page.
+  - The coaster is gone. The coffee ring appears at the mug's last position
+    (`MUG_LAST`) in the coding and video scenes.
+  - Removed: the tan strip at the monitor base, the rear cable pass-through,
+    and the white desk power cable.
+- **`batchStatic`** merges meshes per visibility root, so anything that moves
+  or toggles at runtime must be listed in `scenes.roots`.
+- **Font.** `app/fonts/PPFrama-Extralight.otf` was added for the time line.
+  The user only has static PP Frama weights, so weight animation on the name
+  would need the variable font file first.
+
+### Review: experience, stability, optimisation (2026-10-29)
+
+Recommendations from a read-through of the code and the production build.
+None of them is implemented yet. Frame rate and load time could not be
+measured, because the browser pane was hidden and throttled.
+
+**Measured:**
+
+| What | Size |
+|---|---|
+| `mx-master-3s.glb` | 7.3 MB (the largest asset; the next is a 279 KB font) |
+| JavaScript | about 340 KB gzipped: three.js about 180 KB, R3F + drei + motion about 160 KB |
+| Fonts | about 650 KB, all preloaded on every page, including the Adrian script the desk doesn't show |
+| DOM | about 780 elements once ready, mostly the hidden `DesktopWindows` |
+
+**Performance, biggest win first:**
+
+1. **Shrink or replace the mouse GLB.** Meshopt or Draco plus texture
+   compression would get it to roughly 0.2–0.4 MB. Alternatively, use the
+   procedural mouse and drop the download.
+2. **Stop rendering when idle.** The canvas renders every frame (`frameloop`
+   always), with a 2048 shadow map, dpr up to 2, and the `Html transform`
+   repositioned every frame. Render on demand: while orbiting, during tweens,
+   and while the steam or swaps animate. Turn off shadow-map auto-update
+   except when the light changes.
+3. **Lighten the iframe.** The monitor runs a second full copy of the site,
+   including `LineBoil`'s `setInterval`. Add a flag such as `?embed` that
+   disables `LineBoil`, video playback and anything else off-screen inside
+   it.
+4. **Mount only the open desktop windows.** All seven are built and hidden.
+   Keep the open ones plus any fading out, which removes about 600 DOM nodes
+   from the `Html` layer.
+5. **Re-render less.** During clock animations `useDeskTime`'s 30ms interval
+   re-renders the whole `DeskStage`, and the dither sky regenerates its
+   canvas. Move the clock value into a ref or store that the lighting reads
+   in `useFrame`.
+6. **Stop allocating per frame.** `CameraRig`, `ScreenSurface` and
+   `WindowLight` create `Vector3`s each frame. Hoist scratch objects to
+   module or ref scope.
+7. **Bake the procedural desk to one compressed GLB.** Building it in the
+   browser on every first visit blocks the main thread. This is the
+   structural fix for load time.
+8. **Don't preload fonts the desk doesn't show.** Set `preload: false` on
+   the Adrian script and the condensed family.
+
+**Stability:**
+
+1. **Add an error boundary and a no-WebGL fallback.** A failed GLB, no WebGL,
+   or a lost context currently breaks the page. Fall back to a still image or
+   the plain homepage.
+2. **Split `DeskStage.tsx`** (about 1000 lines) into the camera rig, screen
+   surface, browser window, lighting and window light.
+3. **Add unit tests** for the notebook and pen sequence, the coffee ring,
+   `useDuskSky` and the wheel gesture lock.
+4. **Re-test** the browser Back button from a case study and the dot-rail
+   path. Both are still open from the Known issues above.
+
+**Experience:**
+
+1. **No way to change time on touch.** Add a vertical swipe on the desk, or
+   arrows on touch devices only.
+2. **Discoverability.** Show a one-time hint ("scroll to change the time ·
+   drag to look around") that fades once used.
+3. **Pinch-zoom steps time.** Trackpad pinch arrives as a wheel event with
+   `ctrlKey`, so ignore those.
+4. **Reduced motion.** `scenes.update(..., false, ...)` hardcodes
+   reduced=false, and the camera tween ignores `prefers-reduced-motion`. Only
+   the clock honours it.
+5. **The Desk settings panel is visible to everyone.** Show it only in dev or
+   behind `?tune`.
+6. **SEO and screen readers.** `/desk/c` is client-only (`ssr:false`). If it
+   becomes the homepage, it needs real HTML behind the canvas: the name, an
+   intro and the case study links.
+7. **Mobile.** Portrait phones haven't been tried. The browser window takes
+   the viewport's shape, so it becomes tall and narrow, and the zoom maths
+   assume landscape.
+
+**Suggested order:**
+
+1. Commit. This is done with this handoff update.
+2. Compress the GLB.
+3. Render on demand.
+4. Add the error boundary and fallback.
+5. Add touch stepping and the ctrl+wheel guard.
+6. Hide the settings panel.
 
 ## Current state: projects layout, LEGO default, and About scroll fix (2026-09-15)
 

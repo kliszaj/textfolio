@@ -6,6 +6,7 @@ import { SHEET_OVERSCAN_PERCENT } from "@/lib/fanSheet";
 import { FAN_THRESHOLD_PX, FAN_SPLIT } from "@/lib/fanProgress";
 
 type PageIndicatorProps = {
+  align?: "left" | "right";
   caseStudies: CaseStudy[];
   // Shares the scroll arrow's rule: gone by the time the stack is a quarter
   // open, so the rail never competes with the sheets it points at.
@@ -28,6 +29,7 @@ const HOVER_DOT_SCALE = 1.5;
 const POP_IN_DOT_SCALE = 0.5;
 
 export function PageIndicator({
+  align = "left",
   caseStudies,
   fanProgress = 0,
   onSelect,
@@ -93,7 +95,8 @@ export function PageIndicator({
         // Hero sits on a sheet that starts at left: -60%, so an inset measured
         // from the hero's own edge lands off-screen. Counter the overscan the
         // way .coolS does, but from the constant rather than a literal 60vw.
-        left: `calc(${SHEET_OVERSCAN_PERCENT}vw + clamp(1.5rem, 3.5vw, 4rem))`,
+        left: align === "left" ? `calc(${SHEET_OVERSCAN_PERCENT}vw + clamp(1.5rem, 3.5vw, 4rem))` : undefined,
+        right: align === "right" ? "clamp(1.5rem, 3.5vw, 4rem)" : undefined,
         opacity,
         // Fades on the same curve the sheets move on, so the rail leaves as
         // the stack arrives rather than lagging behind it.
@@ -111,6 +114,7 @@ export function PageIndicator({
           className="relative flex items-center cursor-pointer"
           style={{
             width: DOT_SIZE + HOVER_TARGET_RIGHT_EXTENSION,
+            justifyContent: align === "right" ? "flex-end" : undefined,
             // The pop-in itself lives on the dot below, not here: this hit
             // area is wide (it reaches right for the hover chip), so a
             // scale on it grows from that whole rectangle's centre --
@@ -162,7 +166,8 @@ export function PageIndicator({
               aria-hidden="true"
               className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-4 py-1.5 text-base font-body font-bold"
               style={{
-                left: DOT_SIZE + 12,
+                left: align === "left" ? DOT_SIZE + 12 : undefined,
+                right: align === "right" ? DOT_SIZE + 12 : undefined,
                 backgroundColor: caseStudy.thumbnailColor,
                 color: "#1C1C1C",
               }}

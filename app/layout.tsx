@@ -11,6 +11,13 @@ const displayFont = localFont({
   display: "swap",
 });
 
+const lightDisplayFont = localFont({
+  src: "./fonts/PPFrama-Extralight.otf",
+  weight: "200",
+  variable: "--font-pp-frama-extralight",
+  display: "swap",
+});
+
 // Body family for case-study copy: the script is part of the hero voice, but
 // it is hard to read at a glance on a sheet that is only partly revealed.
 const bodyFont = localFont({
@@ -69,7 +76,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${displayFont.variable} ${scriptFont.variable} ${bodyFont.variable} ${condensedFont.variable}`}>
+      <body className={`${displayFont.variable} ${lightDisplayFont.variable} ${scriptFont.variable} ${bodyFont.variable} ${condensedFont.variable}`}>
         <LineBoil />
         {children}
         <DeskHost />

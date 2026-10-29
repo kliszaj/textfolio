@@ -7,7 +7,7 @@ type V = [number, number, number];
 export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  const root=new T.Group();root.name='Detailed workstation';root.position.set(0,0,.4);parent.add(root);
  const material=(color:string,roughness=.55,metalness=0)=>new T.MeshStandardMaterial({color,roughness,metalness});
- const ivory=material('#eee8d7'),edge=material('#c7b293'),steel=material('#d6deda',.32,.55),dark=material('#17252d',.48),rubber=material('#10191e',.9),graphite=material('#33464d',.46,.15),pink=material('#bc527e'),lightPink=material('#f2c5c8'),cyan=material('#7ad2cd',.32),brass=material('#cba675',.35,.5);
+ const ivory=material('#eee8d7'),edge=material('#c7b293'),steel=material('#d6deda',.32,.55),dark=material('#17252d',.48),rubber=material('#10191e',.9),graphite=material('#33464d',.46,.15),pink=material('#bc527e'),lightPink=material('#f2c5c8'),cyan=material('#7ad2cd',.32);
  const mesh=(p:T.Object3D,n:string,g:T.BufferGeometry,m:T.Material,c:V=[0,0,0])=>{const o=new T.Mesh(g,m);o.name=n;o.position.set(...c);o.castShadow=o.receiveShadow=true;p.add(o);return o;};
  const box=(p:T.Object3D,n:string,s:V,c:V,m:T.Material,r=.006)=>mesh(p,n,new RoundedBoxGeometry(...s,3,Math.min(r,Math.min(...s)/2*.95)),m,c);
  // Round the face independently of thickness for screens and softbox panels.
@@ -22,7 +22,14 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  // Laminated birch top and telescopic powder-coated standing-desk chassis.
  const desk=new T.Group();desk.name='Standing desk';root.add(desk);
  box(desk,'Birch layered edge',[1.287,.036,.78],[0,.752,0],edge,.013);
- box(desk,'Warm ivory work surface',[1.285,.010,.779],[0,.773,0],ivory,.012);
+ // Faint grain running the length of the top: thin wavering lines over a few soft bands.
+ let seed=11;const rand=()=>(seed=seed*16807%2147483647)/2147483647;
+ const grain=texture(2048,1024,ctx=>{
+  ctx.fillStyle='#eee8d7';ctx.fillRect(0,0,2048,1024);
+  for(let i=0;i<14;i++){ctx.strokeStyle=`rgba(196,170,128,${.03+rand()*.04})`;ctx.lineWidth=12+rand()*36;const y=rand()*1024;ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=2048;x+=64)ctx.lineTo(x,y+Math.sin(x*.002+i)*18);ctx.stroke();}
+  for(let i=0;i<220;i++){ctx.strokeStyle=`rgba(160,128,86,${.03+rand()*.06})`;ctx.lineWidth=.6+rand()*1.6;const y=rand()*1024,wave=4+rand()*10,phase=rand()*6;ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=2048;x+=32)ctx.lineTo(x,y+Math.sin(x*.003+phase)*wave+Math.sin(x*.011+phase*2)*2);ctx.stroke();}
+ });
+ box(desk,'Warm ivory work surface',[1.285,.010,.779],[0,.773,0],new T.MeshStandardMaterial({map:grain,roughness:.55}),.012);
  for(const y of [.742,.749,.756])box(desk,'Plywood lamination',[1.265,.0012,.002],[0,y,.389],material('#8b765b'),.0003);
  for(const x of [-.50,.50]){
   box(desk,'Rounded sled foot',[.095,.043,.65],[x,.045,.01],ivory,.021);
@@ -39,23 +46,26 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  for(const x of [.499,.522])ball(desk,'Height button',[.008,.008,.003],[x,.725,.352],graphite);
  box(desk,'Perforated cable basket',[.71,.075,.13],[-.02,.652,-.27],graphite,.012);
  for(let i=0;i<17;i++)box(desk,'Basket ventilation slot',[.026,.025,.003],[-.34+i*.04,.65,-.202],rubber,.005);
- box(desk,'Rear cable pass-through',[.48,.002,.022],[0,.779,-.325],edge,.005);
  box(desk,'Power strip',[.36,.038,.06],[-.08,.685,-.27],ivory,.006);
  for(let i=0;i<4;i++)box(desk,'Plug',[.045,.04,.035],[-.2+i*.08,.716,-.27],dark,.006);
- for(let i=0;i<5;i++)tube(desk,'Managed equipment lead',[[-.2+i*.09,.786,-.32],[-.22+i*.09,.70,-.34],[-.20+i*.1,.59,-.29],[.10,.61,-.27]],.0025,i%2?rubber:ivory,22);
- tube(desk,'Desk power cable',[[.28,.65,-.30],[.43,.51,-.32],[.44,.15,-.31],[.36,.04,-.32],[.25,.04,-.39]],.004,ivory);
+ for(let i=0;i<5;i++)tube(desk,'Managed equipment lead',[[-.2+i*.09,.765,-.32],[-.22+i*.09,.70,-.34],[-.20+i*.1,.59,-.29],[.10,.61,-.27]],.0025,i%2?rubber:ivory,22);
 
  // Raspberry cutting mat with a true-scale fine grid and printed ruler.
- const matTexture=texture(1536,768,ctx=>{ctx.fillStyle='#ab4778';ctx.fillRect(0,0,1536,768);ctx.strokeStyle='#d781a6';ctx.lineWidth=1;for(let x=24;x<1512;x+=24){ctx.beginPath();ctx.moveTo(x,20);ctx.lineTo(x,748);ctx.stroke();}for(let y=24;y<748;y+=24){ctx.beginPath();ctx.moveTo(20,y);ctx.lineTo(1516,y);ctx.stroke();}ctx.strokeStyle='#efb4cd';ctx.lineWidth=2;ctx.strokeRect(24,24,1488,720);ctx.font='14px sans-serif';ctx.fillStyle='#f1c1d4';for(let x=48;x<1490;x+=48)ctx.fillText(String(x/48),x,18);ctx.font='600 19px sans-serif';ctx.fillText('CUTTING MAT  /  A2',1040,731);});
+ const matTexture=texture(1536,768,ctx=>{ctx.fillStyle='#ab4778';ctx.fillRect(0,0,1536,768);ctx.strokeStyle='#e3bf45';ctx.lineWidth=1;for(let x=24;x<1512;x+=24){ctx.beginPath();ctx.moveTo(x,20);ctx.lineTo(x,748);ctx.stroke();}for(let y=24;y<748;y+=24){ctx.beginPath();ctx.moveTo(20,y);ctx.lineTo(1516,y);ctx.stroke();}ctx.strokeStyle='#f2d04f';ctx.lineWidth=2;ctx.strokeRect(24,24,1488,720);ctx.font='14px sans-serif';ctx.fillStyle='#f4d65a';for(let x=48;x<1490;x+=48)ctx.fillText(String(x/48),x,18);ctx.font='600 19px sans-serif';ctx.fillText('CUTTING MAT  /  A2',1040,731);});
  const mat=new T.MeshStandardMaterial({map:matTexture,roughness:.93});box(root,'Cutting mat • rubber edge',[.76,.004,.35],[.04,.781,.155],pink,.005);const matFace=mesh(root,'Cutting mat • grid',new T.PlaneGeometry(.752,.342),mat,[.04,.7835,.155]);matFace.rotation.x=-Math.PI/2;
 
- // Mechanical keyboard: inset plate, individual sculpted keys, and an atlas of legends.
+ // Mechanical keyboard: inset plate, individual sculpted keys in a retro cream
+ // and warm-grey set, and an atlas of legends.
+ const retroCream=material('#e6dccb',.62),retroGrey=material('#b2a592',.62);
  const keyboard=new T.Group();keyboard.name='Mechanical keyboard';keyboard.position.set(-.08,.788,.145);root.add(keyboard);
  box(keyboard,'Beveled ivory keyboard shell',[.352,.025,.139],[0,.012,0],ivory,.009);box(keyboard,'Rose lower chassis',[.343,.008,.13],[0,.003,0],lightPink,.006);box(keyboard,'Recessed switch plate',[.333,.004,.122],[0,.027,0],graphite,.005);
  const rows=[['ESC','1','2','3','4','5','6','7','8','9','0','−','DEL'],['TAB','Q','W','E','R','T','Y','U','I','O','P','[',']'],['CAP','A','S','D','F','G','H','J','K','L',';','ENTER'],['SHIFT','Z','X','C','V','B','N','M',',','.','↑','END'],['CTRL','OPT','CMD','SPACE','CMD','←','↓','→']];
- const chars=[...new Set(rows.flat())];const atlas=texture(1024,512,ctx=>{ctx.clearRect(0,0,1024,512);ctx.fillStyle='#394851';ctx.textAlign='center';ctx.textBaseline='middle';chars.forEach((v,i)=>{ctx.font=`600 ${v.length>2?20:33}px sans-serif`;ctx.fillText(v,(i%16)*64+32,Math.floor(i/16)*64+33);});});const ink=new T.MeshStandardMaterial({map:atlas,alphaTest:.1,roughness:.7});
- rows.forEach((keys,row)=>{const units=keys.map(k=>k==='SPACE'?5:k==='ENTER'||k==='SHIFT'?1.8:k==='CAP'?1.2:1);const total=units.reduce((a,b)=>a+b,0),pitch=.322/total;let x=-.161;keys.forEach((k,i)=>{const width=units[i]*pitch-.0022,cx=x+units[i]*pitch/2,z=-.050+row*.025;const keyMat=k==='ESC'?pink:k==='ENTER'?cyan:k.length>1?edge:ivory;box(keyboard,`${k} key`,[width,.013,.0215],[cx,.035,z],keyMat,.003);const idx=chars.indexOf(k),g=new T.PlaneGeometry(Math.min(width*.85,.027),.015);const uv=g.attributes.uv;for(let j=0;j<uv.count;j++){uv.setXY(j,(idx%16+uv.getX(j))/16,1-(Math.floor(idx/16)+1-uv.getY(j))/8);}const decal=mesh(keyboard,`${k} legend`,g,ink,[cx,.0421,z]);decal.rotation.x=-Math.PI/2;x+=units[i]*pitch;});});
- const coil:V[]=[];for(let i=0;i<180;i++){const a=i/179*Math.PI*2*14;coil.push([-.28+i/179*.12,.804+Math.sin(a)*.006,-.055+Math.cos(a)*.006]);}tube(root,'Coiled keyboard USB cable',coil,.0018,ivory,200);tube(root,'Keyboard cable tail',[[-.08,.802,.075],[-.19,.793,-.04],[-.28,.804,-.05]],.002,ivory);
+ const chars=[...new Set(rows.flat())];const atlas=texture(1024,512,ctx=>{ctx.clearRect(0,0,1024,512);ctx.fillStyle='#2b2723';ctx.textAlign='center';ctx.textBaseline='middle';chars.forEach((v,i)=>{ctx.font=`600 ${v.length>2?20:33}px sans-serif`;ctx.fillText(v,(i%16)*64+32,Math.floor(i/16)*64+33);});});const ink=new T.MeshStandardMaterial({map:atlas,alphaTest:.1,roughness:.7});
+ rows.forEach((keys,row)=>{const units=keys.map(k=>k==='SPACE'?5:k==='ENTER'||k==='SHIFT'?1.8:k==='CAP'?1.2:1);const total=units.reduce((a,b)=>a+b,0),pitch=.322/total;let x=-.161;keys.forEach((k,i)=>{const width=units[i]*pitch-.0022,cx=x+units[i]*pitch/2,z=-.050+row*.025;const keyMat=k==='SPACE'||(k.length===1&&!'←↓→↑'.includes(k))?retroCream:retroGrey;box(keyboard,`${k} key`,[width,.013,.0215],[cx,.035,z],keyMat,.003);const idx=chars.indexOf(k),g=new T.PlaneGeometry(Math.min(width*.85,.027),.015);const uv=g.attributes.uv;for(let j=0;j<uv.count;j++){uv.setXY(j,(idx%16+uv.getX(j))/16,1-(Math.floor(idx/16)+1-uv.getY(j))/8);}const decal=mesh(keyboard,`${k} legend`,g,ink,[cx,.0421,z]);decal.rotation.x=-Math.PI/2;x+=units[i]*pitch;});});
+ const coil:V[]=[];for(let i=0;i<180;i++){const a=i/179*Math.PI*2*14;coil.push([-.28+i/179*.12,.804+Math.sin(a)*.006,-.055+Math.cos(a)*.006]);}tube(root,'Coiled keyboard USB cable',coil,.0018,ivory,200);
+ // Out of the keyboard's back into the coil, then round the Terra's side into a rear USB port.
+ tube(root,'Keyboard cable tail',[[-.08,.802,.075],[-.12,.796,.0],[-.16,.804,-.049]],.002,ivory);
+ tube(root,'Keyboard cable to computer',[[-.28,.804,-.049],[-.35,.787,-.07],[-.395,.783,-.17],[-.40,.80,-.31],[-.43,.85,-.37],[-.46,.86,-.352]],.002,ivory,40);
 
  // MX Master 4: a continuous asymmetric loft with separate sloping click surfaces.
  const mouse=new T.Group();mouse.name='Workspace mouse';mouse.position.set(.235,.784,.17);root.add(mouse);
@@ -133,14 +143,221 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  for(const x of [-.0766,.0766])for(let k=0;k<37;k++)box(computer,'Vertical side ventilation',[.001,.144,.004],[x,.133,-.148+k*.0082],graphite,.0004);
  for(let k=0;k<16;k++)box(computer,'Top ventilation slot',[.004,.001,.291],[-.061+k*.008,.218,-.005],graphite,.0004);
  rod(computer,'Front power button',[.046,.041,.176],[.046,.041,.179],.006,steel);box(computer,'Front USB-A port',[.012,.005,.001],[-.040,.041,.177],rubber,.001);box(computer,'Front USB-C port',[.008,.003,.001],[-.018,.041,.177],rubber,.001);label(computer,'Fractal wordmark','fractal',.032,.009,[0,.083,.1722],'#5d6969','#cbd3ce');
- const pad=new T.Group();pad.name='Colourful macro controller';pad.position.set(-.44,.786,.17);root.add(pad);box(pad,'Controller shell',[.086,.025,.10],[0,.014,0],ivory,.011);for(let x=0;x<3;x++)for(let z=0;z<3;z++)box(pad,'Macro key',[.020,.009,.021],[-.026+x*.026,.03,-.028+z*.027],[pink,cyan,brass,graphite][(x+z)%4],.004);rod(pad,'Encoder knob',[.027,.031,-.034],[.027,.046,-.034],.008,graphite);
- box(root,'Earbud case',[.047,.025,.040],[.15,.797,-.04],ivory,.012);box(root,'Case lid seam',[.046,.001,.038],[.15,.800,-.04],edge,.001);
- const lamp=new T.Group();lamp.name='Elgato Key Light Mini';lamp.position.set(.46,.78,-.28);root.add(lamp);rod(lamp,'Light base',[0,0,0],[0,.015,0],.060,graphite);rod(lamp,'Light stem',[0,.015,0],[0,.79,0],.008,steel);const head=panel(lamp,'Key Light Mini housing',.147,.100,.017,.017,[0,.82,0],graphite);head.rotation.y=-.16;const soft=panel(lamp,'Diffuser',.133,.086,.003,.013,[0,.82,.011],new T.MeshStandardMaterial({color:'#e5f4e8',emissive:'#b6e3d7',emissiveIntensity:.4}));soft.rotation.y=-.16;
- const headphones=new T.Group();headphones.name='Hanging headphones';headphones.position.set(-.56,.61,.25);root.add(headphones);tube(headphones,'Padded headband',[[-.059,-.03,0],[-.052,.06,0],[0,.093,0],[.052,.06,0],[.059,-.03,0]],.012,graphite);for(const x of [-.061,.061]){ball(headphones,'Ear cup',[.025,.045,.035],[x,-.035,0],dark);ball(headphones,'Ear cushion',[.011,.038,.030],[x+(x>0?-.02:.02),-.035,0],rubber);}
+ box(computer,'Rear USB-A port',[.013,.006,.002],[.03,.08,-.172],rubber,.001);box(computer,'Keyboard USB plug',[.016,.009,.02],[.03,.08,-.181],ivory,.002);
+ // Figma Creator Micro: a frosted, underlit tray on an aluminium weight, with a
+ // white plate carrying a 4x4 grid -- scroll roller and knob in the back
+ // corners, front corners empty -- of low-profile keys in diagonal colour bands.
+ const pad=new T.Group();pad.name='Colourful macro controller';pad.position.set(-.44,.786,.17);root.add(pad);
+ {
+  // Rounded-square slabs lying flat: beveled for the tray and weight, crisp for the thin plate layers.
+  const flat=(n:string,size:number,depth:number,r:number,y:number,m:T.Material)=>{const o=panel(pad,n,size,size,depth,r,[0,y,0],m);o.rotation.x=-Math.PI/2;return o;};
+  const slab=(n:string,size:number,depth:number,r:number,y:number,m:T.Material)=>{const s=new T.Shape(),h=size/2;s.moveTo(-h+r,-h);s.lineTo(h-r,-h);s.quadraticCurveTo(h,-h,h,-h+r);s.lineTo(h,h-r);s.quadraticCurveTo(h,h,h-r,h);s.lineTo(-h+r,h);s.quadraticCurveTo(-h,h,-h,h-r);s.lineTo(-h,-h+r);s.quadraticCurveTo(-h,-h,-h+r,-h);const g=new T.ExtrudeGeometry(s,{depth,bevelEnabled:false,curveSegments:10});g.translate(0,0,-depth/2);const o=mesh(pad,n,g,m,[0,y,0]);o.rotation.x=-Math.PI/2;return o;};
+  const frost=new T.MeshStandardMaterial({color:'#eceef3',roughness:.38,transparent:true,opacity:.8});
+  const glow=(color:string)=>new T.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.7,roughness:.6});
+  const plateWhite=material('#f3f3f1',.5),fr4=material('#6e4f33',.6),capBlack=material('#1b1c1f',.48),chocBlack=material('#121315',.7);
+  // Pad origin sits 8mm above the desktop.
+  flat('Aluminium weight',.100,.004,.02,-.004,material('#2b2e33',.4,.6));
+  // Underglow strips inside the frosted shell: teal at the front and left, purple at the back and right.
+  const teal=glow('#2fd6c0'),violet=glow('#b46cff');
+  for(const [n,s,c,m] of [['front',[.088,.008,.004],[0,.008,.046],teal],['left',[.004,.008,.088],[-.046,.008,0],teal],['back',[.088,.008,.004],[0,.008,-.046],violet],['right',[.004,.008,.088],[.046,.008,0],violet]] as [string,V,V,T.Material][])box(pad,`Underglow ${n}`,s,c,m,.0015);
+  flat('Frosted acrylic tray',.114,.014,.02,.009,frost);
+  const plateTop=.0204;
+  slab('PCB edge',.0946,.0012,.011,plateTop-.0018,fr4);
+  slab('White top plate',.094,.0012,.011,plateTop-.0006,plateWhite);
+  // Printed marks: a ring logo and wordmarks in the margins, a smiley and status LEDs in the empty front corners.
+  const print=texture(512,512,ctx=>{
+   ctx.clearRect(0,0,512,512);ctx.strokeStyle='#2a2a2a';ctx.fillStyle='#2a2a2a';ctx.lineWidth=3;
+   for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(64+i*16,432,13,0,Math.PI*2);ctx.stroke();}
+   ctx.beginPath();ctx.arc(432,432,18,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(432,432,10,.2*Math.PI,.8*Math.PI);ctx.stroke();for(const x of [426,438]){ctx.beginPath();ctx.arc(x,426,2,0,Math.PI*2);ctx.fill();}
+   ctx.font='500 15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.save();ctx.translate(497,300);ctx.rotate(Math.PI/2);ctx.fillText('Little Big Shortcuts',0,0);ctx.restore();
+   ctx.save();ctx.translate(15,212);ctx.rotate(-Math.PI/2);ctx.fillText('Work Louder',0,0);ctx.restore();
+   ctx.fillStyle='#b8f5d2';for(const x of [410,422,434])ctx.fillRect(x-3,396,6,4);
+  });
+  const printed=mesh(pad,'Plate print',new T.PlaneGeometry(.094,.094),new T.MeshStandardMaterial({map:print,alphaTest:.1,roughness:.5}),[0,plateTop+.0001,0]);printed.rotation.x=-Math.PI/2;
+  // QMK layout positions in key units; caps coloured by diagonal band from the roller corner.
+  const unit=.0185,at=(col:number,row:number):[number,number]=>[(col+.5-2.25)*unit,(row+.5-2.25)*unit];
+  const bands=['#e8443a','#ec6b80','#9a5ce6','#3fc6e0','#45d69c'].map(c=>material(c,.46));
+  for(const [col,row] of [[1.25,.25],[2.25,.25],[.25,1.25],[1.25,1.25],[2.25,1.25],[3.25,1.25],[.25,2.25],[1.25,2.25],[2.25,2.25],[3.25,2.25],[1.25,3.25],[2.25,3.25]]){
+   const [x,z]=at(col,row),band=Math.round(col)+Math.round(row);
+   box(pad,'Choc switch housing',[.0145,.005,.0145],[x,plateTop+.0025,z],chocBlack,.0012);
+   box(pad,'Macro key',[.0168,.0042,.0168],[x,plateTop+.0071,z],bands[band-1],.003);
+  }
+  // Knurled scroll roller lying across the back-left corner, in a dark slot.
+  const [rx,rz]=at(0,0);
+  box(pad,'Roller slot',[.017,.001,.011],[rx,plateTop+.0002,rz],chocBlack,.0004);
+  const knurl=new T.CylinderGeometry(.0068,.0068,.012,48,1);const pos=knurl.attributes.position;
+  for(let i=0;i<pos.count;i++){const a=Math.atan2(pos.getZ(i),pos.getX(i)),r=Math.hypot(pos.getX(i),pos.getZ(i));if(r<.0001)continue;const k=Math.round((a+Math.PI)/(Math.PI*2)*48)%2?1:.93;pos.setXYZ(i,Math.cos(a)*r*k,pos.getY(i),Math.sin(a)*r*k);}
+  knurl.computeVertexNormals();
+  const roller=mesh(pad,'Knurled scroll roller',knurl,new T.MeshStandardMaterial({color:'#e7e4df',roughness:.55,flatShading:true}),[rx,plateTop+.0052,rz]);roller.rotation.z=Math.PI/2;
+  for(const side of [-1,1])rod(pad,'Roller hub',[rx+side*.0058,plateTop+.0052,rz],[rx+side*.0064,plateTop+.0052,rz],.0042,graphite);
+  // Black knob with a stepped D-cut crest on a steel encoder, back-right corner.
+  const [kx,kz]=at(3.5,0);
+  box(pad,'Encoder body',[.0125,.0035,.0125],[kx,plateTop+.0018,kz],steel,.001);
+  rod(pad,'Encoder knob',[kx,plateTop+.0035,kz],[kx,plateTop+.0145,kz],.0085,capBlack);
+  const crest=mesh(pad,'Knob D-cut crest',new T.CylinderGeometry(.0085,.0085,.0045,32,1,false,0,Math.PI),capBlack,[kx,plateTop+.01675,kz]);crest.rotation.y=Math.PI/4;
+  for(const [x,z] of [[-.0425,-.0425],[.0425,-.0425],[-.0425,.0425],[.0425,.0425]])mesh(pad,'Hex standoff',new T.CylinderGeometry(.0026,.0026,.0028,6),capBlack,[x,plateTop+.0014,z]);
+ }
+ // AirPods Pro case lying on its back: glossy white pebble, lid seam three quarters up, status light.
+ // Modelled upright, then tipped so its front faces up and the lid points away.
+ const airpodsSpot=new T.Group();airpodsSpot.name='AirPods Pro case';airpodsSpot.position.set(.15,.778,-.04);airpodsSpot.rotation.y=-.18;root.add(airpodsSpot);
+ const airpods=new T.Group();airpods.rotation.x=-Math.PI/2;airpods.position.set(0,.01085,.0226);airpodsSpot.add(airpods);
+ box(airpods,'Glossy white case',[.0606,.0452,.0217],[0,.0226,0],material('#f7f7f5',.16),.0103);
+ {
+  // Follows the case's rounded footprint so the seam reads as a groove all the way round.
+  const w=.0608,d=.0219,r=.0103,s=new T.Shape();s.moveTo(-w/2+r,-d/2);s.lineTo(w/2-r,-d/2);s.quadraticCurveTo(w/2,-d/2,w/2,-d/2+r);s.lineTo(w/2,d/2-r);s.quadraticCurveTo(w/2,d/2,w/2-r,d/2);s.lineTo(-w/2+r,d/2);s.quadraticCurveTo(-w/2,d/2,-w/2,d/2-r);s.lineTo(-w/2,-d/2+r);s.quadraticCurveTo(-w/2,-d/2,-w/2+r,-d/2);
+  const seam=mesh(airpods,'Case lid seam',new T.ExtrudeGeometry(s,{depth:.0005,bevelEnabled:false,curveSegments:10}),material('#c9c9c5',.4),[0,.0339,0]);seam.rotation.x=Math.PI/2;
+ }
+ ball(airpods,'Status light',[.0012,.0012,.0004],[0,.0215,.01085],material('#e4efe4',.3));
+ // Matching superellipse profiles for the lamp head, diffuser and base.
+ const squircle=(p:T.Object3D,n:string,size:number,depth:number,c:V,m:T.Material)=>{
+  const shape=new T.Shape();
+  for(let i=0;i<=64;i++){
+   const angle=i/64*Math.PI*2,cos=Math.cos(angle),sin=Math.sin(angle);
+   const x=size/2*Math.sign(cos)*Math.sqrt(Math.abs(cos));
+   const y=size/2*Math.sign(sin)*Math.sqrt(Math.abs(sin));
+   if(i===0)shape.moveTo(x,y);else shape.lineTo(x,y);
+  }
+  shape.closePath();
+  const geometry=new T.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelSize:.001,bevelThickness:.001,bevelSegments:2});
+  geometry.translate(0,0,-depth/2);
+  return mesh(p,n,geometry,m,c);
+ };
+ const lamp=new T.Group();lamp.name='Elgato Key Light Mini';lamp.position.set(.46,.78,-.28);root.add(lamp);
+ const base=squircle(lamp,'Light base',.147*1.15,.015,[0,.008,0],graphite);base.rotation.x=-Math.PI/2;base.rotation.z=-.16;
+ rod(lamp,'Light stem',[0,.015,0],[0,.79,0],.008,steel);
+ const head=squircle(lamp,'Key Light Mini housing',.147*1.15,.017,[0,.82,0],graphite);head.rotation.y=-.16;
+ const soft=squircle(lamp,'Diffuser',.133*1.15,.003,[0,.82,.011],new T.MeshStandardMaterial({color:'#e5f4e8',emissive:'#b6e3d7',emissiveIntensity:.4}));soft.rotation.y=-.16;
+ // Audio-Technica ATH-M50x hanging from a hook under the desk's front-left
+ // corner: padded band, hinge blocks and ribbed sliders, folding swivels with
+ // silver screw caps, oval cups with the silver-ringed logo plate outside and
+ // thick pads inside (cable unplugged). The band hangs in the x-y plane; the
+ // origin is where its inside rests on the hook.
+ box(root,'Headphone hook plate',[.03,.004,.05],[-.56,.732,.235],graphite,.0015);
+ box(root,'Headphone hook drop',[.01,.016,.01],[-.56,.722,.215],graphite,.003);
+ rod(root,'Headphone hook arm',[-.56,.712,.212],[-.56,.712,.272],.004,graphite);ball(root,'Hook end cap',[.0055,.0055,.0055],[-.56,.712,.272],rubber);
+ const headphones=new T.Group();headphones.name='Hanging headphones';headphones.position.set(-.56,.716,.25);root.add(headphones);
+ {
+  const leather=material('#1b1b1d',.72),shell=material('#161618',.42),pad=material('#121214',.66),slider=material('#3a3b3e',.45,.4);
+  // Padded band: short, barely rounded segments overlapping along an arch,
+  // each turned to its tangent, so together they read as one smooth band.
+  const arch=(t:number)=>new T.Vector2(.078*Math.sin(t),-.11*(1-Math.cos(t)));
+  const steps=64;
+  for(let i=0;i<steps;i++){
+   const t0=-Math.PI/2+i/steps*Math.PI,t1=t0+Math.PI/steps,a=arch(t0),b=arch(t1),mid=a.clone().add(b).multiplyScalar(.5),dir=b.clone().sub(a);
+   const normal=new T.Vector2(-dir.y,dir.x).normalize();
+   const segment=box(headphones,'Padded headband',[dir.length()*1.6,.012,.042],[mid.x+normal.x*.006,mid.y+normal.y*.006,0],leather,.0012);segment.rotation.z=Math.atan2(dir.y,dir.x);
+  }
+  const brand=label(headphones,'Headband wordmark','audio-technica',.05,.009,[0,.0122,0],'#9a9c9e','#1b1b1d');brand.rotation.x=-Math.PI/2;
+  // All black: a slightly glossier plate on each cup face is the only detail.
+  const facePlate=material('#0f0f11',.3);
+  for(const s of [-1,1]){
+   box(headphones,'Hinge block',[.014,.03,.034],[s*.079,-.124,0],shell,.003);
+   box(headphones,'Extension slider',[.006,.024,.02],[s*.08,-.15,0],slider,.001);
+   for(let k=0;k<3;k++)box(headphones,'Slider rib',[.0068,.0012,.021],[s*.08,-.142-k*.007,0],shell,.0004);
+   box(headphones,'Swivel hinge',[.015,.02,.028],[s*.08,-.171,-.004],shell,.004);
+   rod(headphones,'Hinge screw',[s*.0875,-.171,.004],[s*.0905,-.171,.004],.0042,shell);
+   box(headphones,'Cup yoke',[.012,.03,.016],[s*.084,-.19,-.012],shell,.004);
+   // Oval cup: housing outside, a plain plate on its face, pad facing in.
+   const cx=s*.072,cy=-.224;
+   const housing=new T.CylinderGeometry(1,1,1,48);housing.scale(.0475,.026,.04);housing.rotateZ(Math.PI/2);
+   mesh(headphones,'Cup housing',housing,shell,[cx+s*.013,cy,0]);
+   const plate=mesh(headphones,'Cup face plate',new T.CircleGeometry(.031,48),facePlate,[cx+s*.0262,cy,0]);plate.rotation.y=s*Math.PI/2;
+   const cushion=new T.TorusGeometry(.031,.0115,16,48);cushion.scale(1,1.18,1);cushion.rotateY(Math.PI/2);
+   mesh(headphones,'Leatherette ear pad',cushion,pad,[cx-s*.009,cy,0]);
+   const opening=new T.CircleGeometry(1,40);opening.scale(.026,.032,1);
+   const cloth=mesh(headphones,'Pad cloth',opening,material('#0c0c0d',.95),[cx-s*.004,cy,0]);cloth.rotation.y=-s*Math.PI/2;
+  }
+ }
 
- // Glazed coffee mug on a cork coaster, with three drifting wisps of steam.
- const coffee=new T.Group();coffee.name='Coffee mug';coffee.position.set(.52,.780,.20);root.add(coffee);
- rod(coffee,'Cork coaster',[0,0,0],[0,.007,0],.059,material('#a77d54',.95));
+ // White iPod classic lying face up behind the mouse: chrome back, white face, click wheel.
+ const ipod=new T.Group();ipod.name='White iPod classic';ipod.position.set(.33,.778,-.12);ipod.rotation.y=.3;root.add(ipod);
+ box(ipod,'Polished chrome back',[.0618,.0055,.1035],[0,.0028,0],material('#d9dde0',.18,.95),.006);
+ box(ipod,'White polycarbonate front',[.0618,.005,.1035],[0,.0078,0],material('#f6f6f3',.28),.005);
+ const ipodFace=texture(256,428,ctx=>{
+  ctx.fillStyle='#f6f6f3';ctx.fillRect(0,0,256,428);
+  ctx.fillStyle='#1d2124';ctx.fillRect(22,22,212,166);ctx.fillStyle='#c9d6d9';ctx.fillRect(28,28,200,154);
+  ctx.fillStyle='#8aa3ac';ctx.fillRect(28,28,200,20);ctx.fillStyle='#22303a';ctx.font='600 13px sans-serif';ctx.textAlign='center';ctx.fillText('iPod',128,43);
+  ctx.textAlign='left';ctx.font='13px sans-serif';['Music','Photos','Videos','Extras','Settings','Shuffle Songs'].forEach((t,i)=>{if(i===0){ctx.fillStyle='#4f7fa8';ctx.fillRect(28,52,200,20);}ctx.fillStyle=i===0?'#fff':'#22303a';ctx.fillText(t,36,67+i*20);});
+  ctx.fillStyle='#ededea';ctx.beginPath();ctx.arc(128,300,82,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#d6d6d2';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fbfbf9';ctx.beginPath();ctx.arc(128,300,31,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#b9bab8';ctx.font='600 13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('MENU',128,240);ctx.fillText('▶❚❚',128,362);ctx.fillText('◀◀',68,300);ctx.fillText('▶▶',188,300);
+ });
+ const face=mesh(ipod,'iPod face',new T.PlaneGeometry(.058,.0975),new T.MeshStandardMaterial({map:ipodFace,roughness:.3}),[0,.01035,0]);face.rotation.x=-Math.PI/2;
+
+ // Kraft Field Notes memo book (3.5 x 5.5in) and a black pen. The book is
+ // either closed with the pen on it, or open on a page of notes; the scenes
+ // move it between a corner of the desk and in front of the keyboard.
+ const notebook=new T.Group();notebook.name='Field Notes notebook';notebook.position.set(.575,.778,.315);notebook.rotation.y=-.08;root.add(notebook);
+ const kraft=material('#c4a072',.88),paper=material('#f2ecdc',.92);
+ // Card cut square at the spine (-x) and rounded on the open edge, or on both outer edges of a spread.
+ const bookShape=(w:number,d:number,r:number,both:boolean)=>{const s=new T.Shape(),x0=-w/2,x1=w/2,z0=-d/2,z1=d/2,rl=both?r:0;s.moveTo(x0+rl,z0);s.lineTo(x1-r,z0);s.quadraticCurveTo(x1,z0,x1,z0+r);s.lineTo(x1,z1-r);s.quadraticCurveTo(x1,z1,x1-r,z1);s.lineTo(x0+rl,z1);if(rl){s.quadraticCurveTo(x0,z1,x0,z1-rl);s.lineTo(x0,z0+rl);s.quadraticCurveTo(x0,z0,x0+rl,z0);}s.closePath();return s;};
+ const sheet=(p:T.Object3D,n:string,w:number,d:number,r:number,t:number,y:number,m:T.Material,both=false)=>{const g=new T.ExtrudeGeometry(bookShape(w,d,r,both),{depth:t,bevelEnabled:false,curveSegments:8});g.rotateX(-Math.PI/2);return mesh(p,n,g,m,[0,y,0]);};
+ const printed=(p:T.Object3D,n:string,w:number,d:number,y:number,map:T.Texture)=>{const o=mesh(p,n,new T.PlaneGeometry(w,d),new T.MeshStandardMaterial({map,alphaTest:.5,roughness:.88}),[0,y,0]);o.rotation.x=-Math.PI/2;o.castShadow=false;return o;};
+ const speckle=(ctx:CanvasRenderingContext2D,w:number,h:number)=>{for(let i=0;i<w*h/90;i++){ctx.fillStyle=`rgba(${rand()<.5?'90,62,34':'255,240,210'},${.05+rand()*.07})`;ctx.fillRect(rand()*w,rand()*h,1+rand()*2,1);}};
+ // A back half that stays put (back cover and half the pages) and a leaf
+ // hinged at the spine (the other half and the front cover) that swings
+ // over to the left to open it. Spine at x = -.0445.
+ const back=new T.Group();back.name='Field Notes back';notebook.add(back);
+ sheet(back,'Back cover',.089,.140,.009,.0004,0,kraft);
+ sheet(back,'Right pages',.0878,.1388,.0085,.0014,.0004,paper);
+ const leaf=new T.Group();leaf.name='Field Notes leaf';leaf.position.set(-.0445,.0018,0);notebook.add(leaf);
+ const leafBody=new T.Group();leafBody.position.x=.0445;leaf.add(leafBody);
+ sheet(leafBody,'Left pages',.0878,.1388,.0085,.0014,0,paper);
+ sheet(leafBody,'Front cover',.089,.140,.009,.0004,.0014,kraft);
+ const cover=texture(356,560,ctx=>{
+  ctx.clearRect(0,0,356,560);ctx.beginPath();ctx.roundRect(0,0,356,560,[0,36,36,0]);ctx.fillStyle='#c4a072';ctx.fill();ctx.save();ctx.clip();speckle(ctx,356,560);ctx.restore();
+  ctx.fillStyle='#231d18';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.font="700 50px Futura, 'Century Gothic', 'Trebuchet MS', sans-serif";ctx.letterSpacing='7px';ctx.fillText('FIELD',182,132);ctx.fillText('NOTES',182,192);
+  ctx.letterSpacing='0px';ctx.font="600 9px sans-serif";ctx.fillText('®',300,168);
+  ctx.font="700 15px Futura, 'Century Gothic', 'Trebuchet MS', sans-serif";ctx.fillText('48-Page Memo Book',178,238);
+  ctx.font="600 13px Futura, 'Century Gothic', 'Trebuchet MS', sans-serif";ctx.fillText('Durable Materials / Made in the U.S.A.',178,262);
+ });
+ printed(leafBody,'Cover print',.089,.140,.00185,cover);
+ const staples=new T.Group();staples.name='Field Notes staples';notebook.add(staples);
+ for(const z of [-.04,0,.04])box(staples,'Spine staple',[.0012,.0039,.010],[-.0445,.0019,z],steel,.0004);
+ const spread=texture(712,560,ctx=>{
+  ctx.clearRect(0,0,712,560);ctx.beginPath();ctx.roundRect(4,2,704,556,34);ctx.fillStyle='#f2ecdc';ctx.fill();
+  const gutter=ctx.createLinearGradient(316,0,396,0);gutter.addColorStop(0,'rgba(120,100,70,0)');gutter.addColorStop(.5,'rgba(120,100,70,.28)');gutter.addColorStop(1,'rgba(120,100,70,0)');ctx.fillStyle=gutter;ctx.fillRect(316,0,80,560);
+  ctx.fillStyle='#9a9a98';for(const y of [100,280,460])ctx.fillRect(353,y-18,6,36);
+  // Handwritten meeting notes on the left page, a quick layout sketch on the right.
+  ctx.fillStyle='#2b2833';ctx.strokeStyle='#2b2833';ctx.lineCap='round';ctx.lineWidth=2.2;
+  ctx.font="italic 600 25px 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive";ctx.fillText('Design sync',34,72);
+  ctx.font="italic 20px 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive";
+  ['– facts column @1440','– header spacing ↓','– home → stack anim','– prototype link','   by Fri ✓'].forEach((line,i)=>ctx.fillText(line,38,128+i*44));
+  ctx.beginPath();ctx.moveTo(34,82);ctx.quadraticCurveTo(110,90,186,80);ctx.stroke();
+  ctx.strokeRect(410,60,250,180);ctx.beginPath();ctx.moveTo(410,104);ctx.lineTo(660,104);ctx.stroke();
+  for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(426,130+i*24);ctx.lineTo(560-i*18,130+i*24);ctx.stroke();}
+  ctx.strokeRect(580,124,64,98);ctx.beginPath();ctx.moveTo(470,300);ctx.quadraticCurveTo(520,262,600,252);ctx.stroke();ctx.beginPath();ctx.moveTo(588,244);ctx.lineTo(602,252);ctx.lineTo(590,262);ctx.stroke();
+  ctx.fillText('right col.',430,330);ctx.fillText('wider?',448,366);
+ });
+ // Each page shows its half of the spread. The left one is printed on the
+ // leaf's underside, turned so it reads the right way up once flipped open.
+ const pageHalf=(offset:number)=>{const t=spread.clone();t.repeat.set(.5,1);t.offset.set(offset,0);t.needsUpdate=true;return t;};
+ printed(back,'Right page notes',.089,.140,.00185,pageHalf(.5));
+ const leftNotes=printed(leafBody,'Left page notes',.089,.140,-.00005,pageHalf(0));leftNotes.rotation.set(Math.PI/2,0,Math.PI);
+ const pen=new T.Group();pen.name='Desk pen';pen.position.set(.575,.7861,.315);pen.rotation.y=Math.PI/2-.08;root.add(pen);
+ // Kaweco Steel Sport rollerball, posted (130mm): brushed stainless throughout,
+ // a slim cone to the tip, a round barrel with thread grooves, and the
+ // octagonal cap on the back. Lies along x with the tip at -x.
+ const brush=texture(256,16,ctx=>{for(let x=0;x<256;x++){const v=200+Math.round(rand()*45);ctx.fillStyle=`rgb(${v},${v},${v})`;ctx.fillRect(x,0,1,16);}});
+ // Kept only part metallic: with nothing in the room to reflect, full metal reads as dark grey.
+ const brushed=new T.MeshStandardMaterial({color:'#e2e4e5',map:brush,metalness:.5,roughness:.42}),tipSteel=material('#9aa0a2',.3,.6),groove=material('#5a5e61',.5,.4);
+ rod(pen,'Rollerball tip',[-.065,0,0],[-.0628,0,0],.0004,tipSteel,.0008);
+ rod(pen,'Tapered section',[-.0628,0,0],[-.0476,0,0],.0013,brushed,.0037);
+ rod(pen,'Round barrel',[-.0476,0,0],[-.0039,0,0],.0043,brushed,.0046);
+ for(let i=0;i<4;i++){const r=ring(pen,'Thread groove',.00448,.00016,[-.0318+i*.0009,0,0],groove);r.rotation.y=Math.PI/2;}
+ // Octagonal cap, turned so a flat faces up; chamfered at both ends.
+ const cap=new T.Group();cap.position.x=-.0039;cap.rotation.z=-Math.PI/2;pen.add(cap);
+ const facet=(n:string,top:number,bottom:number,length:number,y:number)=>{const o=mesh(cap,n,new T.CylinderGeometry(top,bottom,length,8),brushed,[0,y,0]);o.rotation.y=Math.PI/8;return o;};
+ facet('Cap mouth chamfer',.0068,.0062,.0015,.00075);
+ facet('Octagonal cap',.0068,.0068,.0590,.0310);
+ facet('Cap end chamfer',.0056,.0068,.0035,.06225);
+ const engraving=texture(512,64,ctx=>{ctx.clearRect(0,0,512,64);ctx.fillStyle='rgba(70,72,74,.85)';ctx.textBaseline='middle';ctx.font="italic 30px 'Brush Script MT', 'Segoe Script', cursive";ctx.fillText('Kaweco',20,34);ctx.font="600 28px sans-serif";ctx.fillText('STEEL',150,34);ctx.font="italic 30px 'Brush Script MT', 'Segoe Script', cursive";ctx.fillText('Sport',258,34);ctx.font="16px sans-serif";ctx.fillText('Germany',340,38);});
+ const mark=mesh(pen,'Cap engraving',new T.PlaneGeometry(.03,.00375),new T.MeshStandardMaterial({map:engraving,transparent:true,depthWrite:false,metalness:.6,roughness:.5}),[.016,.00630,0]);mark.rotation.x=-Math.PI/2;mark.castShadow=false;
+
+ // Glazed coffee mug, with three drifting wisps of steam.
+ const coffee=new T.Group();coffee.name='Coffee mug';coffee.position.set(.52,.769,.20);root.add(coffee);
  const glaze=material('#58a9a4',.24);const profile=[[0,.009],[.032,.009],[.039,.015],[.043,.085],[.044,.098],[.042,.102],[.039,.099],[.038,.024],[0,.024]].map(([r,y])=>new T.Vector2(r,y));
  mesh(coffee,'Hollow ceramic cup',new T.LatheGeometry(profile,64),glaze);
  const lip=ring(coffee,'Cream ceramic lip',.041,.0025,[0,.100,0],ivory);lip.rotation.x=Math.PI/2;

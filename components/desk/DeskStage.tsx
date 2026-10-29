@@ -1,18 +1,26 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentRef } from "react";
 import { useRouter } from "next/navigation";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { CaseStudyFocus } from "@/components/CaseStudyFocus";
+import { CircularText } from "@/components/CircularText";
 import { PageIndicator } from "@/components/PageIndicator";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import { DEFAULT_FOCUS_VARIANT_ID } from "@/lib/focusVariants";
-import { SHEET_OVERSCAN_PERCENT } from "@/lib/fanSheet";
+import { DeskClock, useDeskTime } from "./DeskClock";
+import { BrowserChrome } from "./BrowserChrome";
+import { DesktopWindows } from "./DesktopWindows";
+import { sceneForHour, type WorkspaceScene } from "@/lib/workspace/scenes";
+import { gradientCSS, useDeskGradients } from "./DeskGradients";
+import { useDeskTwilight } from "./DeskTwilight";
+import { useDuskSky, windowLightStrength } from "./DuskSky";
+import { DeskFramingControls, useDeskFraming, useDeskColors, type DeskFraming } from "./DeskFraming";
 import {
   markDeskSession,
   noteDeskReturn,
@@ -51,11 +59,187 @@ const RETURN_SECONDS = 1.3;
 // 620ms. Coming back, the monitor waits that out so it shows the page at rest.
 const PAGE_SETTLE_MS = 700;
 const PREPARE_TIMEOUT_MS = 4000;
+// Changing the time of day swaps the case study on the monitor last, once the
+// clock, furniture and light have settled.
+const SCREEN_SWAP_DELAY_MS = 1300;
+const PAGE_FADE_OUT_MS = 220;
+// Wheel travel that counts as one step, the pause after a step (the clock's
+// own animation), and the quiet gap that ends a scroll gesture.
+const WHEEL_STEP_PX = 40;
+const WHEEL_STEP_LOCK_MS = 700;
+const WHEEL_GESTURE_GAP_MS = 250;
 
 // Browser window on the monitor, in screen pixels.
 const WINDOW_MARGIN = 28;
-const WINDOW_CHROME = 40;
+const WINDOW_CHROME = 72;
 const WALLPAPER = "#0b0b0b url(/desk/wallpaper.webp) center / cover no-repeat";
+
+// Text over the stage background is plain ink or cream, never blended.
+const INK = "#1c1c1c";
+const CREAM = "#F5EDE6";
+// WCAG relative luminance; three.js keeps colour components linear.
+const luminance = (color: THREE.Color) => 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+const INK_LUMINANCE = luminance(new THREE.Color(INK));
+const CREAM_LUMINANCE = luminance(new THREE.Color(CREAM));
+
+const FLOOR_SHADOW_OPACITY = 0.3;
+// Sun-plus-sky intensity at which the floor shadow reaches full strength.
+const FLOOR_SHADOW_FULL_AT = 1.2;
+const NEUTRAL_SHADOW = "#000000";
+const TWILIGHT_SHADOW = "#5a3cc8";
+// At night the screen throws a soft cone forwards and down over the desk and
+// chair; a weak point light just fills around the panel.
+const MONITOR_NIGHT_SPOT = 2.4;
+const MONITOR_NIGHT_FILL = 0.2;
+// How much of the glass's sheen goes when the room is dark.
+const GLARE_NIGHT_DIM = 0.7;
+
+function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDeskTime>["solar"]; screen: ScreenPose | null }) {
+  const ambient = useRef<THREE.AmbientLight>(null);
+  const key = useRef<THREE.DirectionalLight>(null);
+  const fill = useRef<THREE.HemisphereLight>(null);
+  const monitor = useRef<THREE.PointLight>(null);
+  const monitorSpot = useRef<THREE.SpotLight>(null);
+  const [spotTarget] = useState(() => new THREE.Object3D());
+  const rim = useRef<THREE.DirectionalLight>(null);
+  const floor = useRef<THREE.ShadowMaterial>(null);
+  const darkness = solar?.darkness ?? 0;
+  const sunlight = useMemo(() => {
+    const directIntensity = solar?.sunIntensity ?? 1.7;
+    const windowIntensity = (solar?.daylight ?? 1) * 0.55;
+    const directWeight = directIntensity / Math.max(0.001, directIntensity + windowIntensity);
+    // Approximate diffuse sky entering the NE window with the same shadow
+    // source as the sun, so daylight still grounds the desk without doubling
+    // shadows. Direct sun gradually takes over its direction when admitted.
+    const sunPosition = new THREE.Vector3(...(solar?.sunPosition ?? [0, 8, 0] as [number, number, number]));
+    // Let the dominant sky light travel across the window as the sun moves,
+    // even when the sun itself is outside the window's direct view.
+    const windowPosition = new THREE.Vector3(
+      sunPosition.x * 0.7,
+      2.8 + Math.max(0, sunPosition.y) * 0.7,
+      7,
+    );
+    return {
+      position: windowPosition.lerp(sunPosition, directWeight),
+      color: new THREE.Color("#fff6ee").lerp(new THREE.Color("#ffd1a1"), (solar?.warmSun ?? 0) * directWeight),
+      ambientColor: new THREE.Color("#fff6ee").lerp(new THREE.Color("#3A3A5A"), darkness),
+      skyColor: new THREE.Color("#fffaf4").lerp(new THREE.Color("#6C63FF"), darkness),
+      groundColor: new THREE.Color("#e9dccf").lerp(new THREE.Color("#181828"), darkness),
+      intensity: directIntensity + windowIntensity,
+      shadowRadius: THREE.MathUtils.lerp(6, 2, directWeight),
+      // The low evening sun throws a long, soft floor shadow across the
+      // bottom of the frame; tint it with the night's purple as dusk comes on.
+      floorShadow: new THREE.Color(NEUTRAL_SHADOW).lerp(new THREE.Color(TWILIGHT_SHADOW), solar && !solar.morning ? solar.horizonMix : 0),
+    };
+  }, [solar, darkness]);
+  useFrame((_, delta) => {
+    const blend = 1 - Math.exp(-delta * 3);
+    if (ambient.current) {
+      ambient.current.intensity = THREE.MathUtils.lerp(ambient.current.intensity, THREE.MathUtils.lerp(0.45, 0.3, darkness), blend);
+      ambient.current.color.lerp(sunlight.ambientColor, blend);
+    }
+    if (key.current) {
+      key.current.intensity = THREE.MathUtils.lerp(key.current.intensity, sunlight.intensity, blend);
+      key.current.position.lerp(sunlight.position, blend);
+      key.current.color.lerp(sunlight.color, blend);
+      key.current.shadow.radius = THREE.MathUtils.lerp(key.current.shadow.radius, sunlight.shadowRadius, blend);
+    }
+    if (fill.current) {
+      fill.current.intensity = THREE.MathUtils.lerp(fill.current.intensity, THREE.MathUtils.lerp(0.5, 0.35, darkness), blend);
+      fill.current.color.lerp(sunlight.skyColor, blend);
+      fill.current.groundColor.lerp(sunlight.groundColor, blend);
+    }
+    // At night the monitor is the main light, washing the desk in front of it.
+    if (monitorSpot.current) monitorSpot.current.intensity = THREE.MathUtils.lerp(monitorSpot.current.intensity, darkness * MONITOR_NIGHT_SPOT, blend);
+    if (monitor.current) monitor.current.intensity = THREE.MathUtils.lerp(monitor.current.intensity, 0.02 + darkness * MONITOR_NIGHT_FILL, blend);
+    if (rim.current) rim.current.intensity = THREE.MathUtils.lerp(rim.current.intensity, darkness * 0.4, blend);
+    // ShadowMaterial draws the shadow map at full strength however dim its
+    // light is, so fade the floor shadow with the sun, and only stop casting
+    // once it has faded out -- otherwise it holds, then vanishes at dusk.
+    const sun = key.current?.intensity ?? 0;
+    const floorOpacity = FLOOR_SHADOW_OPACITY * THREE.MathUtils.smoothstep(sun, 0.02, FLOOR_SHADOW_FULL_AT);
+    if (floor.current) {
+      floor.current.opacity = floorOpacity;
+      floor.current.color.lerp(sunlight.floorShadow, blend);
+    }
+    if (key.current) key.current.castShadow = floorOpacity > 0.002;
+  });
+  return <>
+    <ambientLight ref={ambient} intensity={0.8} color="#fff6ee" />
+    <hemisphereLight ref={fill} args={["#fffaf4", "#e9dccf", 0.4]} />
+    <directionalLight ref={key} position={[2.4, 4.6, 3.2]} intensity={1.7} color="#fff1e2" castShadow
+      shadow-mapSize={[2048, 2048]} shadow-bias={-0.0002} shadow-camera-far={25}
+      shadow-camera-left={-3} shadow-camera-right={3} shadow-camera-top={3} shadow-camera-bottom={-3} />
+    <directionalLight ref={rim} position={[-2, 2.5, -2.5]} intensity={0} color="#9fb0e0" />
+    {screen && <>
+      {/* The screen's light goes forwards, not all round: a wide soft cone
+          from the panel, aimed down over the desk at the chair. */}
+      <primitive object={spotTarget} position={screen.center.clone().addScaledVector(screen.normal, 0.9).add(new THREE.Vector3(0, -0.6, 0))} />
+      <spotLight ref={monitorSpot} target={spotTarget} position={screen.center.clone().addScaledVector(screen.normal, 0.04)} color="#aacdff" intensity={0} angle={1.05} penumbra={1} distance={3} decay={2} />
+      <pointLight ref={monitor} position={screen.center.clone().addScaledVector(screen.normal, 0.08)} color="#aacdff" intensity={0} distance={0.8} decay={2} />
+    </>}
+    <mesh rotation-x={-Math.PI / 2} receiveShadow>
+      <planeGeometry args={[12, 12]} />
+      <shadowMaterial ref={floor} opacity={FLOOR_SHADOW_OPACITY} />
+    </mesh>
+  </>;
+}
+
+// The last sun through the window, falling on the wall behind the desk in the
+// Window light twilight style. A soft four-pane patch in the scene rather than
+// on the backdrop, so it turns with the room when the desk is orbited. It
+// slides down, stretches and fades as the sun sets.
+const WINDOW_LIGHT_AT = { x: 0.75, z: -0.5 };
+const WINDOW_LIGHT_OPACITY = 0.55;
+
+function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof useDeskTime>["solar"]; glow: string; enabled: boolean }) {
+  const patch = useRef<THREE.Mesh>(null);
+  const material = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.filter = "blur(16px)";
+    ctx.fillStyle = "#ffffff";
+    // Four panes thrown long and slanting across the wall.
+    ctx.setTransform(1, 0.1, -0.45, 1, 210, 60);
+    for (const [x, y] of [[0, 0], [150, 0], [0, 190], [150, 190]]) ctx.fillRect(x, y, 135, 175);
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.SRGBColorSpace;
+    return new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, opacity: 0, toneMapped: false });
+  }, []);
+  useEffect(() => () => {
+    material.map?.dispose();
+    material.dispose();
+  }, [material]);
+  const tint = useMemo(() => new THREE.Color("#ffffff").lerp(new THREE.Color(glow), 0.5), [glow]);
+
+  useFrame(({ camera }, delta) => {
+    const mesh = patch.current;
+    if (!mesh) return;
+    const horizon = solar?.horizonMix ?? 0;
+    const evening = !(solar?.morning ?? true);
+    const d = THREE.MathUtils.smoothstep(horizon, 0.35, 1);
+    // The wall itself isn't drawn, so fade the light as the orbit turns to
+    // see it edge-on rather than leave a floating sliver.
+    const toCamera = camera.position.clone().sub(mesh.position).normalize();
+    const facing = THREE.MathUtils.smoothstep(toCamera.z, 0.25, 0.7);
+    const target = enabled && evening ? windowLightStrength(horizon, solar?.backgroundNightMix ?? 0) * WINDOW_LIGHT_OPACITY * facing : 0;
+    const blend = 1 - Math.exp(-delta * 3);
+    const light = mesh.material as THREE.MeshBasicMaterial;
+    light.opacity = THREE.MathUtils.lerp(light.opacity, target, blend);
+    light.color.lerp(tint, blend);
+    mesh.visible = light.opacity > 0.003;
+    mesh.position.set(WINDOW_LIGHT_AT.x - 0.25 * d, THREE.MathUtils.lerp(1.5, 1.1, d), WINDOW_LIGHT_AT.z);
+    mesh.scale.set(1 + 0.15 * d, 1 + 0.35 * d, 1);
+  });
+
+  return (
+    <mesh ref={patch} material={material} renderOrder={-1}>
+      <planeGeometry args={[1.1, 1.1]} />
+    </mesh>
+  );
+}
 
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -86,10 +270,15 @@ function browserLayout(viewport: Viewport) {
 }
 type BrowserLayout = ReturnType<typeof browserLayout>;
 
-function idlePose(screen: ScreenPose) {
+function idlePose(screen: ScreenPose, framing: DeskFraming, aspect: number) {
+  const offset = IDLE_OFFSET.clone().divideScalar(framing.zoom);
+  const right = new THREE.Vector3().crossVectors(offset, new THREE.Vector3(0, 1, 0)).normalize().negate();
+  const up = new THREE.Vector3().crossVectors(offset, right).normalize();
+  const height = 2 * offset.length() * Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+  const shift = right.multiplyScalar(-framing.x / 100 * height * aspect).addScaledVector(up, -framing.y / 100 * height);
   return {
-    position: screen.center.clone().add(IDLE_OFFSET),
-    target: screen.center.clone().add(new THREE.Vector3(0, -IDLE_TARGET_DROP, 0)),
+    position: screen.center.clone().add(offset).add(shift),
+    target: screen.center.clone().add(new THREE.Vector3(0, -IDLE_TARGET_DROP, 0)).add(shift),
   };
 }
 
@@ -132,6 +321,7 @@ type Tween = {
 };
 
 function CameraRig({
+  framing,
   screen,
   layout,
   phase,
@@ -140,6 +330,7 @@ function CameraRig({
   onArrive,
   onReturned,
 }: {
+  framing: DeskFraming;
   screen: ScreenPose;
   layout: BrowserLayout | null;
   phase: Phase;
@@ -154,11 +345,13 @@ function CameraRig({
   const tween = useRef<Tween | null>(null);
   const initialized = useRef(false);
   const previousPhase = useRef<Phase>(phase);
-  const idleTarget = idlePose(screen).target;
+  const previousFraming = useRef(framing);
+  const aspect = useThree((state) => state.size.width / state.size.height);
+  const idleTarget = useMemo(() => idlePose(screen, framing, aspect).target, [screen, framing, aspect]);
 
   useFrame(({ clock }) => {
     const cam = camera as THREE.PerspectiveCamera;
-    const idle = idlePose(screen);
+    const idle = idlePose(screen, framing, cam.aspect);
     const zoom = zoomPose(screen, cam, variant, layout);
 
     if (!initialized.current) {
@@ -168,6 +361,15 @@ function CameraRig({
       lookAt.current.copy(start.target);
       cam.lookAt(lookAt.current);
     }
+
+    if (phase === "idle" && previousFraming.current !== framing) {
+      cam.position.copy(idle.position);
+      lookAt.current.copy(idle.target);
+      controls.current?.target.copy(idle.target);
+      controls.current?.update();
+      cam.lookAt(idle.target);
+    }
+    previousFraming.current = framing;
 
     // Handing back to the orbit controls: they pick up from wherever the
     // return ease left the camera, looking at the same point.
@@ -201,8 +403,13 @@ function CameraRig({
     const from = tween.current.fromOffset;
     const to = new THREE.Spherical().setFromVector3(goal.position.clone().sub(pivot));
     const turn = Math.atan2(Math.sin(to.theta - from.theta), Math.cos(to.theta - from.theta));
+    // Apparent size goes with 1 / distance, so a linear distance crams most
+    // of the visible zoom into the last frames and the page seems to slam
+    // in. Interpolating by ratio makes the growth even, so the ease's gentle
+    // landing actually reads as one.
+    const radius = from.radius * Math.pow(to.radius / from.radius, e);
     cam.position.copy(pivot).add(new THREE.Vector3().setFromSphericalCoords(
-      THREE.MathUtils.lerp(from.radius, to.radius, e),
+      radius,
       THREE.MathUtils.lerp(from.phi, to.phi, e),
       from.theta + turn * e
     ));
@@ -222,6 +429,8 @@ function CameraRig({
       enabled={phase === "idle"}
       target={idleTarget}
       enablePan={false}
+      // The wheel steps through the times of day instead.
+      enableZoom={false}
       enableDamping
       dampingFactor={0.08}
       rotateSpeed={0.6}
@@ -253,16 +462,37 @@ function BrowserWindow({
   viewport,
   caseStudy,
   mountPage,
+  scene,
   onPageLoad,
 }: {
   layout: BrowserLayout;
   viewport: Viewport;
   caseStudy: CaseStudy;
   mountPage: boolean;
+  scene: WorkspaceScene;
   onPageLoad: () => void;
 }) {
+  // What the window is showing. A new case study plays as a navigation: the
+  // old page fades out, the address bar changes, the new one rises in once loaded.
+  const [page, setPage] = useState(caseStudy);
+  const [pageState, setPageState] = useState<"loading" | "shown" | "leaving">("loading");
+  useEffect(() => {
+    if (caseStudy.slug === page.slug) return;
+    const leave = window.setTimeout(() => setPageState("leaving"), 0);
+    const swap = window.setTimeout(() => {
+      setPage(caseStudy);
+      setPageState("loading");
+    }, PAGE_FADE_OUT_MS);
+    return () => {
+      window.clearTimeout(leave);
+      window.clearTimeout(swap);
+    };
+  }, [caseStudy, page]);
+  const shown = pageState === "shown";
+
   return (
     <div className="absolute inset-0" style={{ background: WALLPAPER }}>
+      <DesktopWindows scene={scene} />
       <div
         className="absolute overflow-hidden rounded-xl bg-cream shadow-2xl"
         style={{
@@ -272,28 +502,30 @@ function BrowserWindow({
           height: layout.contentH + WINDOW_CHROME,
         }}
       >
+        <BrowserChrome caseStudy={page} />
         <div
-          className="flex items-center gap-4 border-b border-ink/10 bg-[#ece4dc] px-4 font-body text-base font-medium text-ink/70"
-          style={{ height: WINDOW_CHROME }}
+          className="relative overflow-hidden"
+          style={{
+            width: layout.contentW,
+            height: layout.contentH,
+            opacity: shown ? 1 : 0,
+            transform: shown ? "none" : "translateY(14px)",
+            transition: shown
+              ? "opacity 450ms ease-out, transform 550ms cubic-bezier(0.22, 1, 0.36, 1)"
+              : `opacity ${PAGE_FADE_OUT_MS}ms ease-in`,
+          }}
         >
-          <span className="flex gap-2">
-            {["#ef817a", "#eac66c", "#8aca9d"].map((color) => (
-              <span key={color} className="size-3 rounded-full" style={{ backgroundColor: color }} />
-            ))}
-          </span>
-          <span className="flex-1 truncate rounded-md bg-cream px-3 py-1 text-center">
-            adrianklisz.com{caseStudyRoute(caseStudy)}
-          </span>
-        </div>
-        <div className="relative overflow-hidden" style={{ width: layout.contentW, height: layout.contentH }}>
           {/* Live but untouchable: any tap on the monitor starts the zoom. */}
           {mountPage && (
             <iframe
-              key={caseStudy.slug}
-              src={caseStudyRoute(caseStudy)}
-              title={caseStudy.title}
+              key={page.slug}
+              src={caseStudyRoute(page)}
+              title={page.title}
               tabIndex={-1}
-              onLoad={onPageLoad}
+              onLoad={() => {
+                setPageState("shown");
+                onPageLoad();
+              }}
               className="pointer-events-none absolute top-0 left-0 border-0 bg-cream"
               style={{
                 width: viewport.w,
@@ -317,9 +549,12 @@ function ScreenSurface({
   phase,
   variant,
   mountBrowserPage,
+  scene,
+  darkness,
   onPageLoad,
   onOpen,
 }: {
+  darkness: number;
   screen: ScreenPose;
   caseStudy: CaseStudy;
   layout: BrowserLayout | null;
@@ -327,6 +562,7 @@ function ScreenSurface({
   phase: Phase;
   variant: DeskVariant;
   mountBrowserPage: boolean;
+  scene: WorkspaceScene;
   onPageLoad: () => void;
   onOpen: () => void;
 }) {
@@ -359,6 +595,7 @@ function ScreenSurface({
               viewport={viewport}
               caseStudy={caseStudy}
               mountPage={mountBrowserPage}
+              scene={scene}
               onPageLoad={onPageLoad}
             />
           ) : (
@@ -378,6 +615,17 @@ function ScreenSurface({
               </span>
             </>
           )}
+          {/* A faint diagonal sheen of room light on the glass, weaker at
+              night. Gone before a zoom lands, so the hand-off stays exact. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "linear-gradient(115deg, transparent 28%, rgba(255, 255, 255, 0.07) 42%, rgba(255, 255, 255, 0.02) 52%, transparent 62%)",
+              opacity: phase === "idle" ? 1 - darkness * GLARE_NIGHT_DIM : 0,
+              transition: "opacity 400ms ease",
+            }}
+          />
           <button
             type="button"
             onClick={onOpen}
@@ -392,15 +640,51 @@ function ScreenSurface({
   );
 }
 
-const HINTS: Record<DeskVariant, string> = {
-  screen: "Click the screen to open the case study · drag to look around",
-  zoom: "Click the screen to open the case study · drag to look around",
-  browser: "Tap the screen to step inside · drag to look around",
-};
-
 export function DeskStage({ variant, active = true }: { variant: DeskVariant; active?: boolean }) {
   const router = useRouter();
   const [screen, setScreen] = useState<ScreenPose | null>(null);
+  const clock = useDeskTime();
+  const { framing, update: updateFraming } = useDeskFraming();
+  const { colors, updateColors } = useDeskColors();
+  const { gradients, updateGradients } = useDeskGradients();
+  const { twilight, updateTwilight } = useDeskTwilight();
+  const dusk = useDuskSky({
+    twilight,
+    afternoon: colors.afternoon,
+    night: colors.night,
+    horizon: clock.solar?.horizonMix ?? 0,
+    nightMix: clock.solar?.backgroundNightMix ?? 0,
+  });
+  const background = useMemo(() => {
+    const horizon = clock.solar?.horizonMix ?? 0;
+    const night = clock.solar?.backgroundNightMix ?? 0;
+    const morning = clock.solar?.morning ?? true;
+    const nightColor = new THREE.Color(colors.night);
+    // The name and clock sit bottom right; pick whichever of ink or cream
+    // contrasts more with the colour behind them.
+    const textOver = (color: THREE.Color) => {
+      const corner = luminance(color);
+      const contrast = (text: number) => (Math.max(corner, text) + 0.05) / (Math.min(corner, text) + 0.05);
+      return contrast(CREAM_LUMINANCE) > contrast(INK_LUMINANCE) ? CREAM : INK;
+    };
+
+    // Evening is drawn by the dusk sky layer (DuskSky), in the chosen style.
+    if (!morning) return { image: "none", text: textOver(dusk.corner), evening: true };
+
+    const top = new THREE.Color(colors.afternoon)
+      .lerp(new THREE.Color(colors.morning), horizon)
+      .lerp(nightColor, night);
+    const bottom = new THREE.Color(colors.afternoon)
+      .lerp(new THREE.Color(colors.sunriseGlow), horizon)
+      .lerp(nightColor, night);
+    const gradient = gradients.morning;
+    return {
+      image: gradientCSS(gradient, top.getStyle(), bottom.getStyle()),
+      // The name and clock sit over the gradient's far colour.
+      text: textOver(gradient.swap ? top : bottom),
+      evening: false,
+    };
+  }, [clock.solar, colors, gradients, dusk.corner]);
   const [caseStudy, setCaseStudy] = useState<CaseStudy | null>(null);
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [startZoomed, setStartZoomed] = useState(false);
@@ -428,7 +712,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         : undefined;
     setStartZoomed(Boolean(returning));
     setPhase(returning ? "returning" : "idle");
-    setCaseStudy(returning ?? caseStudies[Math.floor(Math.random() * caseStudies.length)]);
+    setCaseStudy(returning ?? findSheet("spotify-jam") ?? caseStudies[0]);
   }, [variant]);
 
   useEffect(() => {
@@ -483,6 +767,30 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
 
   const leave = useCallback(() => setPhase("returning"), []);
 
+  // A different time of day puts the next case study (or the previous one)
+  // up on the monitor too, as the last thing to change. Rapid steps add up
+  // and swap once.
+  const pendingSheet = useRef<CaseStudy | null>(null);
+  const swapTimer = useRef<number | null>(null);
+  const cancelSwap = useCallback(() => {
+    if (swapTimer.current !== null) window.clearTimeout(swapTimer.current);
+    swapTimer.current = null;
+    pendingSheet.current = null;
+  }, []);
+  useEffect(() => cancelSwap, [cancelSwap]);
+  const stepTime = (direction: -1 | 1) => {
+    clock.step(direction);
+    const from = pendingSheet.current ?? caseStudy;
+    const index = caseStudies.findIndex((sheet) => sheet.slug === from?.slug);
+    pendingSheet.current = caseStudies[(index + direction + caseStudies.length) % caseStudies.length];
+    if (swapTimer.current !== null) window.clearTimeout(swapTimer.current);
+    swapTimer.current = window.setTimeout(() => {
+      setCaseStudy(pendingSheet.current);
+      pendingSheet.current = null;
+      swapTimer.current = null;
+    }, SCREEN_SWAP_DELAY_MS);
+  };
+
   useEffect(() => {
     if (variant !== "screen" || phase !== "focused") return;
     const onKey = (event: KeyboardEvent) => {
@@ -492,10 +800,49 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
     return () => window.removeEventListener("keydown", onKey);
   }, [variant, phase, leave]);
 
+  // Scrolling steps through the day: down for later, up for earlier. One
+  // gesture is one step, so a trackpad's momentum tail can't run on through
+  // several, and the lock holds for as long as the events keep coming.
+  const wheelTravel = useRef(0);
+  const wheelLockedUntil = useRef(0);
+  const onWheel = (event: React.WheelEvent) => {
+    if (!active || phase !== "idle") return;
+    if (event.target instanceof Element && event.target.closest("[data-desk-settings]")) return;
+    const now = performance.now();
+    if (now < wheelLockedUntil.current) {
+      wheelTravel.current = 0;
+      wheelLockedUntil.current = Math.max(wheelLockedUntil.current, now + WHEEL_GESTURE_GAP_MS);
+      return;
+    }
+    wheelTravel.current += event.deltaY * (event.deltaMode === 1 ? 16 : 1);
+    if (Math.abs(wheelTravel.current) < WHEEL_STEP_PX) return;
+    stepTime(wheelTravel.current > 0 ? 1 : -1);
+    wheelTravel.current = 0;
+    wheelLockedUntil.current = now + WHEEL_STEP_LOCK_MS;
+  };
+
+  // The arrow keys step through the day too, for anyone not on a wheel.
+  const stepTimeRef = useRef(stepTime);
+  useEffect(() => {
+    stepTimeRef.current = stepTime;
+  });
+  useEffect(() => {
+    if (!active || phase !== "idle") return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.target instanceof Element && event.target.closest("input, select, textarea, [data-desk-settings]")) return;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") stepTimeRef.current(1);
+      else if (event.key === "ArrowLeft" || event.key === "ArrowUp") stepTimeRef.current(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active, phase]);
+
   const zoomTo = useCallback((next: Destination) => {
+    // Land on the page that was on screen when tapped.
+    cancelSwap();
     setDestination(next);
     setPhase("zooming");
-  }, []);
+  }, [cancelSwap]);
 
   const arrive = useCallback(() => {
     setPhase("focused");
@@ -522,8 +869,16 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
       // Hidden behind an open case study, not unmounted: opacity rather than
       // visibility, which the screen's own visibility toggle would override.
       inert={!active}
-      style={{ opacity: active ? 1 : 0, zIndex: active ? undefined : -1 }}
+      onWheel={onWheel}
+      style={{ opacity: active ? 1 : 0, zIndex: active ? undefined : -1,
+        backgroundColor: colors.afternoon,
+        backgroundImage: background.image,
+        color: background.text,
+        // Not while loading: the first clock reading would otherwise ease in
+        // from daytime colours, and stall there while the desk is built.
+        transition: ready ? "background-color 800ms ease, color 800ms ease" : "none" }}
     >
+      {background.evening && <div aria-hidden="true" className="pointer-events-none absolute inset-0">{dusk.node}</div>}
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -542,27 +897,11 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
           cursor: phase === "idle" ? "grab" : undefined,
         }}
       >
-        <ambientLight intensity={0.8} color="#fff6ee" />
-        <hemisphereLight args={["#fffaf4", "#e9dccf", 0.4]} />
-        <directionalLight
-          position={[2.4, 4.6, 3.2]}
-          intensity={1.7}
-          color="#fff1e2"
-          castShadow
-          shadow-mapSize={[2048, 2048]}
-          shadow-bias={-0.0002}
-          shadow-camera-left={-3}
-          shadow-camera-right={3}
-          shadow-camera-top={3}
-          shadow-camera-bottom={-3}
-        />
+        <DeskLighting solar={clock.solar} screen={screen} />
+        <WindowLight solar={clock.solar} glow={twilight.glow} enabled={twilight.style === "window"} />
         <Suspense fallback={null}>
-          <DeskModel onScreen={setScreen} />
+          <DeskModel onScreen={setScreen} hour={clock.sceneHour} darkness={clock.solar?.darkness ?? 0} />
         </Suspense>
-        <mesh rotation-x={-Math.PI / 2} receiveShadow>
-          <planeGeometry args={[12, 12]} />
-          <shadowMaterial opacity={0.14} />
-        </mesh>
         {ready && (
           <>
             <ScreenSurface
@@ -574,10 +913,13 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
               variant={variant}
               // Unloaded while a case study is open; reloaded to come back.
               mountBrowserPage={active || preparing}
+              darkness={clock.solar?.darkness ?? 0}
+              scene={sceneForHour(clock.sceneHour)}
               onPageLoad={onPageLoad}
               onOpen={() => zoomTo({ kind: "monitor" })}
             />
             <CameraRig
+              framing={framing}
               screen={screen}
               layout={layout}
               phase={phase}
@@ -590,39 +932,44 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         )}
       </Canvas>
 
-      {!ready && (
-        <p className="pointer-events-none absolute inset-0 grid place-items-center font-body text-lg font-medium">
-          Setting up the desk…
-        </p>
-      )}
+      {/* office-portfolio's spinning loader, fading out as the desk fades in. */}
+      <div
+        role="status"
+        aria-label="Loading the desk"
+        className="pointer-events-none absolute inset-0 grid place-items-center transition-[opacity,visibility] duration-500"
+        style={{ opacity: ready ? 0 : 1, visibility: ready ? "hidden" : "visible" }}
+      >
+        <CircularText text="LOADING*LOADING*" spinDuration={8} />
+      </div>
 
       {/* textfolio's own rail, beside the desk. PageIndicator offsets itself
           for Home's overscanned hero sheet, so give it a frame shifted by the
           same overscan. */}
       {variant === "browser" && ready && (
         <div
-          className="pointer-events-none absolute inset-y-0 transition-opacity duration-300"
+          className="pointer-events-none absolute inset-0 transition-opacity duration-300"
           style={{
-            left: `-${SHEET_OVERSCAN_PERCENT}vw`,
-            width: "100vw",
             opacity: phase === "idle" ? 1 : 0,
             visibility: phase === "idle" ? "visible" : "hidden",
           }}
         >
           <PageIndicator
+            align="right"
             caseStudies={SHEETS}
-            onSelect={(picked) => zoomTo({ kind: "caseStudy", caseStudy: picked })}
+            // The one already on the monitor needs no reveal: zoom straight in.
+            onSelect={(picked) => zoomTo(picked.slug === caseStudy?.slug ? { kind: "monitor" } : { kind: "caseStudy", caseStudy: picked })}
           />
         </div>
       )}
 
-      {ready && phase === "idle" && (
-        <p className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
-          <span className="rounded-full bg-cream/90 px-4 py-2 font-body text-base font-medium">
-            {HINTS[variant]}
-          </span>
-        </p>
-      )}
+      {/* Fade with the rail rather than vanishing as a zoom starts. */}
+      <div
+        className="transition-[opacity,visibility] duration-300"
+        style={{ opacity: phase === "idle" ? 1 : 0, visibility: phase === "idle" ? "visible" : "hidden" }}
+      >
+        <DeskClock clock={clock} />
+        <DeskFramingControls framing={framing} onChange={updateFraming} colors={colors} onColorsChange={updateColors} gradients={gradients} onGradientsChange={updateGradients} twilight={twilight} onTwilightChange={updateTwilight} onShowSunset={clock.showSunset} />
+      </div>
 
       {variant === "screen" && phase === "focused" && (
         <button

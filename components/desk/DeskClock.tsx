@@ -1,0 +1,112 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { deskDaylight, nextDeskStage, sunsetOn } from "@/lib/deskDaylight";
+
+const timeFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+
+export function useDeskTime() {
+  const [now, setNow] = useState<Date | null>(null);
+  const [offsetMinutes, setOffsetMinutes] = useState(0);
+  const [targetMinutes, setTargetMinutes] = useState(0);
+  const displayedOffset = useRef(0);
+  const targetOffset = useRef(0);
+  const animation = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    update();
+    const timer = window.setInterval(update, 15000);
+    return () => {
+      window.clearInterval(timer);
+      if (animation.current !== null) clearInterval(animation.current);
+    };
+  }, []);
+  const date = now ? new Date(now.getTime() + offsetMinutes * 60000) : null;
+  const time = date ? timeFormat.format(date) : "--:--";
+  const hour = date ? Number(time.split(":")[0]) : 14;
+  const solar = date ? deskDaylight(date) : null;
+  // Furniture transitions directly to the destination. The clock and sun can
+  // travel through intervening hours without cycling the chair's poses.
+  const destinationDate = now ? new Date(now.getTime() + targetMinutes * 60000) : null;
+  const destinationSolar = destinationDate ? deskDaylight(destinationDate) : null;
+  const sceneHour = destinationSolar && destinationSolar.darkness >= 0.95
+    ? 2
+    : destinationDate ? Number(timeFormat.format(destinationDate).split(":")[0]) : 14;
+  // `jump` lands straight on the time: counting back through a whole day's
+  // worth of hours (back to now, or across to sunset) is disorienting.
+  const animateTo = (next: number, jump = false) => {
+    if (animation.current !== null) clearInterval(animation.current);
+    animation.current = null;
+    targetOffset.current = next;
+    setTargetMinutes(next);
+    const from = displayedOffset.current;
+    const started = Date.now();
+    const commit = (value: number) => {
+      displayedOffset.current = value;
+      setOffsetMinutes(value);
+    };
+    if (jump || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      commit(next);
+      return;
+    }
+    animation.current = setInterval(() => {
+      const progress = Math.min(1, (Date.now() - started) / 700);
+      const eased = progress * progress * (3 - 2 * progress);
+      commit(from + (next - from) * eased);
+      if (progress === 1 && animation.current !== null) {
+        clearInterval(animation.current);
+        animation.current = null;
+      }
+    }, 30);
+  };
+  return {
+    hour, sceneHour, solar, night: solar ? solar.darkness > 0.5 : false,
+    time, previewing: offsetMinutes !== 0,
+    step: (direction: -1 | 1) => {
+      const base = now ?? new Date();
+      const current = new Date(base.getTime() + targetOffset.current * 60000);
+      const next = nextDeskStage(current, direction);
+      animateTo((next.getTime() - base.getTime()) / 60000);
+    },
+    reset: () => animateTo(0, true),
+    showSunset: () => {
+      const base = now ?? new Date();
+      animateTo((sunsetOn(base).getTime() - base.getTime()) / 60000, true);
+    },
+  };
+}
+
+// The time is changed by scrolling (or the arrow keys), so the clock is just
+// the reading, plus a way back to now while previewing another time.
+export function DeskClock({ clock }: { clock: ReturnType<typeof useDeskTime> }) {
+  // Inherits the stage's text colour: ink on a light background, cream on a dark one.
+  return (
+    <div
+      className="absolute bottom-6 flex flex-col items-end text-right md:bottom-10"
+      style={{ right: "clamp(1.5rem, 3.5vw, 4rem)" }}
+    >
+      <h1 className="font-display text-4xl leading-none sm:text-5xl lg:text-6xl">adrian klisz</h1>
+      <div
+        className="mt-3 flex items-center justify-end gap-3 text-xl sm:text-2xl lg:text-3xl"
+        style={{ fontFamily: "var(--font-pp-frama-extralight)", fontWeight: 200 }}
+      >
+        <button
+          type="button"
+          onClick={clock.reset}
+          disabled={!clock.previewing}
+          aria-label="Back to the current time"
+          className="grid size-[1.2em] cursor-pointer place-items-center rounded-full transition-[opacity,transform] duration-200 hover:scale-110 active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-4"
+          style={{ opacity: clock.previewing ? 1 : 0, pointerEvents: clock.previewing ? undefined : "none" }}
+        >
+          <svg viewBox="0 0 24 24" className="size-[0.85em]" aria-hidden="true">
+            <path d="M12 7a6 6 0 1 1-6 6" fill="none" stroke="currentColor" strokeWidth="2.6" />
+            <path d="M12.5 2.5 7 7l5.5 4.5z" fill="currentColor" />
+          </svg>
+        </button>
+        <span className="tabular-nums" aria-label={`${clock.time}, Stockholm`}>{clock.time} <span aria-hidden="true">·</span> Stockholm</span>
+      </div>
+    </div>
+  );
+}
