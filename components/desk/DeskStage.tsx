@@ -68,6 +68,12 @@ const PAGE_FADE_OUT_MS = 220;
 const WHEEL_STEP_PX = 40;
 const WHEEL_STEP_LOCK_MS = 700;
 const WHEEL_GESTURE_GAP_MS = 250;
+// The UI around the desk waits for the loader to finish fading out, then
+// comes in one piece after another.
+const UI_REVEAL_DELAY_MS = 500;
+const UI_REVEAL_STAGGER_MS = 140;
+// The settings panel is a tuning tool, not something visitors should meet.
+const SHOW_DESK_SETTINGS = process.env.NODE_ENV !== "production";
 
 // Browser window on the monitor, in screen pixels.
 const WINDOW_MARGIN = 28;
@@ -853,6 +859,13 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   }, [variant, destination, caseStudy, router]);
 
   const ready = screen !== null && caseStudy !== null && viewport !== null;
+  // Once only: coming back from a case study, the UI is simply there.
+  const [revealed, setRevealed] = useState(false);
+  useEffect(() => {
+    if (!ready || revealed) return;
+    const timer = window.setTimeout(() => setRevealed(true), UI_REVEAL_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [ready, revealed]);
   const layout = viewport && variant === "browser" ? browserLayout(viewport) : null;
   // The case study the lift animation opens into, once a zoom has arrived.
   const focusTarget = !active || phase !== "focused"
@@ -937,7 +950,12 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         role="status"
         aria-label="Loading the desk"
         className="pointer-events-none absolute inset-0 grid place-items-center transition-[opacity,visibility] duration-500"
-        style={{ opacity: ready ? 0 : 1, visibility: ready ? "hidden" : "visible" }}
+        style={{
+          opacity: ready ? 0 : 1,
+          visibility: ready ? "hidden" : "visible",
+          // The same ink or cream as the name, so it reads on any background.
+          "--circular-text-color": background.text,
+        } as React.CSSProperties}
       >
         <CircularText text="LOADING*LOADING*" spinDuration={8} />
       </div>
@@ -953,12 +971,14 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
             visibility: phase === "idle" ? "visible" : "hidden",
           }}
         >
-          <PageIndicator
-            align="right"
-            caseStudies={SHEETS}
-            // The one already on the monitor needs no reveal: zoom straight in.
-            onSelect={(picked) => zoomTo(picked.slug === caseStudy?.slug ? { kind: "monitor" } : { kind: "caseStudy", caseStudy: picked })}
-          />
+          <div className="desk-reveal absolute inset-0" data-shown={revealed}>
+            <PageIndicator
+              align="right"
+              caseStudies={SHEETS}
+              // The one already on the monitor needs no reveal: zoom straight in.
+              onSelect={(picked) => zoomTo(picked.slug === caseStudy?.slug ? { kind: "monitor" } : { kind: "caseStudy", caseStudy: picked })}
+            />
+          </div>
         </div>
       )}
 
@@ -967,8 +987,24 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         className="transition-[opacity,visibility] duration-300"
         style={{ opacity: phase === "idle" ? 1 : 0, visibility: phase === "idle" ? "visible" : "hidden" }}
       >
-        <DeskClock clock={clock} />
-        <DeskFramingControls framing={framing} onChange={updateFraming} colors={colors} onColorsChange={updateColors} gradients={gradients} onGradientsChange={updateGradients} twilight={twilight} onTwilightChange={updateTwilight} onShowSunset={clock.showSunset} />
+        {/* Full-stage layers, so the clock and settings keep positioning
+            against the stage rather than against the blur's own box. */}
+        <div
+          className="desk-reveal pointer-events-none absolute inset-0 [&>*]:pointer-events-auto"
+          data-shown={revealed}
+          style={{ transitionDelay: revealed ? `${UI_REVEAL_STAGGER_MS}ms` : undefined }}
+        >
+          <DeskClock clock={clock} />
+        </div>
+        {SHOW_DESK_SETTINGS && (
+          <div
+            className="desk-reveal pointer-events-none absolute inset-0 [&>*]:pointer-events-auto"
+            data-shown={revealed}
+            style={{ transitionDelay: revealed ? `${UI_REVEAL_STAGGER_MS * 2}ms` : undefined }}
+          >
+            <DeskFramingControls framing={framing} onChange={updateFraming} colors={colors} onColorsChange={updateColors} gradients={gradients} onGradientsChange={updateGradients} twilight={twilight} onTwilightChange={updateTwilight} onShowSunset={clock.showSunset} />
+          </div>
+        )}
       </div>
 
       {variant === "screen" && phase === "focused" && (
