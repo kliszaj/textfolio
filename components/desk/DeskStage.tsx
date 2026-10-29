@@ -64,8 +64,14 @@ const WHEEL_GESTURE_GAP_MS = 250;
 // comes in one piece after another.
 const UI_REVEAL_DELAY_MS = 500;
 const UI_REVEAL_STAGGER_MS = 140;
-// The settings panel is a tuning tool, not something visitors should meet.
-const SHOW_DESK_SETTINGS = process.env.NODE_ENV !== "production";
+// The settings panel is a tuning tool, not something visitors should meet:
+// it shows in development and on any build served from this machine
+// (localhost), never on the live site. DeskStage only runs in the browser
+// (DeskHost loads it with ssr: false), so the address is always there.
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$|\.localhost$/;
+function showDeskSettings() {
+  return process.env.NODE_ENV !== "production" || (typeof window !== "undefined" && LOCAL_HOST.test(window.location.hostname));
+}
 
 // Text over the stage background is plain ink or cream, never blended.
 const INK = "#1c1c1c";
@@ -289,14 +295,21 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   }, [variant, destination, caseStudy, router]);
 
   const ready = screen !== null && caseStudy !== null && viewport !== null;
+  // Shown only once the camera has drawn a frame from its resting place. The
+  // canvas keeps its last frame (preserveDrawingBuffer), and the frames drawn
+  // while the desk was being built came from the default camera, further out:
+  // revealing on ready alone could fade that in and then jump to the desk.
+  const [framed, setFramed] = useState(false);
+  const onFramed = useCallback(() => setFramed(true), []);
+  const shown = ready && framed;
   const touch = usePointerType() === "coarse";
   // Once only: coming back from a case study, the UI is simply there.
   const [revealed, setRevealed] = useState(false);
   useEffect(() => {
-    if (!ready || revealed) return;
+    if (!shown || revealed) return;
     const timer = window.setTimeout(() => setRevealed(true), UI_REVEAL_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [ready, revealed]);
+  }, [shown, revealed]);
   const layout = useMemo(() => (viewport && variant === "browser" ? browserLayout(viewport) : null), [viewport, variant]);
   const openMonitor = useCallback(() => zoomTo({ kind: "monitor" }), [zoomTo]);
 
@@ -346,7 +359,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         color: background.text,
         // Not while loading: the first clock reading would otherwise ease in
         // from daytime colours, and stall there while the desk is built.
-        transition: ready ? "background-color 800ms ease, color 800ms ease" : "none" }}
+        transition: shown ? "background-color 800ms ease, color 800ms ease" : "none" }}
     >
       {background.evening && <div aria-hidden="true" className="pointer-events-none absolute inset-0">{dusk.node}</div>}
       <Canvas
@@ -372,7 +385,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
           if (variant === "screen" && phase === "focused") leave();
         }}
         style={{
-          opacity: ready ? 1 : 0,
+          opacity: shown ? 1 : 0,
           transition: "opacity 600ms ease",
           cursor: phase === "idle" ? "grab" : undefined,
         }}
@@ -454,6 +467,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
               onArrive={arrive}
               onReturned={() => setPhase("idle")}
               zoomTarget={typingOpen ? "typing" : "page"}
+              onFramed={onFramed}
             />
           </>
         )}
@@ -465,8 +479,8 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         aria-label="Loading the desk"
         className="pointer-events-none absolute inset-0 grid place-items-center transition-[opacity,visibility] duration-500"
         style={{
-          opacity: ready ? 0 : 1,
-          visibility: ready ? "hidden" : "visible",
+          opacity: shown ? 0 : 1,
+          visibility: shown ? "hidden" : "visible",
           // The same ink or cream as the name, so it reads on any background.
           "--circular-text-color": background.text,
         } as React.CSSProperties}
@@ -513,7 +527,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         >
           <DeskClock clock={clock} touch={touch} />
         </div>
-        {SHOW_DESK_SETTINGS && (
+        {showDeskSettings() && (
           <div
             className="desk-reveal pointer-events-none absolute inset-0 [&>*]:pointer-events-auto"
             data-shown={revealed}

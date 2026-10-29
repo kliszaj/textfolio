@@ -40,6 +40,7 @@ export function CameraRig({
   onArrive,
   onReturned,
   zoomTarget = "page",
+  onFramed,
 }: {
   framing: DeskFraming;
   screen: ScreenPose;
@@ -51,6 +52,8 @@ export function CameraRig({
   onReturned: () => void;
   // What a zoom lands on: the case study's page area, or the typing window.
   zoomTarget?: "page" | "typing";
+  // Called once, on the frame the camera is first put in place.
+  onFramed?: () => void;
 }) {
   const { camera } = useThree();
   const invalidate = useThree((state) => state.invalidate);
@@ -89,6 +92,8 @@ export function CameraRig({
       cam.position.copy(start.position);
       lookAt.current.copy(start.target);
       cam.lookAt(lookAt.current);
+      // This frame is drawn from the right place: the stage can show it.
+      onFramed?.();
     }
 
     if (phase === "idle" && previousFraming.current !== framing) {

@@ -432,6 +432,18 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   (they were a long slanted parallelogram), and stronger: up to full
   opacity at sunset (`WINDOW_LIGHT_BOOST`), with a 2.4 pink light on the
   desk.
+- **Desk settings show on localhost only** (`showDeskSettings` in
+  `DeskStage`): in development, and on any build served from `localhost`,
+  `127.0.0.1`, `[::1]` or `*.localhost`; never on the live site.
+- **The desk no longer zooms in on load.** The canvas keeps its last frame
+  (`preserveDrawingBuffer`, for the adaptive name), and the frames drawn
+  while the desk was being built came from R3F's default camera, further
+  out; revealing on `ready` could fade that frame in, then jump. The stage now
+  reveals the canvas, fades the loader and starts the UI entrance on
+  `shown = ready && framed`, where `framed` is set by `CameraRig`'s
+  `onFramed`, on the frame it first puts the camera in place. (A load in a
+  background tab now waits behind the loader until the tab is shown, since
+  hidden tabs draw no frames.)
 - **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
   deploys `main`). `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs
