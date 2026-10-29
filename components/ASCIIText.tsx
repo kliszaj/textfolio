@@ -73,6 +73,14 @@ const CRT_SCANLINE_INTENSITY = 0.68;
 // canvas and repainting thousands of individual glyph cells at 60fps doubled
 // main-thread work without producing perceptibly more animation frames.
 const ASCII_RENDER_FRAME_MS = 1000 / 30;
+// document.fonts.ready has resolved on iOS while the fallback span it's read
+// off still reports the fallback face's own metrics for a few more frames --
+// the promise means the face is loaded, not that every element has been
+// reflowed with it yet. Measuring exactly once right there froze in that
+// mismatch: the wrong aspect baked into the plane's geometry for the rest of
+// the visit. A handful of extra rebuilds across a short settle window is
+// cheap next to that -- it only ever runs once, right after the face loads.
+const ASCII_FONT_SETTLE_FRAMES = 8;
 
 const CHARACTERS = " .`^\\\",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 type ASCIITextProps = Partial<ASCIITextConfig> & {
@@ -546,10 +554,23 @@ export function ASCIIText({
       // Re-measure through resize rather than refreshing the texture alone:
       // the face landing changes the word's width, and the plane has to be
       // re-fitted to the frame with it.
+      let fontSettleFrame: number | null = null;
       document.fonts?.ready.then(() => {
         if (disposed) return;
         refreshTextTexture();
         resize();
+        // See ASCII_FONT_SETTLE_FRAMES: the fallback span can still be
+        // reporting the fallback face's own metrics for a few frames yet.
+        let framesLeft = ASCII_FONT_SETTLE_FRAMES;
+        const settleStep = () => {
+          fontSettleFrame = null;
+          if (disposed || framesLeft <= 0) return;
+          framesLeft -= 1;
+          refreshTextTexture();
+          resize();
+          fontSettleFrame = requestAnimationFrame(settleStep);
+        };
+        fontSettleFrame = requestAnimationFrame(settleStep);
       }).catch(() => {});
       demoStart = performance.now();
       host.addEventListener("pointermove", onPointerMove);
@@ -559,6 +580,7 @@ export function ASCIIText({
       frame = requestAnimationFrame(render);
       cleanup = () => {
         cancelAnimationFrame(frame);
+        if (fontSettleFrame !== null) cancelAnimationFrame(fontSettleFrame);
         observer.disconnect();
         host.removeEventListener("pointermove", onPointerMove);
         mesh?.geometry.dispose();
