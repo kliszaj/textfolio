@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { WorkspaceScene } from "@/lib/workspace/scenes";
+import styles from "./DesktopWindows.module.css";
 
 // App windows on the monitor's desktop, behind the browser window, changing
 // through the day. Laid out in the monitor's own pixels (1536 x 600). The
@@ -285,26 +286,25 @@ function Prototype() {
 
 /* ---------- Google Meet ---------- */
 
-function Person({ skin, hair, shirt, bg }: { skin: string; hair: string; shirt: string; bg: string }) {
-  // A head-and-shoulders silhouette in front of a soft room background.
+function Person({ row, delay }: { row: number; delay: number }) {
   return (
-    <svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 size-full">
-      <rect width="160" height="100" fill={bg} />
-      <rect x="104" y="12" width="34" height="46" rx="2" fill="#ffffff14" />
-      <ellipse cx="80" cy="108" rx="44" ry="30" fill={shirt} />
-      <rect x="73" y="62" width="14" height="14" fill={skin} />
-      <ellipse cx="80" cy="50" rx="17" ry="20" fill={skin} />
-      <path d="M62 48c0-16 8-24 18-24s18 8 18 24c-4-8-10-11-18-11s-14 3-18 11z" fill={hair} />
-    </svg>
+    <span
+      aria-hidden="true"
+      className={styles.meetPerson}
+      style={{
+        "--meet-person-row": row,
+        animationDelay: `${delay}s`,
+      } as CSSProperties}
+    />
   );
 }
 
 function Meet() {
   const tiles = [
-    { name: "Maya Lindqvist", person: { skin: "#e1b39a", hair: "#3b2a22", shirt: "#4f6d7a", bg: "#5a6b73" }, speaking: true },
-    { name: "Alex Chen", person: { skin: "#d9a982", hair: "#141414", shirt: "#8a6d5a", bg: "#6e625c" } },
-    { name: "Sam Okafor", person: { skin: "#8d5a3f", hair: "#1a1210", shirt: "#3e5a48", bg: "#4d5a52" }, muted: true },
-    { name: "You", person: { skin: "#eac5a2", hair: "#6b4a32", shirt: "#2f3b4a", bg: "#59546b" } },
+    { name: "Maya Lindqvist", row: 0, delay: -0.15, speaking: true },
+    { name: "Alex Chen", row: 1, delay: -1.75 },
+    { name: "Sam Okafor", row: 2, delay: -0.95, muted: true },
+    { name: "You", row: 3, delay: -2.45 },
   ];
   return (
     <div className="absolute inset-0 flex flex-col pt-8" style={{ backgroundColor: "#202124", fontFamily: UI_FONT, fontSize: 13, color: "#e8eaed" }}>
@@ -312,7 +312,7 @@ function Meet() {
       <div className="grid flex-1 grid-cols-2 gap-2.5 px-3">
         {tiles.map((tile) => (
           <div key={tile.name} className="relative overflow-hidden rounded-xl" style={{ outline: tile.speaking ? "3px solid #8ab4f8" : undefined }}>
-            <Person {...tile.person} />
+            <Person row={tile.row} delay={tile.delay} />
             <span className="absolute bottom-2 left-3 text-[13px] font-medium drop-shadow">{tile.name}</span>
             <span className="absolute top-2 right-2 grid size-6 place-items-center rounded-full" style={{ backgroundColor: tile.muted ? "#202124cc" : "#1a73e8" }}>
               {tile.muted ? <Icon d={ICONS.mic} size={12} color="#ea4335" /> : <span className="flex items-end gap-[2px]">{[5, 9, 6].map((h, i) => <span key={i} className="w-[2px] rounded bg-white" style={{ height: h }} />)}</span>}
