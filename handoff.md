@@ -406,6 +406,13 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
     782ms locally, landing on a monitor already showing the page.
   - *Esc goes home from case studies* (`CaseStudyView`), exactly like the
     Home icon; not from inside text fields. Tested.
+  - *The case study behind the typing window flickered on entry and exit.*
+    The 3D copy was hidden while the flat copy showed, and swapped back on
+    exit. They render in different React roots (the 3D one inside the
+    Canvas's drei Html), so the swap could leave a frame with neither. The
+    3D copy now stays visible and current under the flat one for as long as
+    the test is open (frozen only when closed). Sampled per frame: no gap on
+    entry or exit.
 - **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
   deploys `main`). `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs

@@ -400,22 +400,26 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
               onOpen={openMonitor}
             >
               {/* Always mounted, so it fades in as the zoom starts and out
-                  once the camera is back, every time. Hidden while the flat
-                  copy is in use. */}
+                  once the camera is back, every time. It stays visible and
+                  current under the flat copy while that is in use: the two
+                  render in different React roots (this one inside the
+                  Canvas's Html), so swapping one out for the other could
+                  leave a frame with neither, flashing the case study page
+                  behind it on the monitor. */}
               {variant === "browser" && typingBox && (
                 <TypingApp
                   state={typing.state}
                   now={typing.now}
                   duration={typing.duration}
                   interactive={false}
-                  frozen={!typingOpen || phase === "focused"}
+                  frozen={!typingOpen}
                   style={{
                     left: typingBox.left,
                     top: typingBox.top,
                     width: typingBox.width,
                     height: typingBox.height,
                     pointerEvents: "none",
-                    opacity: typingOpen && (phase === "zooming" || phase === "returning") ? 1 : 0,
+                    opacity: typingOpen && phase !== "idle" ? 1 : 0,
                     transform: typingOpen && phase !== "idle" ? "none" : "scale(0.96)",
                     transition: phase === "zooming" || phase === "idle"
                       ? "opacity 300ms ease, transform 450ms cubic-bezier(0.22, 1, 0.36, 1)"
