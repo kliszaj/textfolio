@@ -518,6 +518,18 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     setTimeout(() => router.push("/"), EXIT_ANIMATION_MS);
   }, [caseStudy, router]);
 
+  // Esc goes home too, the same way the Home icon does -- but not out of a
+  // field someone is typing in.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable]")) return;
+      leave();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [leave]);
+
   const scrollToTop = useCallback(() => {
     // The title is an explicit request to return homeward, so reveal the full
     // header immediately instead of waiting for the smooth scroll to finish.

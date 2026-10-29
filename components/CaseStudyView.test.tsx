@@ -822,6 +822,30 @@ test("drops the page home on the arrow, rather than cutting to it", () => {
   }
 });
 
+test("Esc goes home the same way the Home icon does", () => {
+  jest.useFakeTimers();
+  try {
+    render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByTestId("case-study-view")).toHaveAttribute("data-exiting", "true");
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(push).toHaveBeenCalledWith("/");
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("Esc in a text field stays on the page", () => {
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  const field = document.createElement("input");
+  document.body.append(field);
+  fireEvent.keyDown(field, { key: "Escape" });
+  expect(screen.getByTestId("case-study-view")).toHaveAttribute("data-exiting", "false");
+  field.remove();
+});
+
 test("leaves modified clicks to the browser", () => {
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
   // Opening home in a new tab should not start an animation in this one.

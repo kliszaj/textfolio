@@ -391,6 +391,21 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   Phone-shaped windows show only the lights, reload and the domain. The
   window's grid column is `minmax(0, 1fr)`; without it the toolbar's
   min-content width pushed narrow windows past their edge.
+- **Bugs fixed (2026-10-29 evening).**
+  - *The monitor stopped opening after a typing test.* The hidden 3D copy
+    of the typing window stays mounted with `pointer-events: none`, but its
+    results and board sections set `pointer-events: auto`, which children
+    can override. After a finished test the invisible results' graph sat
+    over the monitor and took every click. The 3D copy is now `inert`.
+  - *Home on a case study "not working".* It waited for the monitor's iframe
+    `load` event, which fires only after every image and video (3.25s for
+    Spotify Jam locally), plus 700ms settle, against a 4s cap: so Home sat
+    still for ~4s and a second click was ignored. `BrowserWindow` now treats
+    the page as ready once its HTML is parsed (`readyState` polled every
+    50ms; `load` stays as a fallback), and the cap is 1.5s. Home: 3951ms →
+    782ms locally, landing on a monitor already showing the page.
+  - *Esc goes home from case studies* (`CaseStudyView`), exactly like the
+    Home icon; not from inside text fields. Tested.
 - **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
   deploys `main`). `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs

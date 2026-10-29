@@ -131,7 +131,16 @@ export const TypingApp = memo(
     const final = state && done ? results(state) : null;
 
     return (
-      <div className={styles.window} style={style} onPointerDown={() => interactive && !done && window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }))}>
+      <div
+        className={styles.window}
+        style={style}
+        // The 3D copy only shows. inert, not pointer-events: its results and
+        // board sections switch pointer events back on for the live copy, and
+        // the hidden copy's then sat over the monitor, eating clicks meant
+        // for it (after a finished test, the monitor stopped opening).
+        inert={!interactive}
+        onPointerDown={() => interactive && !done && window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }))}
+      >
         <BrowserBar
           path={browsing ? "/type/leaderboard" : "/type"}
           title={browsing ? "Leaderboard" : "Typing test"}

@@ -13,6 +13,7 @@ import type { ScreenPose } from "./DeskModel";
 import { SCREEN_PX, WINDOW_CHROME, type BrowserLayout, type DeskVariant, type Phase, type Viewport } from "./deskLayout";
 
 const PAGE_FADE_OUT_MS = 220;
+const READY_POLL_MS = 50;
 const WALLPAPER = "#0b0b0b url(/desk/wallpaper.webp) center / cover no-repeat";
 // How much of the glass's sheen goes when the room is dark.
 const GLARE_NIGHT_DIM = 0.7;
@@ -66,6 +67,33 @@ function BrowserWindow({
   }, [caseStudy, page]);
   const shown = pageState === "shown";
 
+  // Ready once the page's HTML is parsed, not at its load event: that waits
+  // for every image and video on the page (over 3s for Spotify Jam locally),
+  // while the top of the page, all the monitor shows, is there long before.
+  // Home on a case study waits on this (registerDeskPreparer in DeskStage).
+  const frame = useRef<HTMLIFrameElement>(null);
+  const ready = useRef(false);
+  const markReady = () => {
+    if (ready.current) return;
+    ready.current = true;
+    setPageState("shown");
+    onPageLoad();
+  };
+  useEffect(() => {
+    ready.current = false;
+    if (!mountPage) return;
+    const poll = window.setInterval(() => {
+      const doc = frame.current?.contentDocument;
+      if (doc && doc.URL !== "about:blank" && doc.readyState !== "loading") {
+        window.clearInterval(poll);
+        markReady();
+      }
+    }, READY_POLL_MS);
+    return () => window.clearInterval(poll);
+    // markReady reads only refs and stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mountPage, page.slug]);
+
   return (
     <div className="absolute inset-0" style={{ background: WALLPAPER }}>
       <DesktopWindows scene={scene} />
@@ -94,14 +122,13 @@ function BrowserWindow({
           {/* Live but untouchable: any tap on the monitor starts the zoom. */}
           {mountPage && (
             <iframe
+              ref={frame}
               key={page.slug}
               src={caseStudyRoute(page)}
               title={page.title}
               tabIndex={-1}
-              onLoad={() => {
-                setPageState("shown");
-                onPageLoad();
-              }}
+              // Usually long after markReady has fired from the poll above.
+              onLoad={markReady}
               className="pointer-events-none absolute top-0 left-0 border-0 bg-cream"
               style={{
                 width: viewport.w,

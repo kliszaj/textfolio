@@ -50,7 +50,9 @@ export type { DeskVariant } from "./deskLayout";
 // A freshly loaded case study opens its header full-bleed and settles over
 // 620ms. Coming back, the monitor waits that out so it shows the page at rest.
 const PAGE_SETTLE_MS = 700;
-const PREPARE_TIMEOUT_MS = 4000;
+// A cap on Home's wait for the monitor: past this the camera pulls back anyway
+// rather than leave the visitor staring at a page that seems not to respond.
+const PREPARE_TIMEOUT_MS = 1500;
 // Changing the time of day swaps the case study on the monitor last, once the
 // clock, furniture and light have settled.
 const SCREEN_SWAP_DELAY_MS = 1300;
