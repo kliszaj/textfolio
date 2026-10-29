@@ -5,7 +5,12 @@
 .window {
   position: absolute;
   display: grid;
-  grid-template-rows: 40px 1fr;
+  /* The same 72px of chrome as the case study's browser window. */
+  grid-template-rows: 72px 1fr;
+  /* One column exactly the window's width: by default a grid track grows to
+     its content's min-content width, which pushed a phone-shaped window's
+     toolbar and controls past its edge. */
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   border-radius: 12px;
   background: #17181b;
@@ -16,16 +21,141 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Chrome's dark theme: a tab strip, then the toolbar the active tab joins. */
 .chrome {
-  position: relative;
+  display: grid;
+  grid-template-rows: 32px 40px;
+  background: #1f2023;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(245, 237, 230, 0.75);
+  font-size: 12px;
+}
+
+.tabStrip {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 0 12px;
+  min-width: 0;
+}
+
+.lights {
+  display: flex;
+  align-self: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tab {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 14px;
-  background: #202227;
+  width: 208px;
+  min-width: 0;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px 8px 0 0;
+  background: #2b2c30;
+}
+
+.favicon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  background: #f5ede6;
+  color: #1c1c1c;
+  font-family: var(--font-pp-frama), sans-serif;
+  font-weight: 900;
+  font-size: 10px;
+}
+
+.tabTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabClose {
+  margin-left: auto;
+  font-size: 14px;
+  opacity: 0.5;
+}
+
+.newTab {
+  align-self: center;
+  font-size: 17px;
+  opacity: 0.55;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  min-width: 0;
+  background: #2b2c30;
+}
+
+.nav {
+  display: flex;
+  gap: 14px;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
+.icon.muted {
+  opacity: 0.3;
+}
+
+/* The address field: a sunken pill with the lock, the address and the star. */
+.omnibox {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #1a1b1e;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  color: #f5ede6;
   font-size: 13px;
-  font-weight: 500;
-  color: rgba(245, 237, 230, 0.6);
+}
+
+.url {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path {
+  color: rgba(245, 237, 230, 0.5);
+}
+
+.star {
+  display: flex;
+  margin-left: auto;
+}
+
+.menu {
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0.7;
 }
 
 .light {
@@ -45,14 +175,6 @@
 .close:focus-visible {
   outline: 2px solid #ffa52e;
   outline-offset: 2px;
-}
-
-.title {
-  position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
-  pointer-events: none;
 }
 
 .pane {
@@ -77,12 +199,16 @@
 }
 
 .done .playing,
-.results {
+.results,
+.boardView,
+.browsing .playing,
+.browsing .results {
   opacity: 0;
   pointer-events: none;
 }
 
-.done .results {
+.done .results,
+.browsing .boardView {
   opacity: 1;
   pointer-events: auto;
 }
@@ -112,6 +238,7 @@
 
 .modes {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.2em;
 }
 
@@ -128,6 +255,76 @@
 .mode[aria-pressed="true"] {
   color: #f5ede6;
   background: rgba(245, 237, 230, 0.1);
+}
+
+.boardButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin-right: 0.6em;
+  color: rgba(245, 237, 230, 0.6);
+}
+
+.boardButton:hover,
+.mode:hover {
+  color: #f5ede6;
+}
+
+.boardButton svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The leaderboard opened from the test. */
+.boardView {
+  position: absolute;
+  inset: 0;
+  padding: 0 7cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: max(2.4cqh, 12px);
+  font-size: max(2.2cqw, 1.9cqh, 12px);
+  transition: opacity 300ms ease;
+}
+
+.boardHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em 1em;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: max(1.9cqw, 1.7cqh, 12px);
+  font-weight: 500;
+}
+
+.boardTitle {
+  font-family: var(--font-pp-frama), sans-serif;
+  font-weight: 900;
+  font-size: max(4cqw, 3.4cqh, 18px);
+  color: #ffa52e;
+}
+
+.wideEntries {
+  gap: 0.45em 3em;
+}
+
+.back {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(245, 237, 230, 0.6);
+  cursor: pointer;
+}
+
+.back:hover {
+  color: #f5ede6;
 }
 
 .wordsWindow {
@@ -305,6 +502,17 @@
   color: #ff6b6b;
 }
 
+.retry {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #ffa52e;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
 .save {
   display: flex;
   gap: 0.5em;
@@ -350,7 +558,20 @@
 
 /* Narrow (portrait phone) windows: results stack, no graph, no title. */
 @container (max-aspect-ratio: 3 / 4) {
-  .title {
+  /* A phone-shaped window: just the lights, the address and reload. */
+  .tab,
+  .newTab,
+  .nav,
+  .menu {
+    display: none;
+  }
+  /* The leaderboard button as just its trophy. */
+  .boardLabel {
+    display: none;
+  }
+  /* Like mobile Chrome: just the domain. */
+  .path,
+  .star {
     display: none;
   }
   .board {
@@ -365,6 +586,10 @@
   /* Room for the top five on a phone. */
   .entries li:nth-child(n + 6) {
     display: none;
+  }
+  /* The leaderboard view has the whole window: all ten. */
+  .wideEntries li:nth-child(n + 6) {
+    display: grid;
   }
   .stats {
     gap: 1.2em;

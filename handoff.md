@@ -374,6 +374,25 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Offline**: until the database is bound (or locally, with no Worker), the
   API answers 503 or 404 and the results screen says the leaderboard isn't
   available; the game itself is unaffected.
+- **Retries** (`fetchJson` in `useTypingTest.ts`): fetching a test and the
+  board retry once after 800ms on a network error or a 5xx, not on a 4xx.
+  Saving doesn't retry by itself (the test may already be spent if only the
+  reply was lost); a failed save keeps the form for another go. An
+  unavailable board offers "Try again". Verified by failing the board's
+  fetch in the browser: one failure recovers silently; two show Try again,
+  which then loads the board with the run still savable.
+- **Leaderboard view and browser chrome.** A "leaderboard" button beside
+  15/30/60s (hidden mid-run) opens any length's top 10 in the window
+  (`BoardView`, `showBoard`/`hideBoard` in the hook); the address changes to
+  `/type/leaderboard`, keys typed meanwhile don't count, and Esc goes back to
+  the test before it closes the window. The window's title bar is now dark
+  Chrome chrome (`BrowserBar`: tab strip, back/forward/reload, address field
+  with lock and star), the same 72px as the case study's `BrowserChrome`.
+  Phone-shaped windows show only the lights, reload and the domain. The
+  window's grid column is `minmax(0, 1fr)`; without it the toolbar's
+  min-content width pushed narrow windows past their edge.
+- **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
+  deploys `main`). `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs
   the real API against Node's built-in SQLite with the real migration
   (`@jest-environment node`; `jest.setup.ts` now guards its `window` use).

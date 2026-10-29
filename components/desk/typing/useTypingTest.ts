@@ -22,7 +22,31 @@ export type Leaderboard = {
 };
 
 type BoardState = Omit<Leaderboard, "eligible">;
+
+// The leaderboard opened from the test (the "leaderboard" button), any length.
+export type Browse = { duration: number; status: "loading" | "ready" | "offline"; board: Entry[] };
 const EMPTY_BOARD: BoardState = { status: "idle", board: [], saving: "idle", message: null, rank: null, name: "", savedName: null };
+
+// One retry after a short pause, for a dropped connection or a server error,
+// so the leaderboard doesn't vanish over a single hiccup. Not for 4xx answers,
+// which a retry wouldn't change.
+const RETRY_DELAY_MS = 800;
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    let response: Response | null = null;
+    try {
+      response = await fetch(url, init);
+    } catch (error) {
+      if (attempt > 0) throw error;
+    }
+    if (response) {
+      if (response.ok) return (await response.json()) as T;
+      if (response.status < 500 || attempt > 0) throw new Error(`leaderboard ${response.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+  }
+}
 
 function storedName() {
   try {
@@ -49,9 +73,14 @@ export function useTypingTest() {
   const events = useRef<RunEvent[]>([]);
   // Bumped on every restart, so a slow response for an old test is ignored.
   const generation = useRef(0);
+  // The test, or the leaderboard opened from it.
+  const [view, setView] = useState<"test" | "board">("test");
+  const [browse, setBrowse] = useState<Browse>({ duration: TYPING_DURATIONS[0], status: "loading", board: [] });
+  const browseRequest = useRef(0);
 
   const restart = useCallback((next = duration) => {
     const run = ++generation.current;
+    setView("test");
     setDuration(next);
     setState(newTest(next));
     setNow(Date.now());
@@ -60,9 +89,12 @@ export function useTypingTest() {
     setLeaderboard((board) => ({ ...EMPTY_BOARD, name: board.name || storedName() }));
     // Words from the server, so the run can be checked and saved. They arrive
     // during the zoom; if typing has already begun, this run just stays local.
-    fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ duration: next }) })
-      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
-      .then((test: { id: string; seed: number }) => {
+    fetchJson<{ id: string; seed: number }>("/api/tests", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ duration: next }),
+    })
+      .then((test) => {
         if (generation.current !== run) return;
         const words = wordsFor(test.seed, next);
         setServerTest({ id: test.id, words });
@@ -101,22 +133,32 @@ export function useTypingTest() {
     });
   }, []);
 
-  // At the end: this length's board, and whether the run can go on it.
-  const finished = state?.finishedAt != null;
-  useEffect(() => {
-    if (!finished || !state) return;
+  // This length's board, for the run that is current when it was asked for.
+  const loadBoard = useCallback((length: number) => {
     const run = generation.current;
-    fetch(`/api/scores?duration=${state.duration}`)
-      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
-      .then(({ board }: { board: Entry[] }) => {
+    fetchJson<{ board: Entry[] }>(`/api/scores?duration=${length}`)
+      .then(({ board }) => {
         if (generation.current === run) setLeaderboard((current) => ({ ...current, status: "ready", board }));
       })
       .catch(() => {
         if (generation.current === run) setLeaderboard((current) => ({ ...current, status: "offline" }));
       });
+  }, []);
+
+  // At the end: the board, and whether the run can go on it.
+  const finished = state?.finishedAt != null;
+  useEffect(() => {
+    if (finished && state) loadBoard(state.duration);
     // Once per finished run.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
+
+  // "Try again" on an unavailable board.
+  const retryBoard = useCallback(() => {
+    if (!state) return;
+    setLeaderboard((board) => ({ ...board, status: "loading" }));
+    loadBoard(state.duration);
+  }, [state, loadBoard]);
 
   const setName = useCallback((name: string) => setLeaderboard((board) => ({ ...board, name })), []);
 
@@ -162,5 +204,20 @@ export function useTypingTest() {
       boardState.saving !== "saved",
   };
 
-  return { state, now, duration, restart, input, leaderboard, setName, submit };
+  // Opens the leaderboard for a length, or switches its tab.
+  const showBoard = useCallback((length: number) => {
+    const request = ++browseRequest.current;
+    setView("board");
+    setBrowse({ duration: length, status: "loading", board: [] });
+    fetchJson<{ board: Entry[] }>(`/api/scores?duration=${length}`)
+      .then(({ board }) => {
+        if (browseRequest.current === request) setBrowse({ duration: length, status: "ready", board });
+      })
+      .catch(() => {
+        if (browseRequest.current === request) setBrowse({ duration: length, status: "offline", board: [] });
+      });
+  }, []);
+  const hideBoard = useCallback(() => setView("test"), []);
+
+  return { state, now, duration, restart, input, leaderboard, setName, submit, retryBoard, view, browse, showBoard, hideBoard };
 }

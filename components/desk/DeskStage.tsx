@@ -298,6 +298,8 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   const typingBox = layout && viewport ? typingWindow(layout, viewport) : null;
   const markHintUsed = hint.markUsed;
   const restartTyping = typing.restart;
+  const typingView = typing.view;
+  const hideBoard = typing.hideBoard;
   const openTyping = useCallback(() => {
     markHintUsed();
     restartTyping();
@@ -306,12 +308,15 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   const closeTyping = useCallback(() => setPhase((current) => (current === "focused" ? "returning" : current)), []);
   useEffect(() => {
     if (!typingOpen || phase !== "focused") return;
+    // Esc steps back: out of the leaderboard view first, then to the desk.
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeTyping();
+      if (event.key !== "Escape") return;
+      if (typingView === "board") hideBoard();
+      else closeTyping();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [typingOpen, phase, closeTyping]);
+  }, [typingOpen, phase, closeTyping, typingView, hideBoard]);
   // The case study the lift animation opens into, once a zoom has arrived.
   const focusTarget = !active || phase !== "focused"
     ? null
@@ -420,6 +425,11 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
                   leaderboard={typing.leaderboard}
                   onName={typing.setName}
                   onSubmit={typing.submit}
+                  onRetryBoard={typing.retryBoard}
+                  view={typing.view}
+                  browse={typing.browse}
+                  onShowBoard={typing.showBoard}
+                  onHideBoard={typing.hideBoard}
                 />
               )}
             </ScreenSurface>
@@ -536,6 +546,11 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
             leaderboard={typing.leaderboard}
             onName={typing.setName}
             onSubmit={typing.submit}
+                  onRetryBoard={typing.retryBoard}
+                  view={typing.view}
+                  browse={typing.browse}
+                  onShowBoard={typing.showBoard}
+                  onHideBoard={typing.hideBoard}
           />
         </div>
       )}

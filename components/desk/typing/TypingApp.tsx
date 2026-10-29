@@ -4,7 +4,7 @@ import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { accuracy, results, secondsLeft, wpm, type TypingState } from "@/lib/typingTest";
 import { LEADERBOARD_SIZE } from "@/lib/leaderboard";
-import { TYPING_DURATIONS, type Leaderboard } from "./useTypingTest";
+import { TYPING_DURATIONS, type Browse, type Leaderboard } from "./useTypingTest";
 import styles from "./TypingApp.module.css";
 
 // Words rendered ahead of the caret; the rest of the test's words wait.
@@ -31,10 +31,16 @@ type Props = {
   leaderboard: Leaderboard;
   onName: (name: string) => void;
   onSubmit: () => void;
+  onRetryBoard: () => void;
+  // The leaderboard opened from the test, and its current tab.
+  view: "test" | "board";
+  browse: Browse;
+  onShowBoard: (duration: number) => void;
+  onHideBoard: () => void;
 };
 
 export const TypingApp = memo(
-  function TypingApp({ state, now, duration, style, interactive, onInput, onRestart, onClose, leaderboard, onName, onSubmit }: Props) {
+  function TypingApp({ state, now, duration, style, interactive, onInput, onRestart, onClose, leaderboard, onName, onSubmit, onRetryBoard, view, browse, onShowBoard, onHideBoard }: Props) {
     const wordsRef = useRef<HTMLDivElement>(null);
     const windowRef = useRef<HTMLDivElement>(null);
     const caretRef = useRef<HTMLDivElement>(null);
@@ -44,6 +50,8 @@ export const TypingApp = memo(
 
     const wi = state ? state.typed.length - 1 : 0;
     const done = state?.finishedAt != null;
+    const running = state?.startedAt != null && !done;
+    const browsing = view === "board";
 
     // The caret, and the words scrolled so the current line is the second.
     useLayoutEffect(() => {
@@ -124,13 +132,13 @@ export const TypingApp = memo(
 
     return (
       <div className={styles.window} style={style} onPointerDown={() => interactive && !done && window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }))}>
-        <div className={styles.chrome}>
-          <button type="button" className={`${styles.light} ${styles.close}`} onClick={onClose} aria-label="Close the typing test" tabIndex={interactive ? 0 : -1} />
-          <i className={styles.light} style={{ background: "#eac66c" }} />
-          <i className={styles.light} style={{ background: "#8aca9d" }} />
-          <span className={styles.title}>type — adrianklisz.com</span>
-        </div>
-        <div className={`${styles.pane} ${done ? styles.done : ""}`}>
+        <BrowserBar
+          path={browsing ? "/type/leaderboard" : "/type"}
+          title={browsing ? "Leaderboard" : "Typing test"}
+          interactive={interactive}
+          onClose={onClose}
+        />
+        <div className={`${styles.pane} ${done ? styles.done : ""} ${browsing ? styles.browsing : ""}`}>
           <div className={styles.playing}>
             <div className={styles.bar}>
               <div className={styles.stats} aria-live="off">
@@ -139,6 +147,19 @@ export const TypingApp = memo(
                 <span>{state ? accuracy(state) : 100} <span className={styles.unit}>% acc</span></span>
               </div>
               <div className={styles.modes} aria-label="Test length">
+                {/* Not mid-run: it would leave the clock running behind it. */}
+                {!running && (
+                  <button
+                    type="button"
+                    className={`${styles.mode} ${styles.boardButton}`}
+                    aria-label="Leaderboard"
+                    tabIndex={interactive ? 0 : -1}
+                    onClick={() => onShowBoard(duration)}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M9 20h6M10 17h4" /></svg>
+                    <span className={styles.boardLabel}>leaderboard</span>
+                  </button>
+                )}
                 {TYPING_DURATIONS.map((seconds) => (
                   <button
                     key={seconds}
@@ -196,6 +217,7 @@ export const TypingApp = memo(
                   nameRef={nameRef}
                   onName={onName}
                   onSubmit={onSubmit}
+                  onRetry={onRetryBoard}
                   onRestart={onRestart}
                   onClose={onClose}
                 />
@@ -205,6 +227,7 @@ export const TypingApp = memo(
               </>
             )}
           </div>
+          <BoardView browse={browse} interactive={interactive} onShow={onShowBoard} onHide={onHideBoard} />
           {interactive && (
             <input
               ref={inputRef}
@@ -216,6 +239,8 @@ export const TypingApp = memo(
               autoCorrect="off"
               spellCheck={false}
               onChange={(event) => {
+                // Keys typed while the leaderboard is open don't count.
+                if (browsing) return;
                 const value = event.target.value;
                 const kind = (event.nativeEvent as InputEvent).inputType;
                 if (kind === "deleteWordBackward" || kind === "deleteSoftLineBackward") onInput("deleteWord");
@@ -228,7 +253,10 @@ export const TypingApp = memo(
                   onRestart();
                 } else if (event.key === "Escape") {
                   event.preventDefault();
-                  onClose();
+                  // The desk listens for Esc too; this one is handled here.
+                  event.stopPropagation();
+                  if (browsing) onHideBoard();
+                  else onClose();
                 }
               }}
             />
@@ -241,6 +269,108 @@ export const TypingApp = memo(
   (previous, next) => Boolean(previous.frozen && next.frozen),
 );
 
+function Icon({ d, muted = false }: { d: string; muted?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={`${styles.icon} ${muted ? styles.muted : ""}`}>
+      <path d={d} />
+    </svg>
+  );
+}
+
+// Browser chrome in dark mode, matching the case study's browser window on
+// the monitor (BrowserChrome): a tab strip, then back, forward, reload and the
+// address field. The red light closes the test; the rest is decoration.
+function BrowserBar({ path, title, interactive, onClose }: { path: string; title: string; interactive: boolean; onClose: () => void }) {
+  return (
+    <div className={styles.chrome}>
+      <div className={styles.tabStrip}>
+        <span className={styles.lights}>
+          <button type="button" className={`${styles.light} ${styles.close}`} onClick={onClose} aria-label="Close the typing test" tabIndex={interactive ? 0 : -1} />
+          <i className={styles.light} style={{ background: "#febc2e" }} />
+          <i className={styles.light} style={{ background: "#28c840" }} />
+        </span>
+        <span className={styles.tab} aria-hidden="true">
+          <span className={styles.favicon}>a</span>
+          <span className={styles.tabTitle}>{title} · Adrian Klisz</span>
+          <span className={styles.tabClose}>×</span>
+        </span>
+        <span className={styles.newTab} aria-hidden="true">+</span>
+      </div>
+      <div className={styles.toolbar} aria-hidden="true">
+        <span className={styles.nav}>
+          <Icon d="m14 6-6 6 6 6M8 12h12" muted />
+          <Icon d="m10 6 6 6-6 6M16 12H4" muted />
+        </span>
+        <Icon d="M19 8a8 8 0 1 0 1 8M19 3v5h-5" />
+        <div className={styles.omnibox}>
+          <Icon d="M8 11V8a4 4 0 0 1 8 0v3M6 11h12v9H6z" />
+          <span className={styles.url}>
+            adrianklisz.com<span className={styles.path}>{path}</span>
+          </span>
+          <span className={styles.star}>
+            <Icon d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z" />
+          </span>
+        </div>
+        <span className={styles.menu}>⋮</span>
+      </div>
+    </div>
+  );
+}
+
+// The leaderboard opened from the test: any length, with its own tabs.
+function BoardView({ browse, interactive, onShow, onHide }: { browse: Browse; interactive: boolean; onShow: (duration: number) => void; onHide: () => void }) {
+  return (
+    <div className={styles.boardView} aria-live="polite">
+      <div className={styles.boardHead}>
+        <span className={styles.boardTitle}>leaderboard</span>
+        <div className={styles.modes} aria-label="Test length">
+          {TYPING_DURATIONS.map((seconds) => (
+            <button
+              key={seconds}
+              type="button"
+              className={styles.mode}
+              aria-pressed={seconds === browse.duration}
+              tabIndex={interactive ? 0 : -1}
+              onClick={() => onShow(seconds)}
+            >
+              {seconds}s
+            </button>
+          ))}
+        </div>
+      </div>
+      {browse.status === "offline" ? (
+        <p className={styles.note}>
+          The leaderboard isn&apos;t available right now.{" "}
+          <button type="button" className={styles.retry} onClick={() => onShow(browse.duration)} tabIndex={interactive ? 0 : -1}>
+            Try again
+          </button>
+        </p>
+      ) : browse.status === "loading" ? (
+        <p className={styles.note}>Loading…</p>
+      ) : browse.board.length === 0 ? (
+        <p className={styles.note}>No {browse.duration}-second scores yet. Be the first.</p>
+      ) : (
+        <ol className={`${styles.entries} ${styles.wideEntries}`}>
+          {browse.board.map((entry, i) => (
+            <li key={entry.name + entry.createdAt}>
+              <span className={styles.rank}>{i + 1}</span>
+              <span className={styles.who}>{entry.name}</span>
+              <span className={styles.score}>{entry.wpm}</span>
+              <span className={styles.acc}>{entry.accuracy}%</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className={styles.hint}>
+        <button type="button" className={styles.back} onClick={onHide} tabIndex={interactive ? 0 : -1}>
+          ← back to the test
+        </button>{" "}
+        · <kbd>esc</kbd>
+      </div>
+    </div>
+  );
+}
+
 // This length's top runs, and the name field for a run that can go on it.
 function Board({
   leaderboard,
@@ -249,6 +379,7 @@ function Board({
   nameRef,
   onName,
   onSubmit,
+  onRetry,
   onRestart,
   onClose,
 }: {
@@ -258,6 +389,7 @@ function Board({
   nameRef: React.RefObject<HTMLInputElement | null>;
   onName: (name: string) => void;
   onSubmit: () => void;
+  onRetry: () => void;
   onRestart: () => void;
   onClose: () => void;
 }) {
@@ -267,7 +399,12 @@ function Board({
     <div className={styles.board}>
       <div className={styles.label}>leaderboard · {duration}s</div>
       {status === "offline" ? (
-        <p className={styles.note}>The leaderboard isn&apos;t available right now.</p>
+        <p className={styles.note}>
+          The leaderboard isn&apos;t available right now.{" "}
+          <button type="button" className={styles.retry} onClick={onRetry} tabIndex={interactive ? 0 : -1}>
+            Try again
+          </button>
+        </p>
       ) : status === "loading" ? (
         <p className={styles.note}>Loading…</p>
       ) : board.length === 0 ? (
