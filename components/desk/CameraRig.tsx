@@ -39,7 +39,6 @@ export function CameraRig({
   startZoomed,
   onArrive,
   onReturned,
-  onOrbitStart,
   zoomTarget = "page",
 }: {
   framing: DeskFraming;
@@ -50,7 +49,6 @@ export function CameraRig({
   startZoomed: boolean;
   onArrive: () => void;
   onReturned: () => void;
-  onOrbitStart?: () => void;
   // What a zoom lands on: the case study's page area, or the typing window.
   zoomTarget?: "page" | "typing";
 }) {
@@ -164,7 +162,6 @@ export function CameraRig({
       enablePan={false}
       // The wheel steps through the times of day instead.
       enableZoom={false}
-      onStart={onOrbitStart}
       enableDamping
       dampingFactor={0.08}
       rotateSpeed={0.6}

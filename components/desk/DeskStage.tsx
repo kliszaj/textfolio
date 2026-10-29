@@ -14,7 +14,7 @@ import { DeskClock, useDeskTime } from "./DeskClock";
 import { sceneForHour } from "@/lib/workspace/scenes";
 import { gradientCSS, useDeskGradients } from "./DeskGradients";
 import { useDeskTwilight } from "./DeskTwilight";
-import { useDuskSky } from "./DuskSky";
+import { roomDarkness, useDuskSky } from "./DuskSky";
 import { DeskFramingControls, useDeskFraming, useDeskColors } from "./DeskFraming";
 import {
   markDeskSession,
@@ -25,7 +25,6 @@ import {
 } from "@/lib/deskSession";
 import { createStepGesture } from "@/lib/deskGestures";
 import { usePointerType } from "@/hooks/usePointerType";
-import { DeskHint, useDeskHint } from "./DeskHint";
 import { DeskModel, type ScreenPose } from "./DeskModel";
 import { DeskLighting, WindowLight } from "./DeskLighting";
 import { AdaptiveTextSampler } from "./adaptiveText";
@@ -80,12 +79,21 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   const router = useRouter();
   const [screen, setScreen] = useState<ScreenPose | null>(null);
   const clock = useDeskTime();
-  const hint = useDeskHint();
   const typing = useTypingTest();
   const { framing, update: updateFraming } = useDeskFraming();
   const { colors, updateColors } = useDeskColors();
   const { gradients, updateGradients } = useDeskGradients();
   const { twilight, updateTwilight } = useDeskTwilight();
+  // The sky's light, darkened through the evening in the dark-room twilight
+  // (roomDarkness): the 3D room goes dark with the backdrop, the sun's direct
+  // light going with it.
+  const solar = useMemo(() => {
+    const sky = clock.solar;
+    if (!sky) return sky;
+    const dark = roomDarkness(twilight.style, sky.horizonMix, sky.backgroundNightMix, sky.morning);
+    if (dark <= sky.darkness) return sky;
+    return { ...sky, darkness: dark, daylight: Math.min(sky.daylight, 1 - dark), sunIntensity: sky.sunIntensity * (1 - dark) };
+  }, [clock.solar, twilight.style]);
   const dusk = useDuskSky({
     twilight,
     afternoon: colors.afternoon,
@@ -217,7 +225,6 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   }, []);
   useEffect(() => cancelSwap, [cancelSwap]);
   const stepTime = (direction: -1 | 1) => {
-    hint.markUsed();
     clock.step(direction);
     const from = pendingSheet.current ?? caseStudy;
     const index = caseStudies.findIndex((sheet) => sheet.slug === from?.slug);
@@ -298,15 +305,13 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   // the input (text in the 3D layer renders soft), and Esc zooms back out.
   const typingOpen = destination.kind === "typing";
   const typingBox = layout && viewport ? typingWindow(layout, viewport) : null;
-  const markHintUsed = hint.markUsed;
   const restartTyping = typing.restart;
   const typingView = typing.view;
   const hideBoard = typing.hideBoard;
   const openTyping = useCallback(() => {
-    markHintUsed();
     restartTyping();
     zoomTo({ kind: "typing" });
-  }, [markHintUsed, restartTyping, zoomTo]);
+  }, [restartTyping, zoomTo]);
   const closeTyping = useCallback(() => setPhase((current) => (current === "focused" ? "returning" : current)), []);
   useEffect(() => {
     if (!typingOpen || phase !== "focused") return;
@@ -373,13 +378,13 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         }}
       >
         <AdaptiveTextSampler base={background.text} />
-        <DeskLighting solar={clock.solar} screen={screen} />
-        <WindowLight solar={clock.solar} glow={twilight.glow} enabled={twilight.style === "window"} />
+        <DeskLighting solar={solar} screen={screen} />
+        <WindowLight solar={solar} glow={twilight.glow} enabled={twilight.style === "window" || twilight.style === "dark"} />
         <Suspense fallback={null}>
           <DeskModel
             onScreen={setScreen}
             hour={clock.sceneHour}
-            darkness={clock.solar?.darkness ?? 0}
+            darkness={solar?.darkness ?? 0}
             onKeyboardClick={variant === "browser" && active && phase === "idle" ? openTyping : undefined}
           />
         </Suspense>
@@ -394,7 +399,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
               variant={variant}
               // Unloaded while a case study is open; reloaded to come back.
               mountBrowserPage={active || preparing}
-              darkness={clock.solar?.darkness ?? 0}
+              darkness={solar?.darkness ?? 0}
               scene={sceneForHour(clock.sceneHour)}
               onPageLoad={onPageLoad}
               onOpen={openMonitor}
@@ -448,7 +453,6 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
               startZoomed={startZoomed}
               onArrive={arrive}
               onReturned={() => setPhase("idle")}
-              onOrbitStart={hint.markUsed}
               zoomTarget={typingOpen ? "typing" : "page"}
             />
           </>
@@ -509,7 +513,6 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         >
           <DeskClock clock={clock} touch={touch} />
         </div>
-        <DeskHint show={hint.show} touch={touch} revealed={revealed} />
         {SHOW_DESK_SETTINGS && (
           <div
             className="desk-reveal pointer-events-none absolute inset-0 [&>*]:pointer-events-auto"

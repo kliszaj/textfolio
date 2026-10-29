@@ -284,9 +284,8 @@ Most of the review below is now done. What changed, by review item:
   a 375px phone.
 - **Experience 1, touch: done.** Coarse pointers get earlier/later arrows
   either side of the time (44px targets); a swipe would fight the orbit drag.
-- **Experience 2, hint: done.** `DeskHint.tsx`, top left, after the UI
-  reveal. Fades on the first time step or orbit, or after 12s; marked seen in
-  localStorage only once actually used.
+- **Experience 2, hint: removed** at the user's request (it was
+  `DeskHint.tsx`, a three-line hint top left on a first visit).
 - **Experience 3, pinch: done.** ctrl+wheel is ignored (`lib/deskGestures.ts`,
   where the wheel lock now lives).
 - **Experience 4, reduced motion: not done** (user's call).
@@ -413,6 +412,20 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
     3D copy now stays visible and current under the flat one for as long as
     the test is open (frozen only when closed). Sampled per frame: no gap on
     entry or exit.
+- **Twilight: a dark room with the sunset at the window.** New default
+  twilight style `"dark"` (DuskSky, `TWILIGHT_STYLES`): through the evening
+  the backdrop goes to the night colour, and `roomDarkness()` darkens the 3D
+  lighting with it (DeskStage's `solar`; the sun's direct light fades out in
+  step), so by sunset the room is as dark as night, lit by the monitor. The
+  four-pane window patch (`WindowLight`) is now a pink-to-amber gradient at
+  0.8 opacity, with a soft pink point light reaching the desk from that side;
+  both fade as night falls (`windowLightStrength`). The twilight settings'
+  storage key went to v2 so saved v1 settings don't keep an older style.
+- **The mug, the water glass and the coffee ring come and go smoothly**
+  (`lib/workspace/scenes.ts`): the mug and glass shrink as they lift off the
+  desk (scale, not opacity: their batched materials are shared with other
+  props), the ring fades its own material; the first update snaps. Tested,
+  including a mid-animation check.
 - **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
   deploys `main`). `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs

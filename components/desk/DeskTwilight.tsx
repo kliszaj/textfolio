@@ -23,7 +23,7 @@ export type DeskTwilight = {
 };
 
 export const DEFAULT_DESK_TWILIGHT: DeskTwilight = {
-  style: "radial",
+  style: "dark",
   glow: "#f5ede6",
   middle: "#181828",
   edge: "#3b2f6e",
@@ -36,7 +36,9 @@ export const DEFAULT_DESK_TWILIGHT: DeskTwilight = {
   sunY: 1.08,
 };
 
-const STORAGE_KEY = "textfolio:desk-twilight-v1";
+// v2: the dark room became the default; settings saved under v1 would keep
+// an older style.
+const STORAGE_KEY = "textfolio:desk-twilight-v2";
 const COLORS = [
   { key: "glow", label: "Glow, where the sun set" },
   { key: "middle", label: "Middle" },

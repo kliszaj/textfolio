@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import * as THREE from "three";
-import { TWILIGHT_STYLES, useDuskSky, windowLightStrength, type TwilightStyle } from "./DuskSky";
+import { roomDarkness, TWILIGHT_STYLES, useDuskSky, windowLightStrength, type TwilightStyle } from "./DuskSky";
 import { DEFAULT_DESK_TWILIGHT } from "./DeskTwilight";
 
 const AFTERNOON = "#f5ede6";
@@ -76,5 +76,22 @@ describe("the last sun through the window", () => {
 
   test("never goes past full strength", () => {
     for (let h = 0; h <= 1; h += 0.05) expect(windowLightStrength(h, 0)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("the dark room at twilight", () => {
+  test("is as dark as night by sunset, and light through the afternoon", () => {
+    expect(roomDarkness("dark", 1, 0, false)).toBe(1);
+    expect(roomDarkness("dark", 0.2, 0, false)).toBe(0);
+    expect(roomDarkness("dark", 0.7, 0, false)).toBeGreaterThan(0);
+  });
+
+  test("stays dark into the night", () => {
+    expect(roomDarkness("dark", 0.5, 1, false)).toBe(1);
+  });
+
+  test("is only the evening, and only in that style", () => {
+    expect(roomDarkness("dark", 1, 0, true)).toBe(0);
+    expect(roomDarkness("radial", 1, 0, false)).toBe(0);
   });
 });

@@ -11,6 +11,7 @@ import type { DeskTwilight } from "./DeskTwilight";
 // clock so the name and time can pick ink or cream.
 
 export const TWILIGHT_STYLES = [
+  { id: "dark", label: "Dark room, window light" },
   { id: "radial", label: "Radial glow" },
   { id: "horizon", label: "Horizon bands" },
   { id: "grain", label: "Grain mesh" },
@@ -45,6 +46,15 @@ export function windowLightStrength(horizon: number, nightMix: number) {
   return clamp01(Math.sin(Math.PI * clamp01(horizon * 1.15)) * 0.4 + d * 0.6) * (1 - clamp01(nightMix * 1.8));
 }
 
+// The dark-room twilight: through the evening the room goes dark as if its
+// lights were off -- as dark as night by sunset -- and only the sunset comes
+// in, through the window (WindowLight, in the scene). How dark, 0 to 1; the
+// lighting takes the darker of this and the real sky's.
+export function roomDarkness(style: TwilightStyle, horizon: number, nightMix: number, morning: boolean) {
+  if (style !== "dark" || morning) return 0;
+  return Math.max(THREE.MathUtils.smoothstep(horizon, 0.35, 1), nightMix);
+}
+
 // One-click colour combinations for the twilight sky (glow, middle, edges).
 export const TWILIGHT_PALETTES = [
   { name: "Lavender dusk", glow: "#f5ede6", middle: "#181828", edge: "#3b2f6e" },
@@ -76,6 +86,12 @@ export function useDuskSky({ twilight, afternoon, night, horizon, nightMix }: In
     const glow = mix(cream, glowSet, d).lerp(nightColor, n);
     const middle = mix(cream, middleSet, d).lerp(nightColor, n);
     const edge = mix(cream, edgeSet, d).lerp(nightColor, n);
+
+    if (style === "dark") {
+      // A dark room: the wall behind the desk just goes to the night colour.
+      const wall = mix(cream, nightColor, Math.max(d, n));
+      return { node: <div className="absolute inset-0" style={{ backgroundColor: css(wall) }} />, corner: wall };
+    }
 
     if (style === "radial") {
       // The glow pools low where the sun went down and shrinks as night

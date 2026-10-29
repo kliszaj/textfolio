@@ -120,7 +120,12 @@ export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDe
 // on the backdrop, so it turns with the room when the desk is orbited. It
 // slides down, stretches and fades as the sun sets.
 const WINDOW_LIGHT_AT = { x: 0.75, z: -0.5 };
-const WINDOW_LIGHT_OPACITY = 0.55;
+const WINDOW_LIGHT_OPACITY = 0.8;
+// Sunset through the glass: pink at the top of the panes, warming to amber.
+const SUNSET_STOPS: [number, string][] = [[0, "#ff7fae"], [0.5, "#ff9a8f"], [1, "#ffbf72"]];
+// A little of that light reaching the desk, from the window's side.
+const WINDOW_GLOW_COLOR = "#ff94a8";
+const WINDOW_GLOW_INTENSITY = 1.4;
 const scratchToCamera = new THREE.Vector3();
 
 export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof useDeskTime>["solar"]; glow: string; enabled: boolean }) {
@@ -132,9 +137,17 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
     const ctx = canvas.getContext("2d")!;
     ctx.filter = "blur(16px)";
     ctx.fillStyle = "#ffffff";
-    // Four panes thrown long and slanting across the wall.
+    // Four panes thrown long and slanting across the wall...
     ctx.setTransform(1, 0.1, -0.45, 1, 210, 60);
     for (const [x, y] of [[0, 0], [150, 0], [0, 190], [150, 190]]) ctx.fillRect(x, y, 135, 175);
+    // ...coloured top to bottom by the sunset, keeping their soft edges.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.filter = "none";
+    ctx.globalCompositeOperation = "source-in";
+    const sunset = ctx.createLinearGradient(0, 40, 0, 480);
+    for (const [at, color] of SUNSET_STOPS) sunset.addColorStop(at, color);
+    ctx.fillStyle = sunset;
+    ctx.fillRect(0, 0, 512, 512);
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.SRGBColorSpace;
     return new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, opacity: 0, toneMapped: false });
@@ -143,7 +156,9 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
     material.map?.dispose();
     material.dispose();
   }, [material]);
-  const tint = useMemo(() => new THREE.Color("#ffffff").lerp(new THREE.Color(glow), 0.5), [glow]);
+  // The panes carry the sunset's colours; the twilight glow only nudges them.
+  const tint = useMemo(() => new THREE.Color("#ffffff").lerp(new THREE.Color(glow), 0.2), [glow]);
+  const glowLight = useRef<THREE.PointLight>(null);
   useRenderAfterChange(LIGHT_SETTLE_SECONDS, [solar, tint, enabled]);
 
   useFrame(({ camera }, delta) => {
@@ -160,6 +175,9 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
     const blend = 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * LIGHT_EASE_RATE);
     const light = mesh.material as THREE.MeshBasicMaterial;
     light.opacity = THREE.MathUtils.lerp(light.opacity, target, blend);
+    // Not faded with the orbit: the light on the desk is there from any side.
+    const glowTarget = enabled && evening ? windowLightStrength(horizon, solar?.backgroundNightMix ?? 0) * WINDOW_GLOW_INTENSITY : 0;
+    if (glowLight.current) glowLight.current.intensity = THREE.MathUtils.lerp(glowLight.current.intensity, glowTarget, blend);
     light.color.lerp(tint, blend);
     mesh.visible = light.opacity > 0.003;
     mesh.position.set(WINDOW_LIGHT_AT.x - 0.25 * d, THREE.MathUtils.lerp(1.5, 1.1, d), WINDOW_LIGHT_AT.z);
@@ -167,8 +185,11 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
   });
 
   return (
-    <mesh ref={patch} material={material} renderOrder={-1}>
-      <planeGeometry args={[1.1, 1.1]} />
-    </mesh>
+    <>
+      <mesh ref={patch} material={material} renderOrder={-1}>
+        <planeGeometry args={[1.1, 1.1]} />
+      </mesh>
+      <pointLight ref={glowLight} position={[0.55, 1.35, -0.35]} color={WINDOW_GLOW_COLOR} intensity={0} distance={2.6} decay={2} />
+    </>
   );
 }

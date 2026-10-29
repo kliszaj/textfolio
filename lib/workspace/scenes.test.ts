@@ -140,7 +140,8 @@ describe("the coffee", () => {
       [2, false, false],
     ];
     for (const [hour, mug, ringShown] of expectations) {
-      run(hour, 1);
+      // Long enough for them to finish coming and going (they animate).
+      run(hour, 2);
       expect([hour, get("Coffee mug").visible, ring.visible]).toEqual([hour, mug, ringShown]);
     }
   });
@@ -157,9 +158,31 @@ describe("the coffee", () => {
   test("the water glass takes over in the afternoon only", () => {
     const { get, run } = setup();
     for (const [hour, shown] of [[8, false], [12, false], [15, true], [20, false]] as const) {
-      run(hour, 1);
+      run(hour, 2);
       expect(get("Afternoon water glass").visible).toBe(shown);
     }
+  });
+
+  test("the mug is picked up rather than blinking out: it shrinks as it rises", () => {
+    const { get, run } = setup();
+    run(8, 2);
+    const mug = get("Coffee mug");
+    const restingY = mug.position.y;
+    expect(mug.scale.x).toBeCloseTo(1, 2);
+    run(15, 0.25);
+    expect(mug.visible).toBe(true);
+    expect(mug.scale.x).toBeGreaterThan(0.1);
+    expect(mug.scale.x).toBeLessThan(0.9);
+    expect(mug.position.y).toBeGreaterThan(restingY);
+    run(15, 2);
+    expect(mug.visible).toBe(false);
+  });
+
+  test("the first frame puts everything in place without animating", () => {
+    const { get, scenes } = setup();
+    scenes.update(15, 1 / 60, false);
+    expect(get("Afternoon water glass").scale.x).toBe(1);
+    expect(get("Coffee mug").visible).toBe(false);
   });
 
   test("steam only rises from the morning cup", () => {

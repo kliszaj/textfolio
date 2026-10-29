@@ -125,6 +125,14 @@ export function prepareScenes(root:T.Group,{illustratedScreen=true}:{illustrated
   const led=new T.Mesh(new T.SphereGeometry(.003,12,8),new T.MeshBasicMaterial({color:'#ff675e'}));led.userData.noMerge=true;led.position.set(.14,1.52,-.181);root.add(led);
   if(textures.coding){screen.material.map?.dispose();screen.material.map=textures.coding;overlay.material.map=textures.coding;}
   let active:WorkspaceScene='coding',fade=1;
+  // The mug and the glass come and go as if picked up and put down -- rising
+  // a little as they shrink away -- and the coffee ring fades, rather than
+  // blinking between scenes. 0 is gone, 1 is on the desk; the first update
+  // snaps, so the desk doesn't open with things growing in.
+  const RING_OPACITY=.3,LIFT=.035,APPEAR_RATE=4;
+  const mugY=coffee.position.y,glassY=glass.position.y;
+  let mugShown=0,glassShown=0,first=true;
+  const appear=(o:T.Object3D,shown:number,baseY:number)=>{const e=shown*shown*(3-2*shown);o.visible=shown>.01;o.scale.setScalar(e);o.position.y=baseY+(1-e)*LIFT;};
   return {
     roots:[coffee,chair,glass,keyboard,mouse,tray,pivot,mat,notebookBack,leaf,staples,pen],
     update(hour:number,delta:number,reduced:boolean,darkness=0) {
@@ -142,7 +150,9 @@ export function prepareScenes(root:T.Group,{illustratedScreen=true}:{illustrated
       mat.position.z=T.MathUtils.lerp(mat.position.z,video?.006:meeting?-.004:0,k);
       tray.rotation.y=T.MathUtils.lerp(tray.rotation.y,meeting?.10:video?-.06:0,k);
       tray.position.z=T.MathUtils.lerp(tray.position.z,meeting?.185:.17,k);
-      coffee.visible=next==='design'||meeting;
+      const kAppear=reduced||first?1:1-Math.exp(-delta*APPEAR_RATE);
+      mugShown=T.MathUtils.lerp(mugShown,next==='design'||meeting?1:0,kAppear);
+      appear(coffee,mugShown,mugY);
       // Full at 06:00, nearly finished by noon; rewind naturally with the clock.
       const remaining=1-T.MathUtils.clamp((hour-6)/6,0,1);
       drink.position.y=T.MathUtils.lerp(drink.position.y,.033+.056*remaining,k);
@@ -175,7 +185,11 @@ export function prepareScenes(root:T.Group,{illustratedScreen=true}:{illustrated
       leaf.rotation.z=T.MathUtils.lerp(angle,target,reduced?1:1-Math.exp(-delta*OPEN_SPEED));
       staples.visible=leaf.rotation.z<.3;
       steam.visible=next==='design';
-      ring.visible=next==='coding'||video;glass.visible=next==='coding';
+      const ringMaterial=ring.material as T.MeshBasicMaterial;
+      ringMaterial.opacity=T.MathUtils.lerp(ringMaterial.opacity,next==='coding'||video?RING_OPACITY:0,kAppear);ring.visible=ringMaterial.opacity>.005;
+      glassShown=T.MathUtils.lerp(glassShown,next==='coding'?1:0,kAppear);
+      appear(glass,glassShown,glassY);
+      first=false;
       chair.position.z=T.MathUtils.lerp(chair.position.z,sleep?.39:video?.59:.51,k);
       chair.rotation.y=T.MathUtils.lerp(chair.rotation.y,sleep?0:video?-.24:-.11,k);
       diffuser.material.emissiveIntensity=T.MathUtils.lerp(diffuser.material.emissiveIntensity,meeting&&darkness<.5?2.5:0,k);
