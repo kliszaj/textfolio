@@ -12,10 +12,15 @@ function fakeWorkstation() {
     return object;
   };
   const coffee = add("Coffee mug");
+  // The mug's ceramic, shared with the keyboard as the real desk shares its
+  // materials between props.
+  const shared = new T.MeshStandardMaterial({ color: "#eee8d7" });
+  add("Mug body", coffee, new T.Mesh(new T.CylinderGeometry(), shared));
   add("Coffee surface", coffee);
   add("Crema at rim", coffee);
   add("Coffee steam", coffee);
-  add("Mechanical keyboard");
+  const keyboard = add("Mechanical keyboard");
+  add("Keycaps", keyboard, new T.Mesh(new T.BoxGeometry(), shared));
   add("Workspace mouse");
   add("Colourful macro controller");
   add("Cutting mat • rubber edge");
@@ -163,25 +168,46 @@ describe("the coffee", () => {
     }
   });
 
-  test("the mug is picked up rather than blinking out: it shrinks as it rises", () => {
+  test("the mug fades out rather than blinking, staying full size", () => {
     const { get, run } = setup();
     run(8, 2);
-    const mug = get("Coffee mug");
-    const restingY = mug.position.y;
-    expect(mug.scale.x).toBeCloseTo(1, 2);
+    const body = get("Mug body") as T.Mesh<T.BufferGeometry, T.MeshStandardMaterial>;
+    expect(body.material.opacity).toBeCloseTo(1, 2);
+    expect(body.material.transparent).toBe(false);
     run(15, 0.25);
-    expect(mug.visible).toBe(true);
-    expect(mug.scale.x).toBeGreaterThan(0.1);
-    expect(mug.scale.x).toBeLessThan(0.9);
-    expect(mug.position.y).toBeGreaterThan(restingY);
+    expect(get("Coffee mug").visible).toBe(true);
+    expect(body.material.opacity).toBeGreaterThan(0.1);
+    expect(body.material.opacity).toBeLessThan(0.9);
+    expect(body.material.transparent).toBe(true);
+    expect(get("Coffee mug").scale.x).toBe(1);
     run(15, 2);
-    expect(mug.visible).toBe(false);
+    expect(get("Coffee mug").visible).toBe(false);
+  });
+
+  test("fading the mug leaves props that shared its material alone", () => {
+    const { get, run } = setup();
+    run(8, 2);
+    run(15, 0.25);
+    const keycaps = get("Keycaps") as T.Mesh<T.BufferGeometry, T.MeshStandardMaterial>;
+    expect(keycaps.material.opacity).toBe(1);
+    expect(keycaps.material.transparent).toBe(false);
+  });
+
+  test("steam only shows over a mug that has fully faded in", () => {
+    const { get, run } = setup();
+    run(15, 2);
+    run(8, 0.2);
+    expect(get("Coffee steam").visible).toBe(false);
+    run(8, 2);
+    expect(get("Coffee steam").visible).toBe(true);
   });
 
   test("the first frame puts everything in place without animating", () => {
     const { get, scenes } = setup();
     scenes.update(15, 1 / 60, false);
-    expect(get("Afternoon water glass").scale.x).toBe(1);
+    const shell = get("Afternoon water glass").children[0] as T.Mesh<T.BufferGeometry, T.MeshPhysicalMaterial>;
+    expect(get("Afternoon water glass").visible).toBe(true);
+    expect(shell.material.opacity).toBeCloseTo(0.28, 2);
     expect(get("Coffee mug").visible).toBe(false);
   });
 

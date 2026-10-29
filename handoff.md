@@ -421,11 +421,17 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   0.8 opacity, with a soft pink point light reaching the desk from that side;
   both fade as night falls (`windowLightStrength`). The twilight settings'
   storage key went to v2 so saved v1 settings don't keep an older style.
-- **The mug, the water glass and the coffee ring come and go smoothly**
-  (`lib/workspace/scenes.ts`): the mug and glass shrink as they lift off the
-  desk (scale, not opacity: their batched materials are shared with other
-  props), the ring fades its own material; the first update snaps. Tested,
-  including a mid-animation check.
+- **The mug, the water glass and the coffee ring fade in and out**
+  (`lib/workspace/scenes.ts`; the user didn't want them shrinking). The
+  mug's materials are cloned in `prepareScenes`, before batching, because
+  they're shared with other props that would fade with it; opaque materials
+  only switch to transparent while fading. The steam waits for a fully
+  faded-in mug. The first update snaps. Tested, including that a prop
+  sharing the mug's original material stays opaque.
+- **Window light at twilight**: the panes are upright with a slight lean
+  (they were a long slanted parallelogram), and stronger: up to full
+  opacity at sunset (`WINDOW_LIGHT_BOOST`), with a 2.4 pink light on the
+  desk.
 - **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
   deploys `main`). `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs

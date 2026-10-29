@@ -120,12 +120,15 @@ export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDe
 // on the backdrop, so it turns with the room when the desk is orbited. It
 // slides down, stretches and fades as the sun sets.
 const WINDOW_LIGHT_AT = { x: 0.75, z: -0.5 };
-const WINDOW_LIGHT_OPACITY = 0.8;
+const WINDOW_LIGHT_OPACITY = 1;
+// windowLightStrength peaks around 0.6 at sunset; this lifts the patch to
+// nearly full there.
+const WINDOW_LIGHT_BOOST = 1.7;
 // Sunset through the glass: pink at the top of the panes, warming to amber.
 const SUNSET_STOPS: [number, string][] = [[0, "#ff7fae"], [0.5, "#ff9a8f"], [1, "#ffbf72"]];
 // A little of that light reaching the desk, from the window's side.
 const WINDOW_GLOW_COLOR = "#ff94a8";
-const WINDOW_GLOW_INTENSITY = 1.4;
+const WINDOW_GLOW_INTENSITY = 2.4;
 const scratchToCamera = new THREE.Vector3();
 
 export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof useDeskTime>["solar"]; glow: string; enabled: boolean }) {
@@ -137,8 +140,8 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
     const ctx = canvas.getContext("2d")!;
     ctx.filter = "blur(16px)";
     ctx.fillStyle = "#ffffff";
-    // Four panes thrown long and slanting across the wall...
-    ctx.setTransform(1, 0.1, -0.45, 1, 210, 60);
+    // Four panes thrown across the wall, upright with just a slight lean...
+    ctx.setTransform(1, 0.03, -0.1, 1, 150, 70);
     for (const [x, y] of [[0, 0], [150, 0], [0, 190], [150, 190]]) ctx.fillRect(x, y, 135, 175);
     // ...coloured top to bottom by the sunset, keeping their soft edges.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -171,7 +174,9 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
     // see it edge-on rather than leave a floating sliver.
     const toCamera = scratchToCamera.copy(camera.position).sub(mesh.position).normalize();
     const facing = THREE.MathUtils.smoothstep(toCamera.z, 0.25, 0.7);
-    const target = enabled && evening ? windowLightStrength(horizon, solar?.backgroundNightMix ?? 0) * WINDOW_LIGHT_OPACITY * facing : 0;
+    const target = enabled && evening
+      ? Math.min(1, windowLightStrength(horizon, solar?.backgroundNightMix ?? 0) * WINDOW_LIGHT_BOOST) * WINDOW_LIGHT_OPACITY * facing
+      : 0;
     const blend = 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * LIGHT_EASE_RATE);
     const light = mesh.material as THREE.MeshBasicMaterial;
     light.opacity = THREE.MathUtils.lerp(light.opacity, target, blend);

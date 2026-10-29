@@ -125,14 +125,30 @@ export function prepareScenes(root:T.Group,{illustratedScreen=true}:{illustrated
   const led=new T.Mesh(new T.SphereGeometry(.003,12,8),new T.MeshBasicMaterial({color:'#ff675e'}));led.userData.noMerge=true;led.position.set(.14,1.52,-.181);root.add(led);
   if(textures.coding){screen.material.map?.dispose();screen.material.map=textures.coding;overlay.material.map=textures.coding;}
   let active:WorkspaceScene='coding',fade=1;
-  // The mug and the glass come and go as if picked up and put down -- rising
-  // a little as they shrink away -- and the coffee ring fades, rather than
+  // The mug, the water glass and the coffee ring fade in and out rather than
   // blinking between scenes. 0 is gone, 1 is on the desk; the first update
-  // snaps, so the desk doesn't open with things growing in.
-  const RING_OPACITY=.3,LIFT=.035,APPEAR_RATE=4;
-  const mugY=coffee.position.y,glassY=glass.position.y;
+  // snaps, so the desk doesn't open with things fading in.
+  const RING_OPACITY=.3,APPEAR_RATE=4;
   let mugShown=0,glassShown=0,first=true;
-  const appear=(o:T.Object3D,shown:number,baseY:number)=>{const e=shown*shown*(3-2*shown);o.visible=shown>.01;o.scale.setScalar(e);o.position.y=baseY+(1-e)*LIFT;};
+  // Fading needs materials of their own: the mug's are shared with other
+  // props, which would fade with it. Cloned now, before the desk is batched,
+  // so its merged meshes keep the clones. The steam has its own, animated.
+  const ownMaterials=(o:T.Object3D)=>{if(o===steam)return;const m=o as T.Mesh;if(m.isMesh)m.material=(m.material as T.Material).clone();o.children.forEach(ownMaterials);};
+  ownMaterials(coffee);
+  // Each material with its resting opacity, gathered on first use (after
+  // batching has replaced the meshes).
+  type Faded={material:T.Material;base:number;transparent:boolean};
+  const fadeable=(o:T.Object3D)=>{const out:Faded[]=[];const walk=(c:T.Object3D)=>{if(c===steam)return;const m=c as T.Mesh;if(m.isMesh){const material=m.material as T.Material;out.push({material,base:material.opacity,transparent:material.transparent});}c.children.forEach(walk);};walk(o);return out;};
+  let mugMaterials:Faded[]|null=null,glassMaterials:Faded[]|null=null;
+  const appear=(o:T.Object3D,shown:number,materials:Faded[])=>{
+    const e=shown*shown*(3-2*shown);o.visible=shown>.01;
+    for(const f of materials){
+      f.material.opacity=f.base*e;
+      // Opaque while fully there, so it sorts and shades as before.
+      const transparent=f.transparent||e<.999;
+      if(f.material.transparent!==transparent){f.material.transparent=transparent;f.material.needsUpdate=true;}
+    }
+  };
   return {
     roots:[coffee,chair,glass,keyboard,mouse,tray,pivot,mat,notebookBack,leaf,staples,pen],
     update(hour:number,delta:number,reduced:boolean,darkness=0) {
@@ -152,7 +168,8 @@ export function prepareScenes(root:T.Group,{illustratedScreen=true}:{illustrated
       tray.position.z=T.MathUtils.lerp(tray.position.z,meeting?.185:.17,k);
       const kAppear=reduced||first?1:1-Math.exp(-delta*APPEAR_RATE);
       mugShown=T.MathUtils.lerp(mugShown,next==='design'||meeting?1:0,kAppear);
-      appear(coffee,mugShown,mugY);
+      mugMaterials??=fadeable(coffee);glassMaterials??=fadeable(glass);
+      appear(coffee,mugShown,mugMaterials);
       // Full at 06:00, nearly finished by noon; rewind naturally with the clock.
       const remaining=1-T.MathUtils.clamp((hour-6)/6,0,1);
       drink.position.y=T.MathUtils.lerp(drink.position.y,.033+.056*remaining,k);
@@ -184,11 +201,12 @@ export function prepareScenes(root:T.Group,{illustratedScreen=true}:{illustrated
       const target=wantOpen?OPEN_ANGLE:wantShut?0:angle;
       leaf.rotation.z=T.MathUtils.lerp(angle,target,reduced?1:1-Math.exp(-delta*OPEN_SPEED));
       staples.visible=leaf.rotation.z<.3;
-      steam.visible=next==='design';
+      // Only over a mug that's fully there, never a half-faded one.
+      steam.visible=next==='design'&&mugShown>.95;
       const ringMaterial=ring.material as T.MeshBasicMaterial;
       ringMaterial.opacity=T.MathUtils.lerp(ringMaterial.opacity,next==='coding'||video?RING_OPACITY:0,kAppear);ring.visible=ringMaterial.opacity>.005;
       glassShown=T.MathUtils.lerp(glassShown,next==='coding'?1:0,kAppear);
-      appear(glass,glassShown,glassY);
+      appear(glass,glassShown,glassMaterials);
       first=false;
       chair.position.z=T.MathUtils.lerp(chair.position.z,sleep?.39:video?.59:.51,k);
       chair.rotation.y=T.MathUtils.lerp(chair.rotation.y,sleep?0:video?-.24:-.11,k);
