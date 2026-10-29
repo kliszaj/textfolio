@@ -65,7 +65,7 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  const coil:V[]=[];for(let i=0;i<180;i++){const a=i/179*Math.PI*2*14;coil.push([-.28+i/179*.12,.804+Math.sin(a)*.006,-.055+Math.cos(a)*.006]);}tube(root,'Coiled keyboard USB cable',coil,.0018,ivory,200);
  // Out of the keyboard's back into the coil, then round the Terra's side into a rear USB port.
  tube(root,'Keyboard cable tail',[[-.08,.802,.075],[-.12,.796,.0],[-.16,.804,-.049]],.002,ivory);
- tube(root,'Keyboard cable to computer',[[-.28,.804,-.049],[-.35,.787,-.07],[-.395,.783,-.17],[-.40,.80,-.31],[-.43,.85,-.37],[-.46,.86,-.352]],.002,ivory,40);
+ tube(root,'Keyboard cable to computer',[[-.28,.804,-.049],[-.35,.787,-.07],[-.395,.783,-.17],[-.40,.80,-.31],[-.43,.83,-.37],[-.46,.84,-.352]],.002,ivory,40);
 
  // MX Master 4: a continuous asymmetric loft with separate sloping click surfaces.
  const mouse=new T.Group();mouse.name='Workspace mouse';mouse.position.set(.235,.784,.17);root.add(mouse);
@@ -119,7 +119,11 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  box(cam,'A6000 body',[.120,.0669,.0452],[0,.032,0],dark,.008);box(cam,'Right hand grip',[.028,.062,.028],[-.046,.030,.025],rubber,.009);
  box(cam,'Top plate',[.117,.007,.043],[0,.064,0],graphite,.003);box(cam,'Electronic viewfinder',[.025,.013,.027],[.043,.065,-.016],rubber,.004);
  rod(cam,'E-mount silver ring',[.008,.030,.021],[.008,.030,.026],.025,steel);rod(cam,'Compact zoom lens',[.008,.030,.026],[.008,.030,.062],.023,dark);rod(cam,'Focus ring',[.008,.030,.049],[.008,.030,.061],.024,graphite);rod(cam,'Front lens rim',[.008,.030,.062],[.008,.030,.067],.022,dark);rod(cam,'Optical glass',[.008,.030,.067],[.008,.030,.068],.017,material('#284c63',.10,.55));
- for(let k=0;k<28;k++){const a=k*Math.PI*2/28;rod(cam,'Focus ring rib',[.008+Math.cos(a)*.024,.030+Math.sin(a)*.024,.050],[.008+Math.cos(a)*.024,.030+Math.sin(a)*.024,.060],.0007,rubber);}
+ // The reference lens has a large hood, almost as tall as the camera body.
+ rod(cam,'Wide lens barrel',[.008,.030,.027],[.008,.030,.079],.031,dark);
+ rod(cam,'Lens hood',[.008,.030,.078],[.008,.030,.105],.037,rubber,.041);
+ rod(cam,'Recessed front glass',[.008,.030,.105],[.008,.030,.106],.035,material('#10141b',.17,.25));
+ for(let k=0;k<48;k++){const a=k*Math.PI*2/48;rod(cam,'Focus ring rib',[.008+Math.cos(a)*.031,.030+Math.sin(a)*.031,.050],[.008+Math.cos(a)*.031,.030+Math.sin(a)*.031,.075],.0006,rubber);}
  rod(cam,'Shutter button',[-.044,.067,.012],[-.044,.072,.012],.006,steel);rod(cam,'Mode dial',[-.021,.067,-.007],[-.021,.073,-.007],.008,graphite);label(cam,'Sony wordmark','SONY',.023,.006,[-.011,.057,.024]);label(cam,'Alpha badge','α',.009,.009,[.046,.048,.024]);
  box(cam,'Rear LCD',[.074,.043,.003],[0,.032,-.025],rubber,.003);tube(cam,'Camera USB cable',[[.061,.025,0],[.077,-.02,-.025],[.065,-.12,-.055]],.0025,rubber);
 
@@ -127,21 +131,51 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  const boom=new T.Group();boom.name='Microphone and white boom arm';root.add(boom);
  box(boom,'Desk clamp',[.055,.083,.06],[-.602,.748,.21],ivory,.008);rod(boom,'Clamp screw',[-.602,.681,.21],[-.602,.720,.21],.006,steel);rod(boom,'Clamp knob',[-.62,.681,.21],[-.585,.681,.21],.008,dark);
  const joints:V[]=[[-.60,.80,.21],[-.60,.97,.13],[-.32,1.04,.14]];
- for(let i=0;i<2;i++)for(const off of [-.012,.012])tube(boom,'Boom arm parallel rail',joints.slice(i,i+2).map(p=>[p[0],p[1]+off,p[2]] as V),.009,ivory,8);
+ // Broad enclosed arm sections, rather than an exposed twin-rail boom.
+ for(let i=0;i<2;i++){
+  const a=new T.Vector3(...joints[i]),b=new T.Vector3(...joints[i+1]),direction=b.clone().sub(a);
+  const section=box(boom,'Enclosed boom section',[.035,direction.length(),.027],a.clone().add(b).multiplyScalar(.5).toArray() as V,ivory,.006);
+  section.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),direction.normalize());
+ }
+ rod(boom,'Tapered swivel base',[-.60,.79,.21],[-.60,.855,.21],.026,ivory,.017);
  joints.forEach((p)=>{ball(boom,'Articulating hinge',[.023,.023,.023],p,ivory);rod(boom,'Hinge cap',[p[0],p[1],p[2]-.025],[p[0],p[1],p[2]+.025],.012,graphite);});
  const mic=new T.Group();mic.name='Audio-Technica AT2020USB';mic.position.set(-.31,1.09,.17);mic.rotation.x=-.40;mic.rotation.z=-.12;boom.add(mic);
  rod(mic,'AT2020USB body',[0,-.074,0],[0,.024,0],.026,dark);rod(mic,'Capsule grille',[0,.024,0],[0,.072,0],.025,graphite);ball(mic,'Rounded grille crown',[.025,.015,.025],[0,.072,0],graphite);
- for(let j=0;j<13;j++){const r=ring(mic,'Grille weave',.0253,.00065,[0,.025+j*.004,0],rubber);r.rotation.x=Math.PI/2;}for(let j=0;j<28;j++){const a=j*Math.PI*2/28;rod(mic,'Grille vertical wire',[Math.cos(a)*.0255,.025,Math.sin(a)*.0255],[Math.cos(a)*.0255,.074,Math.sin(a)*.0255],.0006,rubber);}
+ const foam=material('#121316',1);
+ rod(mic,'Foam windscreen sleeve',[0,.012,0],[0,.077,0],.031,foam);
+ ball(mic,'Foam windscreen crown',[.031,.025,.031],[0,.077,0],foam);
  rod(mic,'Lower cap',[0,-.074,0],[0,-.078,0],.025,graphite);label(mic,'Audio-Technica badge','AT2020 USB',.032,.009,[0,-.030,.0265]);ball(mic,'USB status LED',[.002,.002,.001],[0,-.048,.026],cyan);
  for(const y of [-.045,.015]){const r=ring(mic,'Shock mount ring',.039,.0035,[0,y,0],dark);r.rotation.x=Math.PI/2;}for(let k=0;k<6;k++){const a=k*Math.PI/3;tube(mic,'Suspension elastic',[[Math.cos(a)*.037,-.045,Math.sin(a)*.037],[Math.cos(a+.45)*.026,-.01,Math.sin(a+.45)*.026],[Math.cos(a)*.037,.015,Math.sin(a)*.037]],.0015,graphite,10);}
  tube(boom,'Microphone cable',[[-.31,1.025,.17],[-.40,.99,.15],[-.60,.95,.13],[-.60,.79,.21],[-.60,.61,.21]],.003,rubber);
 
  // Desk accessories observed in the scan: perforated silver computer, controller, earbuds and lamp.
- const computer=new T.Group();computer.name='Fractal Design Terra • silver';computer.position.set(-.49,.780,-.16);root.add(computer);
- const walnut=material('#81563c',.7);box(computer,'Aluminium enclosure',[.153,.198,.343],[0,.119,0],steel,.009);for(const x of [-.052,.052])for(const z of [-.125,.125])box(computer,'Terra foot',[.025,.020,.044],[x,.010,z],rubber,.004);
- box(computer,'Walnut front strip',[.150,.039,.009],[0,.041,.171],walnut,.004);for(let k=0;k<15;k++)box(computer,'Walnut grain',[.136,.0007,.0006],[0,.026+k*.002,.176],material(k%3?'#94684a':'#694630'),.0002);
- for(const x of [-.0766,.0766])for(let k=0;k<37;k++)box(computer,'Vertical side ventilation',[.001,.144,.004],[x,.133,-.148+k*.0082],graphite,.0004);
- for(let k=0;k<16;k++)box(computer,'Top ventilation slot',[.004,.001,.291],[-.061+k*.008,.218,-.005],graphite,.0004);
+ const computer=new T.Group();computer.name='Fractal Design Terra • silver';computer.position.set(-.49,.760,-.16);root.add(computer);
+ const walnutMap=texture(512,128,ctx=>{
+  ctx.fillStyle='#50362b';ctx.fillRect(0,0,512,128);
+  for(let k=0;k<170;k++){
+   ctx.strokeStyle=k%3?'rgba(159,112,76,.17)':'rgba(28,17,13,.22)';ctx.lineWidth=.4+rand()*1.5;
+   const y=rand()*128;ctx.beginPath();ctx.moveTo(0,y);
+   for(let x=0;x<=512;x+=16)ctx.lineTo(x,y+Math.sin(x*.012+k)*2.5);
+   ctx.stroke();
+  }
+ });
+ const walnut=new T.MeshStandardMaterial({map:walnutMap,roughness:.72});box(computer,'Aluminium enclosure',[.153,.198,.343],[0,.119,0],steel,.004);
+ // No feet: the case sits flat on the desk (the group is dropped by their .020 height).
+
+ box(computer,'Walnut front strip',[.150,.039,.009],[0,.041,.171],walnut,.003);
+ for(const x of [-.0766,.0766])for(let k=0;k<37;k++){
+  const split=.107;
+  for(const [bottom,top] of [[.061,split-.004],[split+.004,.205]]){
+   const vent=panel(computer,'Rounded interrupted side vent',.0035,top-bottom,.0005,.0017,[x,(top+bottom)/2,-.148+k*.0082],rubber);
+   vent.geometry.dispose();vent.geometry=new RoundedBoxGeometry(.0035,top-bottom,.0005,2,.0002);
+   vent.rotation.y=Math.PI/2;
+  }
+ }
+ for(let k=0;k<34;k++)for(const side of [-1,1]){
+  const vent=panel(computer,'Rounded top ventilation slot',.056,.0035,.0005,.0017,[side*.032,.2185,-.145+k*.0085],rubber);
+  vent.geometry.dispose();vent.geometry=new RoundedBoxGeometry(.056,.0035,.0005,2,.0002);
+  vent.rotation.x=-Math.PI/2;
+ }
  rod(computer,'Front power button',[.046,.041,.176],[.046,.041,.179],.006,steel);box(computer,'Front USB-A port',[.012,.005,.001],[-.040,.041,.177],rubber,.001);box(computer,'Front USB-C port',[.008,.003,.001],[-.018,.041,.177],rubber,.001);label(computer,'Fractal wordmark','fractal',.032,.009,[0,.083,.1722],'#5d6969','#cbd3ce');
  box(computer,'Rear USB-A port',[.013,.006,.002],[.03,.08,-.172],rubber,.001);box(computer,'Keyboard USB plug',[.016,.009,.02],[.03,.08,-.181],ivory,.002);
  // Figma Creator Micro: a frosted, underlit tray on an aluminium weight, with a
@@ -385,6 +419,22 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  box(chair,'Lumbar suspension',[.235,.055,.028],[0,.637,.264],graphite,.022);rod(chair,'Lumbar adjuster',[0,.623,.274],[0,.66,.277],.012,dark);
  tube(chair,'Recline adjustment stalk',[[.065,.398,.03],[.16,.385,-.04],[.205,.385,-.055]],.007,steel);box(chair,'Recline paddle',[.055,.018,.030],[.21,.389,-.056],dark,.008);rod(chair,'Tension knob',[-.13,.383,.02],[-.18,.383,.02],.025,graphite);
  label(chair,'Rear maker badge','Herman Miller',.075,.014,[0,.56,.266],'#c3d0c8','#33464d');
+ // Hardware is intentionally unbranded; retain functional readouts only.
+ for(const name of ['Logi palm wordmark','Monitor wordmark','Sony wordmark','Alpha badge','Audio-Technica badge','Fractal wordmark','Headband wordmark','Rear maker badge']){
+  const badge=root.getObjectByName(name) as T.Mesh|undefined;
+  if(badge){badge.removeFromParent();badge.geometry.dispose();const mat=badge.material as T.MeshStandardMaterial;mat.map?.dispose();mat.dispose();}
+ }
+ const power=computer.getObjectByName('Front power button')!;power.position.x=-.046;
+ const usbA=computer.getObjectByName('Front USB-A port')!;usbA.position.x=-.020;usbA.rotation.z=Math.PI/2;
+ const usbC=computer.getObjectByName('Front USB-C port')!;usbC.position.x=-.002;usbC.rotation.z=Math.PI/2;
+ const aluminium=material('#b9b9b5',.48,.72);
+ (computer.getObjectByName('Aluminium enclosure') as T.Mesh).material=aluminium;
+ for(const x of [-.075,.075])box(computer,'Front panel seam',[.001,.155,.002],[x,.14,.1718],rubber,.0003);
+ // White articulated display support seen behind the monitor in the photos.
+ for(const name of ['Monitor clamp','Monitor mast','Articulated monitor arm','Monitor pivot']){
+  const support=root.getObjectByName(name) as T.Mesh;
+  support.material=ivory;
+ }
  return root;
 }
 

@@ -1,3 +1,4 @@
+import { memo, useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { WorkspaceScene } from "@/lib/workspace/scenes";
 import styles from "./DesktopWindows.module.css";
@@ -31,6 +32,8 @@ const PLACEMENTS = Array.from(
 
 // Cross-fades a beat after a time change, still ahead of the case study swap.
 const FADE = "opacity 400ms ease 800ms, transform 500ms cubic-bezier(0.22, 1, 0.36, 1) 800ms";
+// FADE's delay plus its longer transition: when a closing window is gone.
+const FADE_MS = 1300;
 const UI_FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 const MONO_FONT = "ui-monospace, Menlo, Consolas, monospace";
 
@@ -299,13 +302,28 @@ function Person({ row, delay }: { row: number; delay: number }) {
   );
 }
 
+// Each person is a row of the portrait sprite; their name and status go with
+// their face.
+const MEET_PEOPLE = [
+  { name: "Maya Lindqvist", row: 0, delay: -0.15, speaking: true },
+  { name: "Alex Chen", row: 1, delay: -1.75 },
+  { name: "Sam Okafor", row: 2, delay: -0.95, muted: true },
+  { name: "You", row: 3, delay: -2.45 },
+];
+
+function shuffled<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 function Meet() {
-  const tiles = [
-    { name: "Maya Lindqvist", row: 0, delay: -0.15, speaking: true },
-    { name: "Alex Chen", row: 1, delay: -1.75 },
-    { name: "Sam Okafor", row: 2, delay: -0.95, muted: true },
-    { name: "You", row: 3, delay: -2.45 },
-  ];
+  // A new seating each time the call opens (the window mounts with the
+  // meeting scene). Client-only: the desk never renders on the server.
+  const [tiles] = useState(() => shuffled(MEET_PEOPLE));
   return (
     <div className="absolute inset-0 flex flex-col pt-8" style={{ backgroundColor: "#202124", fontFamily: UI_FONT, fontSize: 13, color: "#e8eaed" }}>
       <TrafficLights className="absolute top-2.5 left-3" />
@@ -491,19 +509,45 @@ function YouTube() {
 
 const APPS: Record<AppId, () => ReactNode> = { figma: Figma, slack: Slack, spotify: Spotify, claude: ClaudeCode, meet: Meet, youtube: YouTube, prototype: Prototype };
 
-export function DesktopWindows({ scene }: { scene: WorkspaceScene }) {
-  const open = OPEN_BY_SCENE[scene];
+const windowKey = ([app, side]: [AppId, Side]) => `${app}:${side}`;
+const openKeys = (scene: WorkspaceScene) => OPEN_BY_SCENE[scene].map(windowKey);
+
+// Only the open windows are mounted, plus any still fading out: each is a few
+// hundred nodes of fake app, laid out inside the 3D scene's HTML layer. A
+// window coming in mounts hidden first, so its fade-in has a start to run from.
+// Memoised: the stage re-renders through every step of a clock animation.
+export const DesktopWindows = memo(function DesktopWindows({ scene }: { scene: WorkspaceScene }) {
+  const [mounted, setMounted] = useState(() => openKeys(scene));
+  const [shown, setShown] = useState(() => openKeys(scene));
+  // A new scene mounts its windows straight away, alongside the old ones.
+  const [mountedScene, setMountedScene] = useState(scene);
+  if (scene !== mountedScene) {
+    setMountedScene(scene);
+    setMounted((previous) => Array.from(new Set([...previous, ...openKeys(scene)])));
+  }
+  useEffect(() => {
+    const next = openKeys(scene);
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setShown(next));
+    });
+    const unmount = window.setTimeout(() => setMounted(next), FADE_MS);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(unmount);
+    };
+  }, [scene]);
+
   return (
     <>
-      {PLACEMENTS.map(([app, side]) => {
+      {PLACEMENTS.filter((placement) => mounted.includes(windowKey(placement))).map(([app, side]) => {
         const Body = APPS[app];
-        const shown = open.some(([a, s]) => a === app && s === side);
+        const visible = shown.includes(windowKey([app, side]));
         return (
           <div
             key={`${app}:${side}`}
             aria-hidden="true"
             className="absolute overflow-hidden rounded-xl shadow-2xl ring-1 ring-black/20"
-            style={{ ...FRAMES[side], opacity: shown ? 1 : 0, transform: shown ? "none" : "translateY(10px)", transition: FADE }}
+            style={{ ...FRAMES[side], opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(10px)", transition: FADE }}
           >
             <Body />
           </div>
@@ -511,4 +555,4 @@ export function DesktopWindows({ scene }: { scene: WorkspaceScene }) {
       })}
     </>
   );
-}
+});

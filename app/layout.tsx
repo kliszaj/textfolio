@@ -30,10 +30,13 @@ const bodyFont = localFont({
   display: "swap",
 });
 
+// Only the /stack tagline uses the script, and the file is 2.6 MB, so it is
+// not preloaded on every page; it still loads wherever it is used.
 const scriptFont = localFont({
   src: "./fonts/Adrian-Regular.otf",
   variable: "--font-adrian",
   display: "swap",
+  preload: false,
 });
 
 // A condensed companion to the display face, reserved for the case-study
@@ -48,6 +51,8 @@ const condensedFont = localFont({
   ],
   variable: "--font-pp-formula-condensed",
   display: "swap",
+  // One line on case study pages; the desk landing page never shows it.
+  preload: false,
 });
 
 export const metadata: Metadata = {

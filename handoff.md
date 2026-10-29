@@ -231,10 +231,138 @@ succeeds.
   The user only has static PP Frama weights, so weight animation on the name
   would need the variable font file first.
 
+### Performance, stability and experience pass (2026-10-29, later)
+
+Most of the review below is now done. What changed, by review item:
+
+- **Perf 1, mouse GLB: done.** 7.58 MB → 0.29 MB. `scripts/compress-mouse.mjs`
+  welds the SketchUp export (every triangle had its own vertices and a flat
+  normal), computes smooth normals at full resolution, simplifies 70k → 17k
+  triangles, meshopt-encodes it and makes the textures 512px WebP. drei's
+  `useGLTF` decodes meshopt by default. Compared side by side close up: same
+  shape, and smoother shading than the faceted original. Smooth normals
+  computed *after* simplifying came out blotchy; don't go back to that. The
+  original is in git history.
+- **Perf 2, render on demand: done.** `frameloop="demand"`; see
+  `components/desk/renderOnDemand.ts`. `useRenderAfterChange(seconds, deps,
+  { shadows })` keeps frames coming while an ease settles (lights 2.5s, scene
+  changes 8s for the notebook sequence); `useRenderWhile` renders continuously
+  (only the morning steam). The shadow map no longer auto-updates; it is
+  redrawn only during those light and furniture eases. Frame deltas are capped
+  at `MAX_FRAME_DELTA`, or the first frame after a quiet spell jumps straight
+  to the new lighting. Measured: 0 draw calls in 3s at rest, after an orbit
+  settles too; continuous in the morning scene (steam).
+- **Perf 3, iframe `?embed` flag: not done** (user's call).
+- **Perf 4, desktop windows: done.** Only the open windows mount, plus any
+  still fading out (`FADE_MS`); new ones mount hidden, then show, so the
+  fade-in still plays. Memoised.
+- **Perf 5, re-render less: partly.** The clock animation runs on
+  requestAnimationFrame instead of a 30ms interval; `layout` and the monitor's
+  open handler are memoised and `DesktopWindows` is `memo`, so the heavy DOM
+  skips the clock's re-renders. The stage itself still re-renders per clock
+  tick; moving every derived colour into a store wasn't worth it. The dither
+  sky was already quantised (redraws only on 1% light changes).
+- **Perf 6, per-frame allocations: done.** `CameraRig` works out its idle and
+  zoom poses only when screen, framing, layout or aspect change, and fixes the
+  tween's end at its start; `ScreenSurface` and `WindowLight` use module
+  scratch vectors.
+- **Perf 7, bake the desk to a GLB: measured, not done.** Building it takes
+  107ms plus 41ms merging (710 → 101 meshes) on an M-series Mac. A baked file
+  would carry the canvas-drawn textures (likely 1–3 MB) and still need
+  parsing, and would lose the runtime scene changes, so it would load slower.
+- **Perf 8, fonts: done.** `preload: false` on the Adrian script (2.6 MB, only
+  `/stack` uses it) and the condensed family (one line on case studies).
+- **Stability 2, split `DeskStage.tsx`: done.** 1033 → ~470 lines, plus
+  `deskLayout.ts` (types, layout and camera-pose maths), `DeskLighting.tsx`,
+  `CameraRig.tsx`, `ScreenSurface.tsx`.
+- **Stability 3, tests: done.** `lib/deskGestures.test.ts` (wheel lock, pinch),
+  `lib/workspace/scenes.test.ts` (notebook and pen sequence, coffee, ring,
+  glass, steam; uses a stand-in workstation because jsdom has no 2D canvas;
+  mutation-checked), `components/desk/DuskSky.test.tsx`. 724 tests.
+- **Stability 4, re-test: done.** Back button from a case study zooms the desk
+  back out with its state kept; the dot rail path works. Both on desktop and
+  a 375px phone.
+- **Experience 1, touch: done.** Coarse pointers get earlier/later arrows
+  either side of the time (44px targets); a swipe would fight the orbit drag.
+- **Experience 2, hint: done.** `DeskHint.tsx`, top left, after the UI
+  reveal. Fades on the first time step or orbit, or after 12s; marked seen in
+  localStorage only once actually used.
+- **Experience 3, pinch: done.** ctrl+wheel is ignored (`lib/deskGestures.ts`,
+  where the wheel lock now lives).
+- **Experience 4, reduced motion: not done** (user's call).
+- **Experience 5, settings panel: done** earlier (dev only).
+- **Experience 6, real HTML: done.** `app/page.tsx` prerenders the name, a
+  one-line intro and links to every case study, visually hidden; tabbing into
+  it shows it as a panel. The desk's own name is no longer an `h1`.
+- **Experience 7, portrait phones: done.** Below aspect 1.3 `idlePose` backs
+  the camera off to keep the desk's width in frame; the orbit's max distance
+  follows it. The zoom already fit (the window takes the viewport's shape).
+  The loader is 75% size on small screens.
+- **Name over the model: per-letter adaptive colour.** The stage picks ink or
+  cream against the background only, so the orbited chair could swallow the
+  name. `components/desk/adaptiveText.tsx`: the name, the time line and the
+  clock's icons render one span per letter (`AdaptiveText`, `adaptiveRef`),
+  and `AdaptiveTextSampler` (inside the Canvas) reads the canvas pixels
+  behind them after drawn frames, at most every 100ms, in one `readPixels`.
+  A letter flips to the other colour only where most of its sample points sit
+  on the model and the other colour contrasts better there (flip above 50%,
+  back below 30%, so edges don't flicker). The canvas needs
+  `preserveDrawingBuffer: true` for that read. Verified: over the chair in
+  daylight "adrian kli" and "11:31 · St" turn cream while the rest stays
+  ink; at night nothing flips (cream already reads). Known gap: the reset
+  icon over the chair's woven seat mostly samples the holes in the weave and
+  stays ink. Tried and rejected by the user: a soft halo behind the text, a
+  frosted plate, and a radial mask fading the desk out under the name (all
+  read as a glow).
+
+### Typing test behind the keyboard (2026-10-29)
+
+Clicking the desk's keyboard opens a Monkeytype-style typing test. The user
+picked option 5 of `prototype-desk-typing-game.html` (the dark app window on
+the monitor's desktop, with a WPM graph); the other four options are still in
+that file.
+
+- **Flow.** `DeskModel` reports keyboard clicks (`onKeyboardClick`; a pointer
+  that travelled over 5px was an orbit drag) and sets the pointer cursor over
+  it. R3F hands pointer moves to every object under the pointer, front to
+  back, so the move handler stops propagation after the frontmost hit, or the
+  desk behind the keyboard reset the cursor at once. `DeskStage` zooms with
+  `Destination { kind: "typing" }`; `CameraRig`'s `zoomTarget="typing"` uses
+  `typingPose` (`deskLayout.ts`): the window is the browser window's rect and
+  fills `TYPING_FIT` (86%) of the viewport, wallpaper showing round it.
+- **Two copies, one state.** The window (`components/desk/typing/TypingApp`)
+  is always mounted on the monitor in `ScreenSurface`'s new children slot,
+  invisible until a zoom starts, so it fades in and out every time. When the
+  zoom lands, a flat copy is laid over the exact same pixels
+  (`typingWindow().overlay*`, scaled with a 2D transform) and takes the
+  input, since text in the 3D layer renders soft; the 3D copy is hidden and
+  frozen meanwhile. Both render from `useTypingTest`, so the swap doesn't
+  show. Esc, Tab-restart, the red close light and 15/30/60s modes work.
+- **Input.** All typing arrives through a hidden input holding a sentinel
+  character, so phones get their keyboard and deletions show as a shorter
+  value. Narrow (portrait) windows drop the title and the graph.
+- **Engine.** `lib/typingTest.ts` is pure (Monkeytype's counting: correct
+  characters of fully right words plus spaces, plus the current word's right
+  prefix; backspace into a mistyped word only); `lib/typingTest.test.ts`.
+- Verified in the browser: open, type, results with graph, Esc back out (the
+  swap is seamless), and on a 375px phone.
+
+### Smaller changes the same day
+
+- **Codex work merged.** `a31edf1` (animated Meet portrait sprite,
+  `DesktopWindows.module.css`) fast-forwarded into `main`, plus that
+  worktree's uncommitted `model.ts` changes: a lens hood on the camera, an
+  enclosed mic boom with a tapered swivel base, and a foam windscreen.
+- **Meet seating is shuffled** each time the call opens (`MEET_PEOPLE` in
+  `DesktopWindows.tsx`); each face keeps its name and status.
+- **The PC case has no feet.** The Terra sits flat on the desk: the feet are
+  gone and the group dropped by their 0.020 height; the keyboard cable's end
+  follows the rear USB plug down.
+
 ### Review: experience, stability, optimisation (2026-10-29)
 
-Recommendations from a read-through of the code and the production build.
-None of them is implemented yet. Frame rate and load time could not be
+Recommendations from a read-through of the code and the production build;
+see the pass above for what was done. Frame rate and load time could not be
 measured, because the browser pane was hidden and throttled.
 
 **Measured:**

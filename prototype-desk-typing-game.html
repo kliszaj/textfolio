@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk Typing Game</title>
+<style>
+@font-face { font-family: "PP Frama"; src: url("app/fonts/PPFrama-Black.otf"); font-weight: 900; }
+@font-face { font-family: "PP Frama"; src: url("app/fonts/PPFrama-Extralight.otf"); font-weight: 200; }
+@font-face { font-family: "PP Neue Montreal"; src: url("app/fonts/PPNeueMontreal-Regular.otf"); font-weight: 400; }
+@font-face { font-family: "PP Neue Montreal"; src: url("app/fonts/PPNeueMontreal-Medium.otf"); font-weight: 500; }
+@font-face { font-family: "PP Neue Montreal"; src: url("app/fonts/PPNeueMontreal-Bold.otf"); font-weight: 700; }
+@font-face { font-family: "Adrian"; src: url("app/fonts/Adrian-Regular.otf"); }
+
+:root {
+  /* textfolio's own tokens, in place of Encore's: the game lives on the site. */
+  --cream: #f5ede6;
+  --ink: #1c1c1c;
+  --ink-faint: rgba(28, 28, 28, 0.28);
+  --jam: #15ff76;
+  --seamless: #f850c0;
+  --focals: #ffa52e;
+  --projects: #219efa;
+  --about: #fdd721;
+  --pen: #e5372b;
+  --display: "PP Frama", sans-serif;
+  --body: "PP Neue Montreal", system-ui, sans-serif;
+  --script: "Adrian", cursive;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--cream); color: var(--ink); font-family: var(--body); -webkit-font-smoothing: antialiased; }
+
+/* ---------- Prototype chrome ---------- */
+.top { position: sticky; top: 0; z-index: 10; background: var(--cream); border-bottom: 1px solid rgba(28,28,28,.1); padding: 16px clamp(16px, 4vw, 48px); display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.top h1 { font-family: var(--display); font-weight: 900; font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px var(--body); padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; transition: background .2s, color .2s; }
+.tab:hover { background: rgba(28,28,28,.06); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--cream); }
+.tab:focus-visible, .mode:focus-visible { outline: 2px solid var(--projects); outline-offset: 2px; }
+.modes { margin-left: auto; display: flex; gap: 4px; align-items: center; font-size: 13px; }
+.mode { font: 500 13px var(--body); padding: 6px 10px; border-radius: 999px; border: 0; background: transparent; cursor: pointer; color: var(--ink); opacity: .5; }
+.mode[aria-pressed="true"] { opacity: 1; background: rgba(28,28,28,.08); }
+
+main { padding: 24px clamp(16px, 4vw, 48px) 64px; }
+.flow { font-size: 14px; max-width: 70ch; opacity: .75; margin: 0 0 20px; line-height: 1.5; }
+.option { display: none; }
+.option.active { display: block; }
+.option h2 { font-family: var(--display); font-weight: 900; font-size: clamp(26px, 3vw, 36px); margin: 0 0 4px; }
+.option .lede { margin: 0 0 18px; font-size: 16px; opacity: .8; }
+
+/* The zoomed-in viewport: what fills the screen after the camera lands. */
+.frame { position: relative; width: 100%; max-width: 1180px; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(0,0,0,.45), 0 0 0 1px rgba(28,28,28,.12); container-type: size; outline: none; }
+.frame:focus-visible { box-shadow: 0 30px 60px -30px rgba(0,0,0,.45), 0 0 0 3px var(--projects); }
+.focus-hint { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(245,237,230,.55); backdrop-filter: blur(6px); font: 500 max(13px, 1.6cqw) var(--body); color: var(--ink); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 5; }
+.frame:not(:focus) .focus-hint { opacity: 1; }
+.dark .focus-hint { background: rgba(11,11,11,.55); color: var(--cream); }
+
+.notes { max-width: 1180px; margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 32px; font-size: 14px; line-height: 1.5; }
+.notes h3 { font: 700 11px var(--body); letter-spacing: .12em; text-transform: uppercase; margin: 0 0 4px; opacity: .55; }
+.notes p { margin: 0; }
+.keys { font-size: 13px; opacity: .6; margin-top: 12px; }
+kbd { font: 500 12px var(--body); border: 1px solid rgba(28,28,28,.3); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+
+/* ---------- Shared engine markup ---------- */
+.words-window { position: relative; overflow: hidden; }
+.words { position: relative; transition: transform .25s var(--ease); }
+.word { display: inline-block; white-space: nowrap; }
+.letter { position: relative; color: var(--untyped, var(--ink-faint)); transition: color .08s; }
+.letter.correct { color: var(--typed, var(--ink)); }
+.letter.incorrect { color: var(--wrong, var(--seamless)); }
+.letter.extra { color: var(--extra, var(--seamless)); opacity: .7; }
+.word.error { text-decoration: underline; text-decoration-color: var(--wrong, var(--seamless)); text-decoration-thickness: 2px; text-underline-offset: .18em; }
+.caret { position: absolute; left: 0; top: 0; width: var(--caret-w, 2px); background: var(--caret, var(--ink)); border-radius: 2px; transition: transform .1s linear, height .1s; pointer-events: none; }
+.caret.idle { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.results { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .4s var(--ease), transform .5s var(--ease); transform: translateY(2cqh); }
+.done .results { opacity: 1; pointer-events: auto; transform: none; }
+.done .playing { opacity: 0; pointer-events: none; }
+.playing { transition: opacity .3s; }
+
+/* ---------- 1. Quiet ---------- */
+.o1 { background: var(--cream); padding: 9cqh 10cqw; display: flex; flex-direction: column; justify-content: center; }
+.o1 .bar { display: flex; align-items: baseline; gap: 3cqw; margin-bottom: 3cqh; font: 200 3.2cqw var(--display); }
+.o1 .time { color: var(--jam); filter: brightness(.75); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.o1 .live { font: 500 1.3cqw var(--body); opacity: .45; }
+.o1 .words-window { height: calc(3 * 1.6 * 2.6cqw); font: 400 2.6cqw/1.6 var(--body); letter-spacing: .01em; }
+.o1 .word { margin-right: .55em; }
+.o1 .caret { height: 1.25em; --caret: var(--ink); }
+.o1 .hint { margin-top: 4cqh; font: 500 1.15cqw var(--body); opacity: .4; }
+.o1 .results { padding: 9cqh 10cqw; display: flex; flex-direction: column; justify-content: center; }
+.o1 .big { font: 900 15cqw/0.85 var(--display); letter-spacing: -0.03em; }
+.o1 .big small { font-size: .3em; letter-spacing: 0; margin-left: .2em; }
+.o1 .row { display: flex; gap: 5cqw; margin-top: 4cqh; font: 500 1.4cqw var(--body); }
+.o1 .row b { display: block; font: 200 3.6cqw var(--display); margin-top: .3em; }
+
+/* ---------- 2. Case-study page ---------- */
+.o2 { background: var(--cream); display: grid; grid-template-rows: auto 1fr; }
+.o2 header { background: var(--jam); padding: 3cqh 4cqw 3.4cqh; display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 2cqw; transition: background .6s var(--ease); }
+.o2 header h3 { font: 900 6.4cqw/0.9 var(--display); margin: 0; letter-spacing: -0.02em; }
+.o2 .home, .o2 .next { width: 4.2cqw; height: 4.2cqw; display: grid; place-items: center; }
+.o2 .home svg { width: 2.6cqw; height: 2.6cqw; }
+.o2 .next { border-radius: 50%; background: var(--seamless); }
+.o2 .next svg { width: 1.8cqw; height: 1.8cqw; }
+.o2 .body { padding: 5cqh 4cqw; display: grid; grid-template-columns: 1fr 16cqw; gap: 5cqw; align-items: start; position: relative; }
+.o2 .lead { font: 500 1.9cqw/1.35 var(--body); margin: 0 0 3cqh; max-width: 40ch; }
+.o2 .words-window { height: calc(4 * 1.55 * 2cqw); font: 400 2cqw/1.55 var(--body); }
+.o2 .word { margin-right: .5em; }
+.o2 .caret { height: 1.2em; }
+.o2 .facts { display: grid; gap: 2.6cqh; font: 700 0.95cqw var(--body); letter-spacing: .12em; text-transform: uppercase; }
+.o2 .facts b { display: block; font: 400 1.8cqw var(--body); letter-spacing: 0; text-transform: none; margin-top: .4em; font-variant-numeric: tabular-nums; }
+.o2 .results { position: static; grid-column: 1; grid-row: 1; }
+.o2 .left { grid-column: 1; grid-row: 1; display: grid; }
+.o2 .left > * { grid-area: 1 / 1; }
+.o2 .results p { font: 400 2cqw/1.5 var(--body); max-width: 44ch; margin: 0 0 3cqh; }
+.o2 .results .oneliner { font: 900 4.6cqw/0.95 var(--display); margin: 0 0 3cqh; letter-spacing: -0.02em; }
+.o2 .again { font: 500 1.3cqw var(--body); text-decoration: underline; text-underline-offset: 4px; opacity: .7; }
+
+/* ---------- 3. Poster line ---------- */
+.o3 { background: var(--cream); display: flex; flex-direction: column; justify-content: center; }
+.o3 .words-window { height: 13cqw; font: 900 9.5cqw/1.3 var(--display); letter-spacing: -0.02em; mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.o3 .words { white-space: nowrap; transition: transform .18s var(--ease); }
+.o3 .word { margin-right: .35em; }
+.o3 .letter { --untyped: rgba(28,28,28,.16); }
+.o3 .letter.incorrect { color: transparent; -webkit-text-stroke: .025em var(--seamless); }
+.o3 .word.error { text-decoration: none; }
+.o3 .caret { height: 1.05em; --caret-w: .7cqw; --caret: var(--seamless); }
+.o3 .progress { position: absolute; left: 0; right: 0; bottom: 0; height: 1.4cqh; display: flex; }
+.o3 .progress i { flex: 1; transform-origin: left; transform: scaleX(0); transition: transform .9s linear; }
+.o3 .meta { position: absolute; left: 4cqw; right: 4cqw; top: 4cqh; display: flex; justify-content: space-between; font: 500 1.3cqw var(--body); opacity: .55; }
+.o3 .results { display: grid; place-items: center; text-align: center; }
+.o3 .giant { font: 900 30cqw/0.8 var(--display); letter-spacing: -0.04em; }
+.o3 .under { font: 500 1.5cqw var(--body); margin-top: 3cqh; }
+.o3 .under span { margin: 0 1.2cqw; }
+
+/* ---------- 4. Paper and red pen ---------- */
+.o4 { background: #e9dfd6; display: grid; place-items: center; }
+/* Everything on the sheet keeps a 3.9cqw rhythm (the rule spacing), so the
+   title and every line of words sit on a rule at any size. */
+.o4 .sheet { --rule: 3.9cqw; position: relative; width: 70cqw; height: 78cqh; background: #fbf6f1; box-shadow: 0 1px 0 rgba(0,0,0,.05), 0 2.5cqh 5cqh -2cqh rgba(60,40,20,.35); transform: rotate(-1.2deg); padding: calc(var(--rule) * 1.3) 6cqw; }
+.o4 .sheet::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(rgba(33,158,250,.18) 0 1px, transparent 1px var(--rule)); background-position: 0 calc(var(--rule) * 2.1); pointer-events: none; }
+.o4 .sheet::after { content: ""; position: absolute; top: 0; bottom: 0; left: 4.2cqw; width: 1px; background: rgba(229,55,43,.35); }
+.o4 .title { font: 900 3.2cqw/var(--rule) var(--display); margin: 0 0 var(--rule); display: flex; justify-content: space-between; align-items: baseline; }
+.o4 .title span { font: 400 2.2cqw var(--script); color: var(--pen); }
+.o4 .words-window { height: calc(4 * 3.9cqw); font: 400 2.2cqw/3.9cqw var(--body); overflow: visible; clip-path: inset(-2cqw 0 0 0); }
+.o4 .word { margin-right: .5em; }
+.o4 .letter { --untyped: rgba(28,28,28,.3); --wrong: var(--ink); }
+.o4 .letter.incorrect::before { content: ""; position: absolute; left: -10%; right: -10%; top: 45%; height: .5em; transform: translateY(-50%) rotate(-12deg); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 10' preserveAspectRatio='none'%3E%3Cpath d='M1 7 C5 2 8 9 12 4 S18 3 19 5' fill='none' stroke='%23e5372b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+.o4 .letter.incorrect::after { content: attr(data-ch); position: absolute; left: 50%; bottom: 72%; transform: translateX(-50%) rotate(-6deg); font: 400 1.25em var(--script); color: var(--pen); line-height: 1; }
+.o4 .letter.extra { --extra: var(--pen); text-decoration: line-through; text-decoration-color: var(--pen); opacity: 1; }
+.o4 .word.error { text-decoration: none; }
+.o4 .caret { height: 1.1em; --caret: var(--pen); --caret-w: 2px; margin-top: .4em; }
+.o4 .footer { position: absolute; left: 6cqw; right: 6cqw; bottom: 5cqh; display: flex; justify-content: space-between; font: 500 1.15cqw var(--body); opacity: .5; }
+.o4 .results { display: grid; place-items: center; }
+.o4 .grade { position: relative; text-align: center; transform: rotate(-4deg); }
+.o4 .grade .n { font: 400 13cqw/1 var(--script); color: var(--pen); }
+.o4 .grade svg { position: absolute; inset: -18% -22%; width: 144%; height: 136%; overflow: visible; }
+.o4 .grade svg path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.o4.done .grade svg path { animation: draw 0.9s .2s var(--ease) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.o4 .remarks { font: 400 2.2cqw var(--script); color: var(--pen); margin-top: 4cqh; text-align: center; }
+.o4 .done-sheet .playing { opacity: 0; }
+
+/* ---------- 5. Desktop app ---------- */
+.o5 { background: #0b0b0b url("public/desk/wallpaper.webp") center / cover; display: grid; place-items: center; }
+.o5 .win { width: 78cqw; height: 74cqh; background: #17181b; border-radius: 1.2cqw; box-shadow: 0 3cqh 7cqh rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07); display: grid; grid-template-rows: auto 1fr; overflow: hidden; color: var(--cream); }
+.o5 .chrome { display: flex; align-items: center; gap: .7cqw; padding: 1.4cqh 1.4cqw; background: #202227; font: 500 1.1cqw var(--body); color: rgba(245,237,230,.6); }
+.o5 .chrome i { width: 1cqw; height: 1cqw; border-radius: 50%; display: block; }
+.o5 .chrome .title { margin: 0 auto; transform: translateX(-2cqw); }
+.o5 .pane { position: relative; padding: 5cqh 5cqw; display: flex; flex-direction: column; justify-content: center; }
+.o5 .stats { display: flex; gap: 2.4cqw; font: 500 1.3cqw var(--body); color: var(--focals); margin-bottom: 3cqh; font-variant-numeric: tabular-nums; }
+.o5 .stats span { color: rgba(245,237,230,.35); }
+.o5 .words-window { height: calc(3 * 1.6 * 2.3cqw); font: 400 2.3cqw/1.6 var(--body); }
+.o5 .word { margin-right: .55em; }
+.o5 .letter { --untyped: rgba(245,237,230,.3); --typed: var(--cream); --wrong: #ff6b6b; --extra: #ff6b6b; }
+.o5 .word.error { text-decoration-color: #ff6b6b; }
+.o5 .caret { height: 1.2em; --caret: var(--focals); }
+.o5 .results { padding: 5cqh 5cqw; display: grid; grid-template-columns: auto 1fr; gap: 1cqh 4cqw; align-content: center; }
+.o5 .results .k { font: 500 1.4cqw var(--body); color: rgba(245,237,230,.45); }
+.o5 .results .v { font: 900 6cqw/1 var(--display); color: var(--focals); }
+.o5 .results .v.small { font-size: 3.2cqw; color: var(--cream); }
+.o5 .chart { grid-row: 1 / span 4; grid-column: 2; width: 100%; height: 100%; min-height: 30cqh; }
+.o5 .results .again { grid-column: 1 / -1; font: 500 1.2cqw var(--body); color: rgba(245,237,230,.45); margin-top: 2cqh; }
+
+@media (prefers-reduced-motion: reduce) {
+  .caret, .words, .results { transition: none !important; }
+  .caret.idle { animation: none; }
+}
+@media (max-width: 640px) {
+  .modes { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Desk typing game</h1>
+  <div class="tabs" role="tablist" aria-label="Options">
+    <button class="tab" role="tab" aria-selected="true" data-tab="1">1 · Quiet</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="2">2 · Case-study page</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="3">3 · Poster line</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="4">4 · Paper &amp; red pen</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="5">5 · Desktop app</button>
+  </div>
+  <div class="modes" aria-label="Test length">
+    <button class="mode" data-mode="15" aria-pressed="true">15s</button>
+    <button class="mode" data-mode="30" aria-pressed="false">30s</button>
+    <button class="mode" data-mode="60" aria-pressed="false">60s</button>
+  </div>
+</div>
+
+<main>
+  <p class="flow">The flow on the desk: tap the keyboard → the camera zooms into the monitor, the same way it does for a case study → one of these screens fills the viewport → <kbd>esc</kbd> zooms back out. Each option below is playable: click it and start typing. The timer starts on your first key.</p>
+
+  <!-- 1 -->
+  <section class="option active" data-option="1">
+    <h2>Quiet</h2>
+    <p class="lede">Monkeytype's layout, translated straight into textfolio: cream, ink, three lines, nothing else.</p>
+    <div class="frame o1" tabindex="0" data-engine data-layout="block">
+      <div class="playing">
+        <div class="bar"><span class="time" data-stat="time">15</span><span class="live"><span data-stat="livewpm">0</span> wpm</span></div>
+        <div class="words-window"><div class="words"></div><div class="caret idle"></div></div>
+        <div class="hint"><kbd>tab</kbd> restart · <kbd>esc</kbd> back to the desk</div>
+      </div>
+      <div class="results">
+        <div class="big"><span data-stat="wpm">0</span><small>wpm</small></div>
+        <div class="row">
+          <div>accuracy<b><span data-stat="acc">0</span>%</b></div>
+          <div>characters<b data-stat="chars">0/0</b></div>
+          <div>time<b><span data-stat="duration">15</span>s</b></div>
+        </div>
+        <div class="hint" style="margin-top:5cqh;font:500 1.15cqw var(--body);opacity:.4"><kbd>tab</kbd> go again · <kbd>esc</kbd> back to the desk</div>
+      </div>
+      <div class="focus-hint">Click to start typing</div>
+    </div>
+    <div class="notes">
+      <div><h3>Approach</h3><p>The closest to Monkeytype: faint words, ink as you type them, pink where you slip, a caret that glides rather than jumps.</p></div>
+      <div><h3>Why it fits</h3><p>Nothing to learn; it reads as part of the site because it uses only the site's two colours and type.</p></div>
+      <div><h3>Trade-off</h3><p>The least "textfolio" of the five: anyone who knows Monkeytype will recognise it as a port.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="option" data-option="2">
+    <h2>Case-study page</h2>
+    <p class="lede">The game is a case study: coloured header, the facts column becomes live WPM, accuracy and time.</p>
+    <div class="frame o2" tabindex="0" data-engine data-layout="block">
+      <header>
+        <span class="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg></span>
+        <h3>Typing Test</h3>
+        <span class="next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </header>
+      <div class="body">
+        <div class="left">
+          <div class="playing">
+            <p class="lead">How fast can you type on Adrian's keyboard? Start typing; the clock starts with you.</p>
+            <div class="words-window"><div class="words"></div><div class="caret idle"></div></div>
+          </div>
+          <div class="results">
+            <p class="oneliner"><span data-stat="wpm">0</span> words a minute.</p>
+            <p data-stat="story">…</p>
+            <span class="again"><kbd>tab</kbd> go again · <kbd>esc</kbd> back to the desk</span>
+          </div>
+        </div>
+        <div class="facts">
+          <div>Time<b><span data-stat="time">15</span>s</b></div>
+          <div>Speed<b><span data-stat="livewpm">0</span> wpm</b></div>
+          <div>Accuracy<b><span data-stat="liveacc">100</span>%</b></div>
+          <div>Best this visit<b data-stat="best">—</b></div>
+        </div>
+      </div>
+      <div class="focus-hint">Click to start typing</div>
+    </div>
+    <div class="notes">
+      <div><h3>Approach</h3><p>Reuses the case-study page itself: the full-bleed header (it lifts in the way a case study does), Home and next, and the right-hand facts column.</p></div>
+      <div><h3>Why it fits</h3><p>Feels like a hidden extra case study rather than a bolted-on game. The header colour cycles through the case-study colours each round.</p></div>
+      <div><h3>Trade-off</h3><p>More chrome around the words, so the typing area is smaller; the facts column only works on wide screens.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="option" data-option="3">
+    <h2>Poster line</h2>
+    <p class="lede">One enormous line of PP Frama. The current word stays centred; the sentence slides past.</p>
+    <div class="frame o3" tabindex="0" data-engine data-layout="line">
+      <div class="meta playing"><span><span data-stat="time">15</span>s</span><span><span data-stat="livewpm">0</span> wpm</span></div>
+      <div class="playing"><div class="words-window"><div class="words"></div><div class="caret idle"></div></div></div>
+      <div class="progress playing" aria-hidden="true"><i style="background:var(--jam)"></i><i style="background:var(--seamless)"></i><i style="background:var(--focals)"></i><i style="background:var(--projects)"></i><i style="background:var(--about)"></i></div>
+      <div class="results">
+        <div>
+          <div class="giant" data-stat="wpm">0</div>
+          <div class="under"><span>wpm</span><span><span data-stat="acc">0</span>% accurate</span><span><kbd>tab</kbd> again</span></div>
+        </div>
+      </div>
+      <div class="focus-hint">Click to start typing</div>
+    </div>
+    <div class="notes">
+      <div><h3>Approach</h3><p>Display type at poster size, like the site's own ADRIAN headline. Mistakes show as outlined letters in pink; the timer is a five-colour bar along the bottom, one segment per case study.</p></div>
+      <div><h3>Why it fits</h3><p>The most striking, and the one that best survives the zoom: it reads even before the camera has fully landed.</p></div>
+      <div><h3>Trade-off</h3><p>You only see a few words ahead, which slows strong typists down; long words get wide.</p></div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="option" data-option="4">
+    <h2>Paper &amp; red pen</h2>
+    <p class="lede">A sheet on the desk. Slips get the site's sketched red-pen correction, with the right letter written above.</p>
+    <div class="frame o4" tabindex="0" data-engine data-layout="block">
+      <div class="sheet">
+        <div class="playing">
+          <div class="title">Typing test <span><span data-stat="time">15</span>s</span></div>
+          <div class="words-window"><div class="words"></div><div class="caret idle"></div></div>
+          <div class="footer"><span><kbd>tab</kbd> new sheet · <kbd>esc</kbd> back to the desk</span><span><span data-stat="livewpm">0</span> wpm</span></div>
+        </div>
+        <div class="results">
+          <div>
+            <div class="grade">
+              <div class="n"><span data-stat="wpm">0</span> wpm</div>
+              <svg viewBox="0 0 100 60" preserveAspectRatio="none"><path pathLength="1" d="M70 6 C40 0 6 10 5 31 C4 52 40 59 62 56 C88 52 98 36 92 20 C88 10 76 6 60 7" fill="none" stroke="#e5372b" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+            <div class="remarks"><span data-stat="acc">0</span>% accurate · <span data-stat="remark">nice work</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="focus-hint">Click to start typing</div>
+    </div>
+    <div class="notes">
+      <div><h3>Approach</h3><p>Borrows the paper stack and the red correction mark already on the site: a ruled sheet, a red-pen caret, scribbled-out mistakes with the intended letter in your handwriting font.</p></div>
+      <div><h3>Why it fits</h3><p>The most personal: it uses the hand-drawn voice nothing else on the desk does, and the circled grade is a nice payoff.</p></div>
+      <div><h3>Trade-off</h3><p>The handwriting font is 2.6&nbsp;MB, so it would need subsetting for this; busier than the others when you make lots of mistakes.</p></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="option" data-option="5">
+    <h2>Desktop app</h2>
+    <p class="lede">Stay inside the monitor: a little dark-mode app window on the desk's wallpaper, with Monkeytype's WPM graph.</p>
+    <div class="frame o5 dark" tabindex="0" data-engine data-layout="block">
+      <div class="win">
+        <div class="chrome"><i style="background:#ef817a"></i><i style="background:#eac66c"></i><i style="background:#8aca9d"></i><span class="title">type — adrianklisz.com</span></div>
+        <div class="pane">
+          <div class="playing">
+            <div class="stats"><div><span data-stat="time">15</span> <span>s</span></div><div><span data-stat="livewpm">0</span> <span>wpm</span></div><div><span data-stat="liveacc">100</span> <span>% acc</span></div></div>
+            <div class="words-window"><div class="words"></div><div class="caret idle"></div></div>
+          </div>
+          <div class="results">
+            <div><div class="k">wpm</div><div class="v" data-stat="wpm">0</div></div>
+            <canvas class="chart" data-chart></canvas>
+            <div><div class="k">accuracy</div><div class="v small"><span data-stat="acc">0</span>%</div></div>
+            <div><div class="k">raw</div><div class="v small" data-stat="raw">0</div></div>
+            <div><div class="k">characters</div><div class="v small" data-stat="chars">0/0</div></div>
+            <div class="again"><kbd>tab</kbd> next test · <kbd>esc</kbd> back to the desk</div>
+          </div>
+        </div>
+      </div>
+      <div class="focus-hint">Click to start typing</div>
+    </div>
+    <div class="notes">
+      <div><h3>Approach</h3><p>Diegetic: the camera zooms to an app window that already sits on the monitor's desktop (next to Slack, Figma and the rest), styled like the other fake apps.</p></div>
+      <div><h3>Why it fits</h3><p>Keeps the desk's fiction intact; the results graph gives the "how did I do" moment Monkeytype is known for.</p></div>
+      <div><h3>Trade-off</h3><p>Dark and small inside the window, so it reads less like your site; the zoom would need a new target (the window, not the browser).</p></div>
+    </div>
+  </section>
+
+  <p class="keys">Keys in every option: letters and space type, <kbd>backspace</kbd> corrects (back into a mistyped word too), <kbd>tab</kbd> restarts, <kbd>esc</kbd> would zoom back to the desk.</p>
+</main>
+
+<script>
+// Common English words, plus a few from the desk.
+const WORDS = ("the be of and a to in he have it that for they with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line " +
+  "desk coffee notebook keyboard monitor chair morning studio design sketch type paper colour light window evening stockholm jam focus").split(" ");
+
+let duration = 15;
+const engines = [];
+
+function shuffledWords(n) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(WORDS[Math.floor(Math.random() * WORDS.length)]);
+  return out;
+}
+
+function createEngine(frame, index) {
+  const layout = frame.dataset.layout;
+  const wordsEl = frame.querySelector(".words");
+  const windowEl = frame.querySelector(".words-window");
+  const caret = frame.querySelector(".caret");
+  const stat = (name) => frame.querySelectorAll(`[data-stat="${name}"]`);
+  const set = (name, value) => stat(name).forEach((el) => { el.textContent = value; });
+  let s;
+  let best = 0;
+  let round = 0;
+
+  function reset() {
+    s = { words: shuffledWords(140), typed: [""], wi: 0, started: 0, timer: 0, keys: 0, correctKeys: 0, samples: [], done: false };
+    frame.classList.remove("done");
+    wordsEl.innerHTML = "";
+    wordsEl.style.transform = "";
+    s.words.forEach((w) => {
+      const word = document.createElement("span");
+      word.className = "word";
+      for (const ch of w) {
+        const l = document.createElement("span");
+        l.className = "letter";
+        l.dataset.ch = ch;
+        l.textContent = ch;
+        word.appendChild(l);
+      }
+      wordsEl.appendChild(word);
+    });
+    set("time", duration); set("duration", duration); set("livewpm", 0); set("liveacc", 100);
+    caret.classList.add("idle");
+    frame.querySelectorAll(".progress i").forEach((i) => { i.style.transition = "none"; i.style.transform = "scaleX(0)"; });
+    if (index === 2) {
+      const colours = ["var(--jam)", "var(--seamless)", "var(--focals)", "var(--projects)", "var(--about)"];
+      frame.querySelector("header").style.background = colours[round % colours.length];
+    }
+    requestAnimationFrame(place);
+  }
+
+  // Characters in fully correct words, plus spaces, plus the current word's
+  // correct prefix: Monkeytype's "correct characters".
+  function counts() {
+    let correct = 0, total = 0;
+    for (let i = 0; i <= s.wi; i++) {
+      const typed = s.typed[i] || "";
+      const target = s.words[i];
+      total += typed.length + (i < s.wi ? 1 : 0);
+      if (i < s.wi) { if (typed === target) correct += target.length + 1; }
+      else { let k = 0; while (k < typed.length && typed[k] === target[k]) k++; correct += k; }
+    }
+    return { correct, total };
+  }
+  const minutes = () => Math.max(1 / 60, (Math.min(Date.now(), s.started + duration * 1000) - s.started) / 60000);
+
+  function place() {
+    const word = wordsEl.children[s.wi];
+    if (!word) return;
+    const typed = s.typed[s.wi];
+    const letters = word.children;
+    // Letters are position: relative, so their offsets are already measured
+    // from .words, not from their word.
+    const ref = letters[Math.min(typed.length, letters.length - 1)];
+    const x = typed.length < letters.length ? ref.offsetLeft : ref.offsetLeft + ref.offsetWidth;
+    const y = ref.offsetTop;
+    const h = ref.offsetHeight;
+    if (layout === "line") {
+      const center = windowEl.clientWidth / 2;
+      wordsEl.style.transform = `translateX(${center - x}px)`;
+      caret.style.transform = `translate(${center}px, ${y + h * 0.12}px)`;
+    } else {
+      const lineHeight = parseFloat(getComputedStyle(windowEl).lineHeight) || h;
+      const line = Math.round(y / lineHeight);
+      const shift = Math.max(0, line - 1) * lineHeight;
+      wordsEl.style.transform = `translateY(${-shift}px)`;
+      caret.style.transform = `translate(${x}px, ${y - shift + (lineHeight - h) / 2 + h * 0.08}px)`;
+    }
+  }
+
+  function renderWord(i) {
+    const word = wordsEl.children[i];
+    const target = s.words[i];
+    const typed = s.typed[i] || "";
+    word.querySelectorAll(".extra").forEach((e) => e.remove());
+    [...word.children].forEach((l, k) => {
+      l.className = "letter" + (k < typed.length ? (typed[k] === target[k] ? " correct" : " incorrect") : "");
+    });
+    for (let k = target.length; k < Math.min(typed.length, target.length + 8); k++) {
+      const l = document.createElement("span");
+      l.className = "letter extra";
+      l.textContent = typed[k];
+      word.appendChild(l);
+    }
+  }
+
+  function tick() {
+    const left = Math.max(0, duration - Math.floor((Date.now() - s.started) / 1000));
+    set("time", left);
+    const { correct, total } = counts();
+    set("livewpm", Math.round(correct / 5 / minutes()));
+    set("liveacc", s.keys ? Math.round((s.correctKeys / s.keys) * 100) : 100);
+    s.samples.push(Math.round(correct / 5 / minutes()));
+    if (Date.now() - s.started >= duration * 1000) finish();
+  }
+
+  function start() {
+    s.started = Date.now();
+    caret.classList.remove("idle");
+    s.timer = setInterval(tick, 1000);
+    frame.querySelectorAll(".progress i").forEach((bar, k, all) => {
+      const per = duration / all.length;
+      bar.style.transition = `transform ${per}s linear ${per * k}s`;
+      requestAnimationFrame(() => { bar.style.transform = "scaleX(1)"; });
+    });
+  }
+
+  function finish() {
+    clearInterval(s.timer);
+    s.done = true;
+    const { correct, total } = counts();
+    const wpm = Math.round(correct / 5 / (duration / 60));
+    const raw = Math.round(total / 5 / (duration / 60));
+    const acc = s.keys ? Math.round((s.correctKeys / s.keys) * 100) : 0;
+    best = Math.max(best, wpm);
+    round++;
+    set("wpm", wpm); set("raw", raw); set("acc", acc); set("chars", `${correct}/${total}`); set("best", `${best} wpm`);
+    set("remark", acc >= 97 ? "lovely and clean" : acc >= 90 ? "nice work" : "slow down a touch");
+    set("story", `You typed ${s.wi} words in ${duration} seconds and got ${acc}% of your keystrokes right. ` +
+      (wpm >= best && round > 1 ? "That's your best this visit." : `Your best this visit is ${best}.`) + " Press tab for another round, or esc to go back to the desk.");
+    frame.classList.add("done");
+    drawChart();
+  }
+
+  function drawChart() {
+    const canvas = frame.querySelector("[data-chart]");
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const c = canvas.getContext("2d");
+    c.scale(dpr, dpr);
+    const data = s.samples.length > 1 ? s.samples : [0, ...s.samples, 0];
+    const max = Math.max(20, ...data) * 1.15;
+    const pad = 8;
+    c.strokeStyle = "rgba(245,237,230,.08)"; c.lineWidth = 1;
+    for (let g = 1; g < 4; g++) { const y = pad + (h - pad * 2) * g / 4; c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    const pts = data.map((v, i) => [pad + (w - pad * 2) * i / (data.length - 1), h - pad - (h - pad * 2) * v / max]);
+    const grad = c.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "rgba(255,165,46,.35)"); grad.addColorStop(1, "rgba(255,165,46,0)");
+    c.beginPath(); c.moveTo(pts[0][0], h - pad); pts.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(pts[pts.length - 1][0], h - pad); c.fillStyle = grad; c.fill();
+    c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.strokeStyle = "#ffa52e"; c.lineWidth = 2.5; c.lineJoin = "round"; c.stroke();
+  }
+
+  frame.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") { e.preventDefault(); clearInterval(s.timer); reset(); return; }
+    if (e.key === "Escape") { frame.blur(); return; }
+    if (s.done || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      if (s.typed[s.wi].length) { s.typed[s.wi] = s.typed[s.wi].slice(0, -1); renderWord(s.wi); }
+      else if (s.wi > 0 && s.typed[s.wi - 1] !== s.words[s.wi - 1]) {
+        // Back into a mistyped word, as Monkeytype allows.
+        wordsEl.children[s.wi - 1].classList.remove("error");
+        s.typed.pop(); s.wi--;
+      }
+      place();
+      return;
+    }
+    if (e.key === " ") {
+      e.preventDefault();
+      if (!s.typed[s.wi].length) return;
+      if (!s.started) start();
+      s.keys++;
+      if (s.typed[s.wi] === s.words[s.wi]) s.correctKeys++;
+      else wordsEl.children[s.wi].classList.add("error");
+      s.wi++; s.typed.push("");
+      place();
+      return;
+    }
+    if (e.key.length !== 1) return;
+    e.preventDefault();
+    if (!s.started) start();
+    const k = s.typed[s.wi].length;
+    s.keys++;
+    if (e.key === s.words[s.wi][k]) s.correctKeys++;
+    s.typed[s.wi] += e.key;
+    renderWord(s.wi);
+    place();
+  });
+  frame.addEventListener("click", () => frame.focus());
+  window.addEventListener("resize", () => requestAnimationFrame(place));
+  reset();
+  return { reset, place, stop: () => clearInterval(s.timer) };
+}
+
+document.querySelectorAll("[data-engine]").forEach((frame, i) => engines.push(createEngine(frame, i + 1)));
+document.fonts.ready.then(() => engines.forEach((e) => e.place()));
+
+document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+  document.querySelectorAll(".option").forEach((o) => o.classList.toggle("active", o.dataset.option === tab.dataset.tab));
+  const engine = engines[Number(tab.dataset.tab) - 1];
+  requestAnimationFrame(() => { engine.place(); document.querySelector(`.option.active [data-engine]`).focus(); });
+}));
+
+document.querySelectorAll(".mode").forEach((btn) => btn.addEventListener("click", () => {
+  duration = Number(btn.dataset.mode);
+  document.querySelectorAll(".mode").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+  engines.forEach((e) => { e.stop(); e.reset(); });
+}));
+</script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+/* The typing test as a dark-mode app on the monitor's desktop, alongside the
+   other fake apps (DesktopWindows). Sized in the monitor's own pixels; type
+   is set in container units so the flat copy, scaled up over the zoomed
+   monitor, matches the 3D one exactly. */
+.window {
+  position: absolute;
+  display: grid;
+  grid-template-rows: 40px 1fr;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #17181b;
+  color: #f5ede6;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  font-family: var(--font-pp-neue-montreal), system-ui, sans-serif;
+  container-type: size;
+  -webkit-font-smoothing: antialiased;
+}
+
+.chrome {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: #202227;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(245, 237, 230, 0.6);
+}
+
+.light {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+}
+
+.close {
+  cursor: pointer;
+  background: #ef817a;
+}
+
+.close:focus-visible {
+  outline: 2px solid #ffa52e;
+  outline-offset: 2px;
+}
+
+.title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.pane {
+  position: relative;
+  min-height: 0;
+  /* Container units are the window's, chrome included. */
+  padding: 0 7cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.playing,
+.results {
+  transition: opacity 300ms ease;
+}
+
+/* A flex item won't shrink below its content's width by default; without
+   this the stats row stretched the column and the words overflowed it. */
+.playing {
+  min-width: 0;
+}
+
+.done .playing,
+.results {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.done .results {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em 1em;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: max(3cqh, 14px);
+  font-size: max(1.9cqw, 1.7cqh, 12px);
+  font-weight: 500;
+}
+
+.stats {
+  display: flex;
+  gap: 2.4em;
+  white-space: nowrap;
+  color: #ffa52e;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  color: rgba(245, 237, 230, 0.35);
+}
+
+.modes {
+  display: flex;
+  gap: 0.2em;
+}
+
+.mode {
+  font: inherit;
+  padding: 0.15em 0.6em;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(245, 237, 230, 0.4);
+  cursor: pointer;
+}
+
+.mode[aria-pressed="true"] {
+  color: #f5ede6;
+  background: rgba(245, 237, 230, 0.1);
+}
+
+.wordsWindow {
+  position: relative;
+  overflow: hidden;
+  font-size: max(3.2cqw, 2.8cqh, 14px);
+  line-height: 1.6;
+  height: calc(3 * 1.6em);
+}
+
+.words {
+  position: relative;
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.word {
+  display: inline-block;
+  margin-right: 0.55em;
+  white-space: nowrap;
+}
+
+.word.error {
+  text-decoration: underline;
+  text-decoration-color: #ff6b6b;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+}
+
+.letter {
+  position: relative;
+  color: rgba(245, 237, 230, 0.3);
+}
+
+.correct {
+  color: #f5ede6;
+}
+
+.incorrect,
+.extra {
+  color: #ff6b6b;
+}
+
+.extra {
+  opacity: 0.7;
+}
+
+.caret {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 1.2em;
+  border-radius: 2px;
+  background: #ffa52e;
+  transition: transform 100ms linear;
+  pointer-events: none;
+}
+
+.caret.idle {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.hint {
+  margin-top: max(3cqh, 14px);
+  font-size: max(1.5cqw, 1.4cqh, 11px);
+  color: rgba(245, 237, 230, 0.35);
+}
+
+.hint kbd {
+  font: inherit;
+  padding: 0 0.4em;
+  border: 1px solid rgba(245, 237, 230, 0.25);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+.results {
+  position: absolute;
+  inset: 0;
+  padding: 0 7cqw;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: repeat(4, auto) auto;
+  gap: max(1cqh, 6px) 5cqw;
+  align-content: center;
+}
+
+.label {
+  font-size: max(1.8cqw, 1.6cqh, 11px);
+  font-weight: 500;
+  color: rgba(245, 237, 230, 0.45);
+}
+
+.big {
+  font-family: var(--font-pp-frama), sans-serif;
+  font-weight: 900;
+  font-size: max(7.5cqw, 6cqh, 28px);
+  line-height: 1;
+  color: #ffa52e;
+}
+
+.small {
+  font-family: var(--font-pp-frama), sans-serif;
+  font-weight: 900;
+  font-size: max(4cqw, 3.4cqh, 18px);
+  line-height: 1;
+}
+
+.chart {
+  grid-row: 1 / span 4;
+  grid-column: 2;
+  width: 100%;
+  height: 100%;
+  min-height: 30cqh;
+}
+
+.again {
+  grid-column: 1 / -1;
+  margin-top: max(2cqh, 10px);
+}
+
+/* Narrow (portrait phone) windows: results stack, no graph, no title. */
+@container (max-aspect-ratio: 3 / 4) {
+  .title {
+    display: none;
+  }
+  .stats {
+    gap: 1.2em;
+  }
+  .results {
+    grid-template-columns: 1fr;
+  }
+  .chart {
+    display: none;
+  }
+}
+
+/* Off-screen but focusable: brings up the keyboard on touch devices, and
+   is where all typing arrives. */
+.input {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px; /* iOS zooms into inputs under 16px */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret,
+  .words {
+    transition: none;
+  }
+  .caret.idle {
+    animation: none;
+  }
+}
