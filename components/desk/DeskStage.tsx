@@ -417,6 +417,9 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
                   onInput={typing.input}
                   onRestart={typing.restart}
                   onClose={closeTyping}
+                  leaderboard={typing.leaderboard}
+                  onName={typing.setName}
+                  onSubmit={typing.submit}
                 />
               )}
             </ScreenSurface>
@@ -530,6 +533,9 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
             onInput={typing.input}
             onRestart={typing.restart}
             onClose={closeTyping}
+            leaderboard={typing.leaderboard}
+            onName={typing.setName}
+            onSubmit={typing.submit}
           />
         </div>
       )}

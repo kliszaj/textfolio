@@ -18,7 +18,8 @@ global.IntersectionObserver = IntersectionObserverMock;
 
 // jsdom ships no matchMedia. Several components ask it about pointer type and
 // reduced-motion; default them all to "no match" so tests opt in explicitly.
-if (!window.matchMedia) {
+// (Node-environment tests, like the Worker's, have no window at all.)
+if (typeof window !== "undefined" && !window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     configurable: true,

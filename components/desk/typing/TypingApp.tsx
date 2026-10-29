@@ -3,7 +3,8 @@
 import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { accuracy, results, secondsLeft, wpm, type TypingState } from "@/lib/typingTest";
-import { TYPING_DURATIONS } from "./useTypingTest";
+import { LEADERBOARD_SIZE } from "@/lib/leaderboard";
+import { TYPING_DURATIONS, type Leaderboard } from "./useTypingTest";
 import styles from "./TypingApp.module.css";
 
 // Words rendered ahead of the caret; the rest of the test's words wait.
@@ -27,15 +28,19 @@ type Props = {
   onInput: TypingInput;
   onRestart: (duration?: number) => void;
   onClose: () => void;
+  leaderboard: Leaderboard;
+  onName: (name: string) => void;
+  onSubmit: () => void;
 };
 
 export const TypingApp = memo(
-  function TypingApp({ state, now, duration, style, interactive, onInput, onRestart, onClose }: Props) {
+  function TypingApp({ state, now, duration, style, interactive, onInput, onRestart, onClose, leaderboard, onName, onSubmit }: Props) {
     const wordsRef = useRef<HTMLDivElement>(null);
     const windowRef = useRef<HTMLDivElement>(null);
     const caretRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const chartRef = useRef<HTMLCanvasElement>(null);
+    const nameRef = useRef<HTMLInputElement>(null);
 
     const wi = state ? state.typed.length - 1 : 0;
     const done = state?.finishedAt != null;
@@ -64,6 +69,13 @@ export const TypingApp = memo(
     useEffect(() => {
       if (interactive) inputRef.current?.focus({ preventScroll: true });
     }, [interactive, state?.words]);
+    // At the end, a run that can be saved asks for a name straight away; once
+    // saved (the form goes) or if it can't be, focus goes back to the hidden
+    // input, where Tab and Esc are handled.
+    useEffect(() => {
+      if (!interactive || !done) return;
+      (leaderboard.eligible ? nameRef : inputRef).current?.focus({ preventScroll: true });
+    }, [interactive, done, leaderboard.eligible]);
 
     // The graph of words per minute through the test.
     useEffect(() => {
@@ -111,7 +123,7 @@ export const TypingApp = memo(
     const final = state && done ? results(state) : null;
 
     return (
-      <div className={styles.window} style={style} onPointerDown={() => interactive && window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }))}>
+      <div className={styles.window} style={style} onPointerDown={() => interactive && !done && window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }))}>
         <div className={styles.chrome}>
           <button type="button" className={`${styles.light} ${styles.close}`} onClick={onClose} aria-label="Close the typing test" tabIndex={interactive ? 0 : -1} />
           <i className={styles.light} style={{ background: "#eac66c" }} />
@@ -177,6 +189,16 @@ export const TypingApp = memo(
                 <div><div className={styles.label}>accuracy</div><div className={styles.small}>{final.accuracy}%</div></div>
                 <div><div className={styles.label}>raw</div><div className={styles.small}>{final.raw}</div></div>
                 <div><div className={styles.label}>characters</div><div className={styles.small}>{final.correct}/{final.total}</div></div>
+                <Board
+                  leaderboard={leaderboard}
+                  duration={state?.duration ?? duration}
+                  interactive={interactive}
+                  nameRef={nameRef}
+                  onName={onName}
+                  onSubmit={onSubmit}
+                  onRestart={onRestart}
+                  onClose={onClose}
+                />
                 <div className={`${styles.hint} ${styles.again}`}>
                   <kbd>tab</kbd> next test · <kbd>esc</kbd> back to the desk
                 </div>
@@ -218,3 +240,88 @@ export const TypingApp = memo(
   // The hidden 3D copy holds its last frame while the flat one is in use.
   (previous, next) => Boolean(previous.frozen && next.frozen),
 );
+
+// This length's top runs, and the name field for a run that can go on it.
+function Board({
+  leaderboard,
+  duration,
+  interactive,
+  nameRef,
+  onName,
+  onSubmit,
+  onRestart,
+  onClose,
+}: {
+  leaderboard: Leaderboard;
+  duration: number;
+  interactive: boolean;
+  nameRef: React.RefObject<HTMLInputElement | null>;
+  onName: (name: string) => void;
+  onSubmit: () => void;
+  onRestart: () => void;
+  onClose: () => void;
+}) {
+  const { status, board, eligible, saving, message, rank, name, savedName } = leaderboard;
+  const mine = (entry: string) => savedName !== null && entry.toLowerCase() === savedName.toLowerCase();
+  return (
+    <div className={styles.board}>
+      <div className={styles.label}>leaderboard · {duration}s</div>
+      {status === "offline" ? (
+        <p className={styles.note}>The leaderboard isn&apos;t available right now.</p>
+      ) : status === "loading" ? (
+        <p className={styles.note}>Loading…</p>
+      ) : board.length === 0 ? (
+        <p className={styles.note}>No scores yet{eligible ? ": be the first." : "."}</p>
+      ) : (
+        <ol className={styles.entries}>
+          {board.map((entry, i) => (
+            <li key={entry.name + entry.createdAt} className={mine(entry.name) ? styles.mine : undefined}>
+              <span className={styles.rank}>{i + 1}</span>
+              <span className={styles.who}>{entry.name}</span>
+              <span className={styles.score}>{entry.wpm}</span>
+              <span className={styles.acc}>{entry.accuracy}%</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {eligible && (
+        <form
+          className={styles.save}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (saving !== "saving") onSubmit();
+          }}
+        >
+          <input
+            ref={nameRef}
+            className={styles.name}
+            value={name}
+            onChange={(event) => onName(event.target.value)}
+            // The last name used comes prefilled: Enter keeps it, typing replaces it.
+            onFocus={(event) => event.target.select()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                onClose();
+              } else if (event.key === "Tab") {
+                event.preventDefault();
+                onRestart();
+              }
+            }}
+            placeholder="your name"
+            aria-label="Your name for the leaderboard"
+            maxLength={16}
+            autoComplete="nickname"
+            spellCheck={false}
+            tabIndex={interactive ? 0 : -1}
+          />
+          <button type="submit" className={styles.saveButton} disabled={saving === "saving" || name.trim().length < 2} tabIndex={interactive ? 0 : -1}>
+            {saving === "saving" ? "saving…" : "save"}
+          </button>
+        </form>
+      )}
+      {saving === "error" && message && <p className={`${styles.note} ${styles.error}`}>{message}</p>}
+      {saving === "saved" && rank !== null && rank > LEADERBOARD_SIZE && <p className={styles.note}>Saved: you&apos;re #{rank}.</p>}
+    </div>
+  );
+}

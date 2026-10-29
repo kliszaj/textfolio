@@ -347,6 +347,44 @@ that file.
 - Verified in the browser: open, type, results with graph, Esc back out (the
   swap is seamless), and on a 375px phone.
 
+### Typing leaderboard (2026-10-29)
+
+A shared top 10 per test length (15/30/60s) on the typing test's results
+screen, with a name field to save a run. Backend: the Worker in front of the
+static site (`worker/index.ts`, routes in `worker/api.ts`) and a Cloudflare
+D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
+
+- **Scores can't simply be claimed.** Opening the test asks `POST /api/tests`
+  for a seed; the words come from it (`seededRandom`, `wordsFor`) and arrive
+  during the zoom. A run is submitted as its keystrokes with timings, and the
+  server rebuilds the words from the seed it kept and replays the keys
+  through the same engine (`lib/leaderboard.ts` `judge`). A test can be
+  scored once, not before its time has passed and not after an hour. Runs
+  over 250 WPM, under 50% accuracy, or averaging under 25ms a key are
+  refused. If typing starts before the server's words arrive, the run stays
+  local (no name field).
+- **The engine now ends on the clock**, not the next one-second tick, so the
+  browser and the replay agree about keys in the last second.
+- **Names**: 2–16 letters (any script), digits, spaces and `. _ ' -`; a short
+  blocklist, checked with the punctuation squeezed out. Each name's best run
+  is shown. To remove an entry:
+  `npx wrangler d1 execute textfolio-leaderboard --remote --command "DELETE FROM scores WHERE name = '...'"`.
+- **Rate limits** per visitor (a daily-salted hash of the IP, nothing else
+  stored): 120 tests an hour, 10 saves per 10 minutes.
+- **Offline**: until the database is bound (or locally, with no Worker), the
+  API answers 503 or 404 and the results screen says the leaderboard isn't
+  available; the game itself is unaffected.
+- **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs
+  the real API against Node's built-in SQLite with the real migration
+  (`@jest-environment node`; `jest.setup.ts` now guards its `window` use).
+- **Verified locally** end to end in the browser with a stand-in server
+  (static `out/` plus `worker/api.ts` on SQLite): play, the board, save,
+  your row highlighted, Tab for the next test.
+- **Deploy steps** (need the user's Cloudflare login): `npx wrangler login`,
+  `npx wrangler d1 create textfolio-leaderboard`, paste the id into
+  `wrangler.jsonc`'s commented `d1_databases` block, then
+  `npx wrangler d1 migrations apply textfolio-leaderboard --remote`.
+
 ### Smaller changes the same day
 
 - **Codex work merged.** `a31edf1` (animated Meet portrait sprite,

@@ -25,6 +25,19 @@ const WORDS = (
   "desk coffee notebook keyboard monitor chair morning studio design sketch type paper colour light window evening stockholm focus"
 ).trim().split(/\s+/);
 
+// Deterministic words from a seed (mulberry32), so the leaderboard server
+// can hand out a test and later rebuild exactly the words it gave.
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export function newTest(duration: number, random: () => number = Math.random): TypingState {
   const words = Array.from({ length: WORD_COUNT }, () => WORDS[Math.floor(random() * WORDS.length)]);
   return { words, typed: [""], duration, startedAt: null, finishedAt: null, keys: 0, correctKeys: 0, samples: [] };
@@ -32,9 +45,13 @@ export function newTest(duration: number, random: () => number = Math.random): T
 
 const current = (s: TypingState) => s.typed.length - 1;
 const started = (s: TypingState, now: number) => s.startedAt ?? now;
+// Over, by the clock rather than by the last tick: keys after the end count
+// for nothing, exactly as the leaderboard's replay of the run treats them.
+const over = (s: TypingState, now: number) =>
+  s.finishedAt !== null || (s.startedAt !== null && now - s.startedAt >= s.duration * 1000);
 
 export function typeChar(s: TypingState, char: string, now: number): TypingState {
-  if (s.finishedAt !== null) return s;
+  if (over(s, now)) return s;
   const wi = current(s);
   const word = s.typed[wi];
   if (word.length >= s.words[wi].length + MAX_EXTRA) return s;
@@ -51,7 +68,7 @@ export function typeChar(s: TypingState, char: string, now: number): TypingState
 
 // Space moves on to the next word; on an empty word it does nothing.
 export function typeSpace(s: TypingState, now: number): TypingState {
-  if (s.finishedAt !== null) return s;
+  if (over(s, now)) return s;
   const wi = current(s);
   if (s.typed[wi].length === 0 || wi >= s.words.length - 1) return s;
   return {
@@ -65,8 +82,8 @@ export function typeSpace(s: TypingState, now: number): TypingState {
 
 // Backspace removes a letter, or steps back into the previous word -- but only
 // if that word was mistyped, as Monkeytype allows.
-export function backspace(s: TypingState): TypingState {
-  if (s.finishedAt !== null) return s;
+export function backspace(s: TypingState, now: number): TypingState {
+  if (over(s, now)) return s;
   const wi = current(s);
   if (s.typed[wi].length > 0) {
     const typed = [...s.typed];
@@ -78,10 +95,10 @@ export function backspace(s: TypingState): TypingState {
 }
 
 // Ctrl/Alt+Backspace: clear the current word.
-export function deleteWord(s: TypingState): TypingState {
-  if (s.finishedAt !== null) return s;
+export function deleteWord(s: TypingState, now: number): TypingState {
+  if (over(s, now)) return s;
   const wi = current(s);
-  if (s.typed[wi].length === 0) return backspace(s);
+  if (s.typed[wi].length === 0) return backspace(s, now);
   const typed = [...s.typed];
   typed[wi] = "";
   return { ...s, typed };

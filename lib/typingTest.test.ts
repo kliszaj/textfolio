@@ -7,6 +7,7 @@ import {
   newTest,
   results,
   secondsLeft,
+  seededRandom,
   tick,
   typeChar,
   typeSpace,
@@ -41,7 +42,7 @@ test("counts right words with their spaces, plus the right part of the current w
 
 test("accuracy is matched keystrokes over all keystrokes, corrections included", () => {
   let s = type(fixed(["cat"]), "cx");
-  s = backspace(s);
+  s = backspace(s, 0);
   s = type(s, "at");
   // c ✓, x ✗, a ✓, t ✓ -- the backspace itself isn't a keystroke.
   expect(accuracy(s)).toBe(75);
@@ -54,14 +55,14 @@ test("space on an empty word does nothing", () => {
 });
 
 test("backspace steps back into a mistyped word, but not a correct one", () => {
-  const wrong = backspace(type(fixed(["one", "two"]), "onx "));
+  const wrong = backspace(type(fixed(["one", "two"]), "onx "), 0);
   expect(wrong.typed).toEqual(["onx"]);
-  const right = backspace(type(fixed(["one", "two"]), "one "));
+  const right = backspace(type(fixed(["one", "two"]), "one "), 0);
   expect(right.typed).toEqual(["one", ""]);
 });
 
 test("ctrl+backspace clears the current word", () => {
-  expect(deleteWord(type(fixed(["three"]), "thr")).typed).toEqual([""]);
+  expect(deleteWord(type(fixed(["three"]), "thr"), 0).typed).toEqual([""]);
 });
 
 test("extra letters past a word stop at a limit", () => {
@@ -94,4 +95,20 @@ test("results score over the whole duration", () => {
   // 10 x "go " = 30 correct characters in a quarter of a minute.
   expect(r.wpm).toBe(Math.round(30 / 5 / 0.25));
   expect(r.accuracy).toBe(100);
+});
+
+test("keys after the time limit count for nothing, even before the last tick", () => {
+  let s = type(fixed(["one", "two"], 15), "o", 0);
+  s = typeChar(s, "n", 14999);
+  expect(s.typed[0]).toBe("on");
+  expect(typeChar(s, "e", 15000)).toBe(s);
+  expect(backspace(s, 15000)).toBe(s);
+});
+
+test("the same seed always gives the same words", () => {
+  const a = newTest(15, seededRandom(42)).words;
+  const b = newTest(15, seededRandom(42)).words;
+  const c = newTest(15, seededRandom(43)).words;
+  expect(a).toEqual(b);
+  expect(a).not.toEqual(c);
 });
