@@ -1,8 +1,8 @@
-// The desk (app/desk/c) is the landing page: its monitor shows a case study,
+// The desk (app/page.tsx) is the landing page: its monitor shows a case study,
 // a tap zooms through into it, and the case study's Home icon zooms back out.
 // The desk stays mounted behind the case study (see DeskHost), so these hooks
 // are plain module state shared within the one loaded bundle.
-export const DESK_ROUTE = "/desk/c";
+export const DESK_ROUTE = "/";
 
 const SESSION_KEY = "desk-session";
 

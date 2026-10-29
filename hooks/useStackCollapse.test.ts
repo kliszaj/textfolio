@@ -87,7 +87,7 @@ test("does not restart or retarget if the caller passes a different startTravel 
   );
   expect(result.current).toBe(0.6);
 
-  // Simulates app/page.tsx recomputing its argument on a later render, after
+  // Simulates app/stack/page.tsx recomputing its argument on a later render, after
   // the flag this hook reads has already been consumed.
   rerender({ startTravel: 1 });
   expect(result.current).toBe(0.6);

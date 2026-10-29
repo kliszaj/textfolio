@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-// Spike index: the two ways of opening a case study from the desk.
+// Spike index: the ways of opening a case study from the desk. C shipped as
+// the landing page; A and B are kept for reference.
 export default function DeskSpikeIndex() {
   return (
     <main className="grid min-h-screen place-items-center bg-cream p-8 text-ink">
@@ -12,8 +13,11 @@ export default function DeskSpikeIndex() {
         <Link href="/desk/b" className="underline underline-offset-4">
           B: zoom through the screen
         </Link>
-        <Link href="/desk/c" className="underline underline-offset-4">
-          C: textfolio in a browser on the screen
+        <Link href="/" className="underline underline-offset-4">
+          C: textfolio in a browser on the screen (landing page)
+        </Link>
+        <Link href="/stack" className="underline underline-offset-4">
+          The previous paper stack homepage
         </Link>
       </div>
     </main>

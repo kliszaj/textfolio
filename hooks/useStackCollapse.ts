@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 // want. Stores the slug, not a resolved depth or travel value, so this
 // module stays free of any dependency on the case-study data itself --
 // resolving the slug into a starting travel value is the caller's job (see
-// app/page.tsx).
+// app/stack/page.tsx).
 let returningFromSlug: string | null = null;
 
 export function markReturningHome(slug: string): void {
@@ -39,7 +39,7 @@ export function useStackCollapse(startTravel: number, durationMs: number = 700):
   // and clearing it in the first invocation would hide it from the second.
   const [playing] = useState(() => returningFromSlug !== null);
   // Captured once, at mount, not read fresh from the effect below: the
-  // caller (app/page.tsx) recomputes its own startTravel argument on every
+  // caller (app/stack/page.tsx) recomputes its own startTravel argument on every
   // render by reading the same flag this hook consumes, so after the first
   // render it recomputes down to a fallback value. If the effect depended
   // on the live `startTravel` prop it would see that change and incorrectly

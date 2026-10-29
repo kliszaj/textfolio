@@ -2,12 +2,19 @@
 
 Last updated: 2026-10-29
 
-## Spike: 3D desk landing page (branch `spike/desk-hybrid`, 2026-10-28 → 2026-10-29)
+## 3D desk landing page (started as `spike/desk-hybrid`, 2026-10-28 → 2026-10-29)
 
-This section covers only the throwaway desk spike. It lives on the
-`spike/desk-hybrid` branch, which the user asked to be pushed to GitHub. It
-is **not** merged into `main` and was never approved as production work. The
-sections below this one still describe `main`.
+**Status (2026-10-29): shipped.** The user made the desk (spike C) the main
+product. It is on `main`, it is the landing page at `/`, and it is what the
+Cloudflare Worker deploys (`wrangler.jsonc` serves the static `out/`
+export). `DESK_ROUTE` in `lib/deskSession.ts` is `/`; `app/page.tsx` renders
+nothing because `DeskHost` in the root layout draws the desk. The old ADRIAN
+paper stack homepage moved to `/stack` (`app/stack/page.tsx`, with its test)
+and is no longer linked from the flow. `/desk/c` was removed; `/desk` (index),
+`/desk/a` and `/desk/b` remain as reference spikes. A case study's Home goes
+back to `/` either way: the desk zoom-out when the visitor came through the
+desk this session, otherwise the old slide-down exit, which then lands on the
+desk. Sections below that describe the stack homepage now describe `/stack`.
 
 ### The idea
 
@@ -28,7 +35,7 @@ intro somewhere else themselves.
   main checkout was never touched).
 - `npm ci`, then `npx next dev -p 3100`. Port 3000 was taken by
   office-portfolio during the session.
-- `/desk` is a small index. `/desk/c` is the current direction. `/desk/a`
+- `/` is the desk (formerly `/desk/c`). `/desk` is a small index. `/desk/a`
   (case study opens on the monitor itself, Henry-style) and `/desk/b` (zoom
   through a colour card into the case study) are earlier comparison spikes,
   kept for reference.
