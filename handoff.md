@@ -61,7 +61,7 @@ intro somewhere else themselves.
   settled. Then it pushes `/desk/c` and the camera eases back out (1.3s).
   There is no loading screen, because the desk is never unmounted. Using the
   next arrow to browse first, then pressing Home, brings the monitor back
-  showing the last case study read (verified Focals → Tinkering).
+  showing the last case study read (verified Focals → Projects, then named Tinkering).
 - textfolio's own `PageIndicator` dot rail sits beside the desk. Tapping a dot
   zooms into the monitor, then plays textfolio's normal "lift" `CaseStudyFocus`
   animation in that case study's colour and pushes its route.
@@ -461,11 +461,51 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Faster Home.** Inside a frame, an inline script in `app/layout.tsx` sets
   `data-embedded` on `<html>`, and the monitor's copy of a case study shows at
   rest from its first paint. So `PAGE_SETTLE_MS` is 150 (it was 700).
-- **Morning window.** `DeskLighting`'s `WindowPatch` draws a golden patch on
-  the left after sunrise (`morningLightStrength`), opposite the evening one
-  on the right. Both fade in slowly and move the way the sun moves them: the
-  sunset patch rises in from below and leaves upward; the morning patch comes
-  down from above and leaves downward.
+- **Window light from behind the viewer.** The window is no longer drawn
+  on the wall behind the desk. `DeskLighting`'s `WindowPatch` is a spotlight
+  behind and above the viewer, on the chair's side, carrying a 4x3 pane
+  pattern (`SpotLight.map`), so you see only the light it throws across the
+  desk, monitor and chair. Sunset from the right, pink to amber; sunrise from
+  the left, golden. Gotchas: the map only shows while the light's
+  `castShadow` is on, so it's switched on only while the window is lit (the
+  floor's ShadowMaterial prints every casting light's shadow at full
+  strength, however dim the light, so a dark window left casting gives a
+  second shadow); and the map texture must be opaque black outside the
+  panes, as transparent texels pass the light at full strength. Both fade in and drift the way the sun moves them.
+- **Window or sun, never both.** `windowLit` (lib/deskDaylight) switches the
+  room's light to the window exactly when the room looks like morning or
+  twilight (the same thresholds `deskLook` uses), and back to the sun the
+  rest of the day. The floor can't tell one light's shadow from another's,
+  so shadows take turns across a handover: the window's fade over its first
+  half (`shadow.intensity`), the sun's floor shadow over the second, and the
+  sun swings from the window's side (`*_FLOOR_SUN`) to its own place, so the
+  shadow moves in rather than popping. In the morning the window casts no
+  shadows of its own (`castsShadows: false`); the sun stands exactly along
+  the window's light with some of its light (`MORNING_SUN_KEEPS`) and draws
+  them all, desk and floor, once. Whenever a light starts or stops casting,
+  the shadow map is redrawn (it's only redrawn on request), or a shadow
+  could stay missing until the desk was turned.
+- **Smoother big steps.** A step through the day runs longer the further it
+  goes (0.7s up to 2s; `STEP_*` in DeskClock), and the evening background
+  layer fades in and out instead of mounting, so night to morning and back
+  doesn't snap.
+- **One main light at a time.** `windowLightShare` (DeskLighting) says how
+  much of the room the window carries; the room's sun (the key directional
+  light) fades out by that much, at the window's pace, and stops casting
+  shadows once the window has taken over. The floor shadow shows only while
+  the window is fully dark: the floor can't tell one light's shadow from
+  another's, and from a low window behind the viewer it would be a huge stray
+  shape.
+- **Stepping through the day follows the room's look.** `deskLook` (in
+  `lib/deskDaylight.ts`) says which stop the room looks like now, using the
+  same thresholds that draw it (`DARK_ROOM_AT_HORIZON` lives there too), and
+  `nextDeskStage` steps from the nearest stop of that kind. So every scroll
+  or arrow changes the room: e.g. at 15:30 in late October, already dark
+  before the 15:59 sunset, forward goes to night and back to the afternoon.
+- **The dark room is day or night, never grey.** `roomDarkness` and the
+  "dark" style's wall switch at `DARK_ROOM_AT_HORIZON` (0.85, about 5 degrees
+  of sun) instead of blending; the wall fades across in 1.2s and the scene's
+  lights ease as before.
 - **The rail on every screen.** On the desk `PageIndicator` takes
   `alwaysShown`. It's an overlay, so the desk framing is unchanged. On short
   screens (a phone on its side) it tightens and moves up, clear of the name.
@@ -526,13 +566,21 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Flaky test:** "the board keeps each name's best run" in the leaderboard
   tests fails now and then in the full run but passes alone; looks
   timing-related, not yet looked into.
+- **Leaderboard says what its numbers are.** `BoardEntries` (TypingApp)
+  heads each column of runs with #, name, wpm, accuracy, right-aligns the
+  numbers so they stack, and labels each row for screen readers; the full
+  board adds a line saying what's ranked. Used by both the full board and
+  the one under a finished test.
 - **Lighter loader.** The desk's LOADING ring is set in Neue Montreal Bold
   rather than Frama Black (the only Frama weights in the repo are Black and
   Extralight).
 - **Narrow windows nudge the desk.** `idlePose` eases the framing x from -3
   to -5 as the window narrows from aspect 1.3 to square, so less is cut off.
-- **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
-  deploys `main`). `wrangler tail textfolio` shows live requests.
+- **Live**: https://adrianklisz.com (and www, and
+  https://textfolio.kliszaj.workers.dev). Cloudflare Workers Builds deploys
+  `main`; the domains are custom domains in `wrangler.jsonc` (`routes`), so a
+  deploy keeps them. The zone's Proton Mail records are separate and
+  untouched. `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs
   the real API against Node's built-in SQLite with the real migration
   (`@jest-environment node`; `jest.setup.ts` now guards its `window` use).

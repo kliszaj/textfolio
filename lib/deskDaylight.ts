@@ -7,29 +7,62 @@ const stockholmDate = new Intl.DateTimeFormat("en-CA", {
 
 const WINDOW_AZIMUTH_DEGREES = 45; // Northeast; +Z points out through the window.
 
+// The room goes dark (the "dark" twilight style) once the sun is this low in
+// the evening: horizonMix runs 0 at noon to 1 at 3 degrees up.
+export const DARK_ROOM_AT_HORIZON = 0.85;
+// The morning window light is noticeable from here (see morningLightStrength).
+export const MORNING_LOOK_AT_HORIZON = 0.65;
+
+export type DeskStageKind = "morning" | "afternoon" | "twilight" | "night";
+
+// Which of the four stops the room looks like at this moment, by the same
+// rules that draw it -- not by which stop's time has passed. The room goes
+// dark some time before the sunset stop, and the morning light fades well
+// before noon, so a time between two stops can look like either.
+export function deskLook(date: Date): DeskStageKind {
+  const sky = deskDaylight(date);
+  if (sky.backgroundNightMix >= 0.5) return "night";
+  if (windowLit(sky)) return sky.morning ? "morning" : "twilight";
+  return "afternoon";
+}
+
+// Whether the light comes in through the window (morning and twilight) or
+// from the room's sun (the rest of the day): one or the other, never both,
+// switching where the room's look does.
+export function windowLit(sky: { morning: boolean; horizonMix: number; backgroundNightMix: number }) {
+  return sky.morning ? sky.horizonMix >= MORNING_LOOK_AT_HORIZON : sky.horizonMix >= DARK_ROOM_AT_HORIZON || sky.backgroundNightMix > 0;
+}
+
 export function nextDeskStage(date: Date, direction: -1 | 1): Date {
-  const stages: Date[] = [];
+  const stages: { at: Date; kind: DeskStageKind }[] = [];
   // Include adjacent days so the four-stage tour wraps naturally at midnight.
   for (const day of [-1, 0, 1]) {
     const noon = stockholmPreviewDate(new Date(date.getTime() + day * 86400000), 12);
     const times = getTimes(noon, 59.3293, 18.0686);
-    const morning = new Date((times.sunrise ?? noon).getTime() + 45 * 60000);
-    const afternoon = times.solarNoon;
     const twilight = times.sunset ?? new Date(noon.getTime() + 6 * 3600000);
-    const night = new Date((times.dusk ?? twilight).getTime() + 60 * 60000);
-    stages.push(morning, afternoon, twilight, night);
+    stages.push(
+      { at: new Date((times.sunrise ?? noon).getTime() + 45 * 60000), kind: "morning" },
+      { at: times.solarNoon, kind: "afternoon" },
+      { at: twilight, kind: "twilight" },
+      { at: new Date((times.dusk ?? twilight).getTime() + 60 * 60000), kind: "night" },
+    );
   }
-  stages.sort((a, b) => a.getTime() - b.getTime());
-  // A preview follows the live clock between clicks; allow a minute of drift
-  // so a stage cannot accidentally select itself again.
-  if (direction === 1) return stages.find((stage) => stage.getTime() > date.getTime() + 60000)!;
-  // Back goes to the stage before the one this time belongs to. From a stage
-  // that's simply the previous one; from the live clock between stages it
-  // skips the stage just behind, which looks like what's already showing (at
-  // 16:40 the room is already in its sunset look, so stepping back to the
-  // 16:02 sunset would seem to show twilight twice).
-  const current = stages.findLastIndex((stage) => stage.getTime() <= date.getTime() + 60000);
-  return stages[current - 1];
+  stages.sort((a, b) => a.at.getTime() - b.at.getTime());
+  // Step from the stop the room looks like now -- the nearest one of that
+  // kind -- so every step shows a different room: from 15:30, already dark
+  // before a 15:59 sunset, forward goes on to night rather than to a sunset
+  // that looks the same, and back goes to the afternoon.
+  const look = deskLook(date);
+  let current = 0;
+  let nearest = Infinity;
+  stages.forEach((stage, index) => {
+    const distance = Math.abs(stage.at.getTime() - date.getTime());
+    if (stage.kind === look && distance < nearest) {
+      nearest = distance;
+      current = index;
+    }
+  });
+  return stages[current + direction].at;
 }
 
 // Today's Stockholm sunset: the same moment the clock's twilight stop uses.

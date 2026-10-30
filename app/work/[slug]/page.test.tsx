@@ -32,7 +32,7 @@ test("sends the last case study's next arrow to About, not back to Jam", async (
   expect(nextLink).toHaveStyle({ backgroundColor: ABOUT_PAGE.thumbnailColor });
 });
 
-test("adds the project collection to Tinkering", async () => {
+test("adds the project collection to Projects", async () => {
   const jsx = await CaseStudyPage({
     params: Promise.resolve({ slug: "projects-and-experiments" }),
   });

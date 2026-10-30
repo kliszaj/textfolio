@@ -58,7 +58,6 @@ const condensedFont = localFont({
 export const metadata: Metadata = {
   // Needed to resolve the og:image/twitter:image URLs to an absolute
   // address; without it Next.js defaults to localhost in production.
-  // TODO: confirm this is actually where the site is deployed.
   metadataBase: new URL("https://adrianklisz.com"),
   title: "Adrian",
   description: "Designer, tinkerer, zero-to-one builder",

@@ -79,11 +79,24 @@ describe("the last sun through the window", () => {
   });
 });
 
+test("the dark room's wall is the afternoon or the night colour, nothing between", () => {
+  const wall = (horizon: number, nightMix: number) => sky("dark", horizon, nightMix).result.current.corner;
+  expect(distance(wall(0.6, 0), AFTERNOON)).toBeLessThan(0.02);
+  expect(distance(wall(0.9, 0), NIGHT)).toBeLessThan(0.02);
+});
+
 describe("the dark room at twilight", () => {
   test("is as dark as night by sunset, and light through the afternoon", () => {
     expect(roomDarkness("dark", 1, 0, false)).toBe(1);
     expect(roomDarkness("dark", 0.2, 0, false)).toBe(0);
-    expect(roomDarkness("dark", 0.7, 0, false)).toBeGreaterThan(0);
+  });
+
+  test("is either light or dark, never in between", () => {
+    // A late-October afternoon in Stockholm: the sun already low, still day.
+    expect(roomDarkness("dark", 0.6, 0, false)).toBe(0);
+    expect(roomDarkness("dark", 0.84, 0, false)).toBe(0);
+    expect(roomDarkness("dark", 0.85, 0, false)).toBe(1);
+    for (let h = 0; h <= 1; h += 0.05) expect([0, 1]).toContain(roomDarkness("dark", h, 0, false));
   });
 
   test("stays dark into the night", () => {

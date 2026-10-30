@@ -300,7 +300,7 @@ export const caseStudies: CaseStudy[] = [
   },
   {
     slug: "projects-and-experiments",
-    title: "Tinkering",
+    title: "Projects",
     thumbnailColor: "#219EFA",
     blurb: "Personal projects, small experiments, and the things I tinker with on evenings and weekends.",
   },

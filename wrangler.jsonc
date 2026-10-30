@@ -4,6 +4,15 @@
   // (the typing leaderboard's /api/*) reaches the Worker.
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-30",
+  // Served on the portfolio's own domain (Cloudflare adds the DNS records;
+  // the zone's mail records are untouched), as well as workers.dev.
+  "routes": [
+    { "pattern": "adrianklisz.com", "custom_domain": true },
+    { "pattern": "www.adrianklisz.com", "custom_domain": true }
+  ],
+  // Routes turn workers.dev (and its preview URLs) off unless asked for.
+  "workers_dev": true,
+  "preview_urls": true,
   "assets": {
     "directory": "./out",
     "binding": "ASSETS"

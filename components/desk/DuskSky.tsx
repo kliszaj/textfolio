@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
 import * as THREE from "three";
+import { DARK_ROOM_AT_HORIZON } from "@/lib/deskDaylight";
 import type { DeskTwilight } from "./DeskTwilight";
 
 // Twilight backdrops, drawn as a layer behind the transparent 3D canvas. Each
@@ -52,13 +53,15 @@ export function morningLightStrength(horizon: number, nightMix: number) {
   return THREE.MathUtils.smoothstep(horizon, 0.45, 0.95) * (1 - clamp01(nightMix * 1.8));
 }
 
-// The dark-room twilight: through the evening the room goes dark as if its
-// lights were off -- as dark as night by sunset -- and only the sunset comes
-// in, through the window (WindowLight, in the scene). How dark, 0 to 1; the
-// lighting takes the darker of this and the real sky's.
+// The dark-room twilight: the room is either in daylight or dark, as if its
+// lights were off, never a grey in between. It goes dark as the sun nears
+// the horizon (horizonMix runs 0 at noon to 1 at 3 degrees up) and only the
+// sunset comes in, through the window (WindowLight, in the scene). The
+// switch is eased where it's drawn: the lights in the scene, a fade on the
+// wall. 0 or 1; the lighting takes the darker of this and the real sky's.
 export function roomDarkness(style: TwilightStyle, horizon: number, nightMix: number, morning: boolean) {
   if (style !== "dark" || morning) return 0;
-  return Math.max(THREE.MathUtils.smoothstep(horizon, 0.35, 1), nightMix);
+  return horizon >= DARK_ROOM_AT_HORIZON || nightMix > 0 ? 1 : 0;
 }
 
 // One-click colour combinations for the twilight sky (glow, middle, edges).
@@ -94,9 +97,13 @@ export function useDuskSky({ twilight, afternoon, night, horizon, nightMix }: In
     const edge = mix(cream, edgeSet, d).lerp(nightColor, n);
 
     if (style === "dark") {
-      // A dark room: the wall behind the desk just goes to the night colour.
-      const wall = mix(cream, nightColor, Math.max(d, n));
-      return { node: <div className="absolute inset-0" style={{ backgroundColor: css(wall) }} />, corner: wall };
+      // A dark room: the wall behind the desk is the afternoon colour or the
+      // night colour, fading across when the room goes dark.
+      const wall = qHorizon >= DARK_ROOM_AT_HORIZON || n > 0 ? nightColor : cream;
+      return {
+        node: <div className="absolute inset-0" style={{ backgroundColor: css(wall), transition: "background-color 1200ms ease" }} />,
+        corner: wall,
+      };
     }
 
     if (style === "radial") {

@@ -1,4 +1,4 @@
-import { deskDaylight, nextDeskStage, stockholmPreviewDate } from "./deskDaylight";
+import { deskDaylight, deskLook, nextDeskStage, stockholmPreviewDate, windowLit } from "./deskDaylight";
 
 test("the same Stockholm evening is light in summer and dark in winter", () => {
   const summer = deskDaylight(stockholmPreviewDate(new Date("2026-06-21T12:00:00Z"), 19));
@@ -52,8 +52,10 @@ describe("stepping through the day", () => {
   });
 
   test("the same holds in every period, overnight included", () => {
-    // Mid-morning: back skips this morning's stage, to last night.
-    expect(local(nextDeskStage(oct30("09:40"), -1))).toBe("29 17:45");
+    // Mid-morning: the morning light has gone and it looks like the
+    // afternoon, so back is this morning's stage.
+    expect(deskLook(oct30("09:40"))).toBe("afternoon");
+    expect(local(nextDeskStage(oct30("09:40"), -1))).toBe("30 07:46");
     // Afternoon: back skips noon, to this morning.
     expect(local(nextDeskStage(oct30("13:00"), -1))).toBe("30 07:46");
     // Small hours: back skips last night's stage, to yesterday's sunset.
@@ -65,4 +67,45 @@ describe("stepping through the day", () => {
     const later = new Date(sunset.getTime() + 20 * 60000);
     expect(local(nextDeskStage(later, -1))).toBe("30 11:31");
   });
+});
+
+describe("each step shows a different room", () => {
+  const oct30 = (hhmm: string) => new Date(`2026-10-30T${hhmm}:00+01:00`);
+  const local = (date: Date) =>
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .format(date)
+      .replace(", ", " ");
+
+  test("before sunset but already dark, forward goes on to night, back to the afternoon", () => {
+    // 15:30: the room has gone dark ahead of the 15:59 sunset stop.
+    expect(deskLook(oct30("15:30"))).toBe("twilight");
+    expect(local(nextDeskStage(oct30("15:30"), 1))).toBe("30 17:43");
+    expect(local(nextDeskStage(oct30("15:30"), -1))).toBe("30 11:31");
+  });
+
+  test("every stop looks like itself", () => {
+    expect(deskLook(oct30("07:46"))).toBe("morning");
+    expect(deskLook(oct30("11:31"))).toBe("afternoon");
+    expect(deskLook(oct30("15:59"))).toBe("twilight");
+    expect(deskLook(oct30("17:43"))).toBe("night");
+  });
+
+  test("stepping forward through a day never lands on the look it left", () => {
+    for (const start of ["06:30", "08:30", "10:00", "13:00", "15:30", "16:30", "20:00", "23:30"]) {
+      const from = oct30(start);
+      const next = nextDeskStage(from, 1);
+      expect(deskLook(next)).not.toBe(deskLook(from));
+      const back = nextDeskStage(from, -1);
+      expect(deskLook(back)).not.toBe(deskLook(from));
+    }
+  });
+});
+
+test("the light comes through the window in the morning and twilight looks, from the sun otherwise", () => {
+  const at = (iso: string) => deskDaylight(new Date(iso));
+  expect(windowLit(at("2026-10-30T07:46:00+01:00"))).toBe(true);
+  expect(windowLit(at("2026-10-30T11:31:00+01:00"))).toBe(false);
+  // A late-October afternoon: low sun, but still the sun's.
+  expect(windowLit(at("2026-10-30T14:58:00+01:00"))).toBe(false);
+  expect(windowLit(at("2026-10-30T15:59:00+01:00"))).toBe(true);
 });

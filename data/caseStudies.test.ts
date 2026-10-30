@@ -5,11 +5,11 @@ test("has at least 3 case studies", () => {
   expect(caseStudies.length).toBeGreaterThanOrEqual(3);
 });
 
-test("ends with an ongoing personal Tinkering page", () => {
+test("ends with an ongoing personal Projects page", () => {
   const projects = caseStudies[caseStudies.length - 1];
   expect(projects).toMatchObject({
     slug: "projects-and-experiments",
-    title: "Tinkering",
+    title: "Projects",
     blurb: expect.stringMatching(/evenings and weekends/i),
   });
 });

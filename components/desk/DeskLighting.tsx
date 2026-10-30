@@ -6,6 +6,7 @@ import * as THREE from "three";
 import type { useDeskTime } from "./DeskClock";
 import type { ScreenPose } from "./DeskModel";
 import { morningLightStrength, windowLightStrength } from "./DuskSky";
+import { windowLit } from "@/lib/deskDaylight";
 import { MAX_FRAME_DELTA, useRenderAfterChange } from "./renderOnDemand";
 
 const FLOOR_SHADOW_OPACITY = 0.3;
@@ -23,7 +24,7 @@ const LIGHT_SETTLE_SECONDS = 2.5;
 const MONITOR_NIGHT_SPOT = 2.4;
 const MONITOR_NIGHT_FILL = 0.2;
 
-export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDeskTime>["solar"]; screen: ScreenPose | null }) {
+export function DeskLighting({ solar, screen, windowEnabled }: { solar: ReturnType<typeof useDeskTime>["solar"]; screen: ScreenPose | null; windowEnabled: boolean }) {
   const ambient = useRef<THREE.AmbientLight>(null);
   const key = useRef<THREE.DirectionalLight>(null);
   const fill = useRef<THREE.HemisphereLight>(null);
@@ -33,6 +34,13 @@ export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDe
   const rim = useRef<THREE.DirectionalLight>(null);
   const floor = useRef<THREE.ShadowMaterial>(null);
   const darkness = solar?.darkness ?? 0;
+  // One main light at a time: as the window light comes in (WindowLight),
+  // the room's sun hands over to it -- fading out, and leaving the shadows on
+  // the furniture to the window. The floor's shadow goes with the sun: from
+  // a window that low behind the viewer it would be a huge, stray shape.
+  const windowShare = windowLightShare(solar, windowEnabled);
+  const handOver = useRef(windowShare);
+  const sunCasting = useRef<boolean | null>(null);
   const sunlight = useMemo(() => {
     const directIntensity = solar?.sunIntensity ?? 1.7;
     const windowIntensity = (solar?.daylight ?? 1) * 0.55;
@@ -61,16 +69,29 @@ export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDe
       floorShadow: new THREE.Color(NEUTRAL_SHADOW).lerp(new THREE.Color(TWILIGHT_SHADOW), solar && !solar.morning ? solar.horizonMix : 0),
     };
   }, [solar, darkness]);
-  useRenderAfterChange(LIGHT_SETTLE_SECONDS, [sunlight, darkness, screen], { shadows: true });
-  useFrame((_, delta) => {
+  useRenderAfterChange(LIGHT_SETTLE_SECONDS, [sunlight, darkness, screen, windowShare], { shadows: true });
+  useFrame(({ gl, invalidate }, delta) => {
     const blend = 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * LIGHT_EASE_RATE);
+    // At the window light's own pace, so the two cross over together. That
+    // can outlast the frames a change asks for, so keep asking until it's
+    // done: the sun's shadow comes back at the very end of it.
+    handOver.current = THREE.MathUtils.lerp(handOver.current, windowShare, 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * PATCH_FADE_RATE));
+    if (Math.abs(handOver.current - windowShare) > 0.001) invalidate();
     if (ambient.current) {
       ambient.current.intensity = THREE.MathUtils.lerp(ambient.current.intensity, THREE.MathUtils.lerp(0.45, 0.3, darkness), blend);
       ambient.current.color.lerp(sunlight.ambientColor, blend);
     }
     if (key.current) {
-      key.current.intensity = THREE.MathUtils.lerp(key.current.intensity, sunlight.intensity, blend);
-      key.current.position.lerp(sunlight.position, blend);
+      // In the morning window the sun keeps a little light, standing along
+      // the window's direction: it draws the shadows then, so they fall the
+      // window's way, once (the morning window casts none of its own).
+      const sunKeeps = solar?.morning ? MORNING_SUN_KEEPS : 0;
+      key.current.intensity = THREE.MathUtils.lerp(key.current.intensity, sunlight.intensity * (1 - handOver.current * (1 - sunKeeps)), blend);
+      // While the window has the room, the sun stands where the window is,
+      // so the floor shadow it draws (below) falls the window's way.
+      // Handing back, it swings from there to its own place, so its shadow
+      // moves into position as it comes in rather than appearing in it.
+      key.current.position.lerp(windowShare ? (solar?.morning ? MORNING_FLOOR_SUN : EVENING_FLOOR_SUN) : sunlight.position, blend);
       key.current.color.lerp(sunlight.color, blend);
       key.current.shadow.radius = THREE.MathUtils.lerp(key.current.shadow.radius, sunlight.shadowRadius, blend);
     }
@@ -84,15 +105,32 @@ export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDe
     if (monitor.current) monitor.current.intensity = THREE.MathUtils.lerp(monitor.current.intensity, 0.02 + darkness * MONITOR_NIGHT_FILL, blend);
     if (rim.current) rim.current.intensity = THREE.MathUtils.lerp(rim.current.intensity, darkness * 0.4, blend);
     // ShadowMaterial draws the shadow map at full strength however dim its
-    // light is, so fade the floor shadow with the sun, and only stop casting
-    // once it has faded out -- otherwise it holds, then vanishes at dusk.
-    const sun = key.current?.intensity ?? 0;
-    const floorOpacity = FLOOR_SHADOW_OPACITY * THREE.MathUtils.smoothstep(sun, 0.02, FLOOR_SHADOW_FULL_AT);
+    // light is, so its opacity does the fading: with the sun (none at night),
+    // and across the handover to and from the window. The floor can't tell
+    // one light's shadow from another's, so they take turns: the window's
+    // shadows fade over the first half of a handover (WindowPatch), the
+    // sun's floor shadow over the second, never both at once. In the morning
+    // the desk keeps its floor shadow throughout: the sun, standing along the
+    // window's light, draws all the shadows then (see sunKeeps above).
+    const daylit = THREE.MathUtils.smoothstep(sunlight.intensity, 0.02, FLOOR_SHADOW_FULL_AT);
+    const sunsTurn = solar?.morning ? 1 : 1 - THREE.MathUtils.smoothstep(handOver.current, 0, 0.5);
+    const floorOpacity = FLOOR_SHADOW_OPACITY * daylit * sunsTurn;
     if (floor.current) {
       floor.current.opacity = floorOpacity;
       floor.current.color.lerp(sunlight.floorShadow, blend);
     }
-    if (key.current) key.current.castShadow = floorOpacity > 0.002;
+    if (key.current) {
+      const casting = floorOpacity > 0.002;
+      key.current.castShadow = casting;
+      // The shadow map is only redrawn on request: when the sun starts or
+      // stops casting, ask, or its shadow stays missing (or stale) until
+      // something else does -- like turning the desk.
+      if (casting !== sunCasting.current) {
+        sunCasting.current = casting;
+        gl.shadowMap.needsUpdate = true;
+        invalidate();
+      }
+    }
   });
   return <>
     <ambientLight ref={ambient} intensity={0.8} color="#fff6ee" />
@@ -115,72 +153,100 @@ export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDe
   </>;
 }
 
-// Sun through the window, falling on the wall behind the desk: the last of it
-// at sunset, pink to amber, on one side; the first of it after sunrise,
-// golden, on the other, since the sun rises and sets on opposite sides. A
-// soft four-pane patch in the scene rather than on the backdrop, so it turns
-// with the room when the desk is orbited, plus a little of its light on the
-// desk. Both fade in slowly while moving the way the sun moves them: the
-// sunset patch climbs the wall as the sun sinks, so it rises in from below
-// and leaves upward; the morning one slides down as the sun climbs, so it
-// comes in from above and leaves downward.
+// Sun through a window behind the viewer, on the chair's side of the room:
+// the window itself is never in view, only its light, thrown across the
+// desk, the monitor and everything on them as a grid of soft panes. The last of
+// it at sunset, pink to amber, from one side; the first of it after sunrise,
+// golden, from the other, since the sun rises and sets on opposite sides. A
+// spotlight carrying the panes as its pattern (three's SpotLight.map, which
+// needs the light's shadow on), plus a little warm fill on the desk. Both
+// fade in slowly while moving the way the sun moves them: the sunset panes
+// climb as the sun sinks, so they rise in from below and leave upward; the
+// morning ones slide down as the sun climbs, so they come in from above and
+// leave downward.
 type WindowSide = {
-  // Across the wall, and which way the panes lean.
-  x: number;
+  // Where the window is, behind and above the viewer, and which way the
+  // panes lean.
+  from: [number, number, number];
   lean: number;
   stops: [number, string][];
   glowColor: string;
   glowAt: [number, number, number];
   active: (morning: boolean) => boolean;
   strength: (horizon: number, nightMix: number) => number;
-  // Which way the patch travels up the wall over its time: 1 rising, -1 falling.
+  // Which way the panes travel over their time: 1 rising, -1 falling.
   travel: 1 | -1;
+  // Whether it casts the shadows itself. Not in the morning: the room is
+  // light then and the floor shows the desk's shadow, which the sun draws
+  // from the window's direction (DeskLighting), and two would double it.
+  castsShadows: boolean;
 };
 const EVENING: WindowSide = {
-  x: 0.75,
+  from: [2.2, 2.8, 3.2],
   lean: -0.1,
   stops: [[0, "#ff7fae"], [0.5, "#ff9a8f"], [1, "#ffbf72"]],
   glowColor: "#ff94a8",
-  glowAt: [0.55, 1.35, -0.35],
+  glowAt: [0.55, 1.35, 0.4],
   active: (morning) => !morning,
   strength: windowLightStrength,
   travel: 1,
+  castsShadows: true,
 };
 const MORNING: WindowSide = {
-  x: -0.75,
+  from: [-2.2, 2.8, 3.2],
   lean: 0.1,
   stops: [[0, "#ffe39a"], [0.5, "#ffca5c"], [1, "#ffab45"]],
   glowColor: "#ffc46a",
-  glowAt: [-0.55, 1.35, -0.35],
+  glowAt: [-0.55, 1.35, 0.4],
   active: (morning) => morning,
   strength: morningLightStrength,
   travel: -1,
+  castsShadows: false,
 };
-const WINDOW_LIGHT_Z = -0.5;
+// Whether the window carries the room's light now (1) or the sun does (0):
+// the window in the morning and twilight looks, the sun the rest of the day.
+export function windowLightShare(solar: ReturnType<typeof useDeskTime>["solar"], enabled: boolean) {
+  return enabled && solar && windowLit(solar) ? 1 : 0;
+}
+
+// Where the sun stands while the window has the room: along the window's
+// light, further out, as a directional light only needs the direction (the
+// morning one matches MORNING.from aimed at WINDOW_AIM, so its shadows fall
+// exactly the window's way).
+const MORNING_FLOOR_SUN = new THREE.Vector3(-4.4, 2.6, 6.6);
+// How much of its light the sun keeps in the morning window.
+const MORNING_SUN_KEEPS = 0.45;
+const EVENING_FLOOR_SUN = new THREE.Vector3(4.4, 4.4, 6.4);
+
+// Where the panes land: across the desk and up onto the monitor.
+const WINDOW_AIM: [number, number, number] = [0, 0.85, -0.1];
 // The strength functions peak around 0.6 (evening) or 1 (morning); this lifts
-// the evening patch to nearly full at sunset, and is capped at 1.
+// the evening light to nearly full at sunset, and is capped at 1.
 const WINDOW_LIGHT_BOOST = 1.7;
-const WINDOW_GLOW_INTENSITY = 2.4;
-// Slower than the room's lights: the patch fades in over a couple of seconds
+const WINDOW_SPOT_INTENSITY = 4;
+const WINDOW_GLOW_INTENSITY = 1.6;
+// Slower than the room's lights: the panes fade in over a couple of seconds
 // while easing a short way into place, rather than sliding with the clock.
 const PATCH_FADE_RATE = 1.6;
 const PATCH_DRIFT_RATE = 1.2;
-// The entrance: how far below or above it starts, and how quickly it arrives.
-const PATCH_ENTRANCE_DISTANCE = 0.3;
+// The entrance: how far below or above the panes start, and how quickly
+// they arrive.
+const PATCH_ENTRANCE_DISTANCE = 0.5;
 const PATCH_ARRIVE_RATE = 0.9;
 const PATCH_SETTLE_SECONDS = 6;
-const scratchToCamera = new THREE.Vector3();
 
 function paneTexture(side: WindowSide) {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext("2d")!;
-  ctx.filter = "blur(16px)";
+  ctx.filter = "blur(4px)";
   ctx.fillStyle = "#ffffff";
-  // Four panes thrown across the wall, upright with just a slight lean...
-  ctx.setTransform(1, 0.03 * Math.sign(-side.lean), side.lean, 1, side.lean < 0 ? 150 : 115, 70);
-  for (const [x, y] of [[0, 0], [150, 0], [0, 190], [150, 190]]) ctx.fillRect(x, y, 135, 175);
+  // A window of four by three small panes with clear bars between them,
+  // upright with a slight lean, so several bars cross the desk, the keyboard
+  // and the monitor...
+  ctx.setTransform(1, 0.03 * Math.sign(-side.lean), side.lean, 1, side.lean < 0 ? 96 : 60, 86);
+  for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) ctx.fillRect(col * 92, row * 116, 68, 92);
   // ...coloured top to bottom by the light, keeping their soft edges.
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
@@ -189,71 +255,94 @@ function paneTexture(side: WindowSide) {
   for (const [at, color] of side.stops) gradient.addColorStop(at, color);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 512, 512);
-  const map = new THREE.CanvasTexture(canvas);
+  // A light's pattern only takes effect where the texture is opaque, and
+  // passes the light at full strength elsewhere: the bars and the rest of
+  // the cone must be solid black to block it.
+  const opaque = document.createElement("canvas");
+  opaque.width = opaque.height = 512;
+  const out = opaque.getContext("2d")!;
+  out.fillStyle = "#000000";
+  out.fillRect(0, 0, 512, 512);
+  out.drawImage(canvas, 0, 0);
+  const map = new THREE.CanvasTexture(opaque);
   map.colorSpace = THREE.SRGBColorSpace;
   return map;
 }
 
 function WindowPatch({ side, solar, tint, enabled }: { side: WindowSide; solar: ReturnType<typeof useDeskTime>["solar"]; tint: THREE.Color; enabled: boolean }) {
-  const patch = useRef<THREE.Mesh>(null);
+  const spot = useRef<THREE.SpotLight>(null);
   const glowLight = useRef<THREE.PointLight>(null);
-  const material = useMemo(
-    () => new THREE.MeshBasicMaterial({ map: paneTexture(side), transparent: true, depthWrite: false, opacity: 0, toneMapped: false }),
-    [side],
-  );
-  useEffect(() => () => {
-    material.map?.dispose();
-    material.dispose();
-  }, [material]);
-  useRenderAfterChange(PATCH_SETTLE_SECONDS, [solar, tint, enabled]);
-  // How low the sun is, eased: where the patch sits follows this, not the
+  const [aim] = useState(() => new THREE.Object3D());
+  const map = useMemo(() => paneTexture(side), [side]);
+  useEffect(() => () => map.dispose(), [map]);
+  useRenderAfterChange(PATCH_SETTLE_SECONDS, [solar, tint, enabled], { shadows: true });
+  // How low the sun is, eased: where the panes fall follows this, not the
   // clock, so a jump in time is a gentle drift. null until the first frame.
   const drift = useRef<number | null>(null);
-  // 0 away, 1 in place, eased; and which end of the wall it's coming from or
-  // going to (-1 below, 1 above), picked only while it is fully in or out so
-  // a change of mind mid-way turns it back rather than making it jump.
+  // 0 away, 1 in place, eased; and which way they're coming from or going to
+  // (-1 below, 1 above), picked only while fully in or out so a change of
+  // mind mid-way turns them back rather than making them jump.
   const arrival = useRef(0);
   const away = useRef(-side.travel);
+  const casting = useRef(false);
 
-  useFrame(({ camera }, delta) => {
-    const mesh = patch.current;
-    if (!mesh) return;
+  useFrame(({ gl, invalidate }, delta) => {
+    const light = spot.current;
+    if (!light) return;
     const step = Math.min(delta, MAX_FRAME_DELTA);
     const horizon = solar?.horizonMix ?? 0;
     const nightMix = solar?.backgroundNightMix ?? 0;
-    const on = enabled && side.active(solar?.morning ?? true);
+    const on = enabled && !!solar && side.active(solar.morning) && windowLit(solar);
     const strength = on ? side.strength(horizon, nightMix) : 0;
     const low = THREE.MathUtils.smoothstep(horizon, 0.35, 1);
     drift.current = drift.current === null ? low : THREE.MathUtils.lerp(drift.current, low, 1 - Math.exp(-step * PATCH_DRIFT_RATE));
     const d = drift.current;
-    // The wall itself isn't drawn, so fade the light as the orbit turns to
-    // see it edge-on rather than leave a floating sliver.
-    const toCamera = scratchToCamera.copy(camera.position).sub(mesh.position).normalize();
-    const facing = THREE.MathUtils.smoothstep(toCamera.z, 0.25, 0.7);
     const fade = 1 - Math.exp(-step * PATCH_FADE_RATE);
-    const light = mesh.material as THREE.MeshBasicMaterial;
-    light.opacity = THREE.MathUtils.lerp(light.opacity, Math.min(1, strength * WINDOW_LIGHT_BOOST) * facing, fade);
+    light.intensity = THREE.MathUtils.lerp(light.intensity, Math.min(1, strength * WINDOW_LIGHT_BOOST) * WINDOW_SPOT_INTENSITY, fade);
     light.color.lerp(tint, fade);
-    mesh.visible = light.opacity > 0.003;
+    // The pattern only shows with the light's shadow on. Off while it's dark,
+    // though: the floor draws every casting light's shadow at full strength,
+    // however dim the light, so a dark window would still print one.
+    const nowCasting = light.intensity > 0.02;
+    light.castShadow = nowCasting;
+    // Its shadows go in the first half of a fade out (and come in over the
+    // second half of a fade in), leaving the floor to the sun's in between:
+    // the pattern doesn't need them to show.
+    light.shadow.intensity = side.castsShadows ? THREE.MathUtils.smoothstep(light.intensity / WINDOW_SPOT_INTENSITY, 0.5, 0.8) : 0;
+    // As for the sun: the shadow map has to be redrawn when this starts or
+    // stops casting.
+    if (nowCasting !== casting.current) {
+      casting.current = nowCasting;
+      gl.shadowMap.needsUpdate = true;
+      invalidate();
+    }
     const present = strength > 0.02 ? 1 : 0;
     if (arrival.current < 0.02 && present) away.current = -side.travel;
     if (arrival.current > 0.98 && !present) away.current = side.travel;
     arrival.current = THREE.MathUtils.lerp(arrival.current, present, 1 - Math.exp(-step * PATCH_ARRIVE_RATE));
     const entrance = away.current * PATCH_ENTRANCE_DISTANCE * (1 - THREE.MathUtils.smootherstep(arrival.current, 0, 1));
-    // The lower the sun, the higher and longer the patch, and the further it
-    // reaches across: a small range, so it settles rather than slides.
-    const toward = Math.sign(side.lean);
-    mesh.position.set(side.x + 0.12 * d * toward, 1.22 - 0.18 * (1 - d) + entrance, WINDOW_LIGHT_Z);
-    mesh.scale.set(1 + 0.08 * d, 1 + 0.18 * d, 1);
-    // Not faded with the orbit: the light on the desk is there from any side.
+    // The lower the sun, the flatter it comes in, so the panes land higher
+    // and reach further: a small range, so they settle rather than slide.
+    const [x, y, z] = side.from;
+    light.position.set(x, y - 0.6 * d, z);
+    aim.position.set(WINDOW_AIM[0], WINDOW_AIM[1] + 0.15 * d + entrance, WINDOW_AIM[2]);
     if (glowLight.current) glowLight.current.intensity = THREE.MathUtils.lerp(glowLight.current.intensity, strength * WINDOW_GLOW_INTENSITY, fade);
   });
 
   return (
     <>
-      <mesh ref={patch} material={material} renderOrder={-1}>
-        <planeGeometry args={[1.1, 1.1]} />
-      </mesh>
+      <primitive object={aim} />
+      <spotLight
+        ref={spot}
+        target={aim}
+        map={map}
+        intensity={0}
+        angle={0.34}
+        penumbra={0.15}
+        decay={0}
+        shadow-mapSize={[1024, 1024]}
+        shadow-bias={-0.0004}
+      />
       <pointLight ref={glowLight} position={side.glowAt} color={side.glowColor} intensity={0} distance={2.6} decay={2} />
     </>
   );

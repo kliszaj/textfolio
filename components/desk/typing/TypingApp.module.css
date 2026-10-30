@@ -314,6 +314,14 @@
   gap: 0.45em 3em;
 }
 
+.boardIntro {
+  margin: 0;
+  max-width: 42em;
+  font-size: 0.7em;
+  line-height: 1.45;
+  color: rgba(245, 237, 230, 0.5);
+}
+
 .back {
   font: inherit;
   padding: 0;
@@ -454,23 +462,57 @@
   font-size: max(1.7cqw, 1.5cqh, 11px);
 }
 
+/* Two columns of five under a heading row; the list's rows flow into the
+   same grid (display: contents) so they line up with the headings. */
 .entries {
-  list-style: none;
   margin: 0.4em 0 0;
-  padding: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-flow: column;
-  grid-template-rows: repeat(5, auto);
+  grid-template-rows: auto repeat(5, auto);
   gap: 0.15em 2em;
   font-variant-numeric: tabular-nums;
 }
 
+.entryList {
+  display: contents;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entryHeads,
 .entries li {
   display: grid;
-  grid-template-columns: 1.6em minmax(0, 1fr) auto auto;
+  /* The numbers right-aligned in fixed columns, so they stack. */
+  grid-template-columns: 1.6em minmax(0, 1fr) 3.2em 4.6em;
   gap: 0.6em;
   align-items: baseline;
+}
+
+/* At the rows' size, so its columns (sized in em) match theirs: only the
+   labels themselves are small. */
+.entryHeads {
+  grid-row: 1;
+  padding-bottom: 0.2em;
+  margin-bottom: 0.15em;
+  border-bottom: 1px solid rgba(245, 237, 230, 0.12);
+  color: rgba(245, 237, 230, 0.4);
+}
+
+.entryHeads span {
+  font-size: 0.62em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.entryHeads span:nth-child(n + 3),
+.score,
+.acc {
+  text-align: right;
+}
+
+.entries li {
   color: rgba(245, 237, 230, 0.75);
 }
 
@@ -582,6 +624,10 @@
     grid-template-columns: 1fr;
     grid-auto-flow: row;
     grid-template-rows: none;
+  }
+  /* One column, so one heading row. */
+  .entryHeads + .entryHeads {
+    display: none;
   }
   /* Room for the top five on a phone. */
   .entries li:nth-child(n + 6) {

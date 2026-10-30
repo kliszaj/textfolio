@@ -3,7 +3,7 @@
 import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { accuracy, results, secondsLeft, wpm, type TypingState } from "@/lib/typingTest";
-import { LEADERBOARD_SIZE } from "@/lib/leaderboard";
+import { LEADERBOARD_SIZE, type Entry } from "@/lib/leaderboard";
 import { TYPING_DURATIONS, type Browse, type Leaderboard } from "./useTypingTest";
 import styles from "./TypingApp.module.css";
 
@@ -326,6 +326,38 @@ function BrowserBar({ path, title, interactive, onClose }: { path: string; title
   );
 }
 
+// The runs, two columns of five, each column headed so the numbers say what
+// they are: speed in words per minute, then accuracy.
+function BoardEntries({ entries, wide = false, isMine }: { entries: Entry[]; wide?: boolean; isMine?: (name: string) => boolean }) {
+  const columns = entries.length > 5 ? 2 : 1;
+  return (
+    <div className={`${styles.entries} ${wide ? styles.wideEntries : ""}`}>
+      {Array.from({ length: columns }, (_, column) => (
+        <div key={column} aria-hidden="true" className={styles.entryHeads} style={{ gridColumn: column + 1 }}>
+          <span>#</span>
+          <span>name</span>
+          <span>wpm</span>
+          <span>accuracy</span>
+        </div>
+      ))}
+      <ol className={styles.entryList}>
+        {entries.map((entry, i) => (
+          <li
+            key={entry.name + entry.createdAt}
+            className={isMine?.(entry.name) ? styles.mine : undefined}
+            aria-label={`${i + 1}. ${entry.name}: ${entry.wpm} words per minute, ${entry.accuracy}% accuracy`}
+          >
+            <span className={styles.rank}>{i + 1}</span>
+            <span className={styles.who}>{entry.name}</span>
+            <span className={styles.score}>{entry.wpm}</span>
+            <span className={styles.acc}>{entry.accuracy}%</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 // The leaderboard opened from the test: any length, with its own tabs.
 function BoardView({ browse, interactive, onShow, onHide }: { browse: Browse; interactive: boolean; onShow: (duration: number) => void; onHide: () => void }) {
   return (
@@ -359,16 +391,12 @@ function BoardView({ browse, interactive, onShow, onHide }: { browse: Browse; in
       ) : browse.board.length === 0 ? (
         <p className={styles.note}>No {browse.duration}-second scores yet. Be the first.</p>
       ) : (
-        <ol className={`${styles.entries} ${styles.wideEntries}`}>
-          {browse.board.map((entry, i) => (
-            <li key={entry.name + entry.createdAt}>
-              <span className={styles.rank}>{i + 1}</span>
-              <span className={styles.who}>{entry.name}</span>
-              <span className={styles.score}>{entry.wpm}</span>
-              <span className={styles.acc}>{entry.accuracy}%</span>
-            </li>
-          ))}
-        </ol>
+        <>
+          <p className={styles.boardIntro}>
+            The fastest {browse.duration}-second runs, in words per minute, and how much of each was typed right.
+          </p>
+          <BoardEntries entries={browse.board} wide />
+        </>
       )}
       <div className={styles.hint}>
         <button type="button" className={styles.back} onClick={onHide} tabIndex={interactive ? 0 : -1}>
@@ -419,16 +447,7 @@ function Board({
       ) : board.length === 0 ? (
         <p className={styles.note}>No scores yet{eligible ? ": be the first." : "."}</p>
       ) : (
-        <ol className={styles.entries}>
-          {board.map((entry, i) => (
-            <li key={entry.name + entry.createdAt} className={mine(entry.name) ? styles.mine : undefined}>
-              <span className={styles.rank}>{i + 1}</span>
-              <span className={styles.who}>{entry.name}</span>
-              <span className={styles.score}>{entry.wpm}</span>
-              <span className={styles.acc}>{entry.accuracy}%</span>
-            </li>
-          ))}
-        </ol>
+        <BoardEntries entries={board} isMine={mine} />
       )}
       {eligible && (
         <form

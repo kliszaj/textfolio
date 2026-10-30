@@ -8,6 +8,10 @@ const timeFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
 
+const STEP_MIN_MS = 700;
+const STEP_MAX_MS = 2000;
+const STEP_MS_PER_MINUTE = 1.5;
+
 export function useDeskTime() {
   const [now, setNow] = useState<Date | null>(null);
   const [offsetMinutes, setOffsetMinutes] = useState(0);
@@ -54,8 +58,11 @@ export function useDeskTime() {
       commit(next);
       return;
     }
+    // Longer jumps take longer, so a step through a whole night doesn't
+    // snap: 0.7s for a few hours, up to 2s.
+    const duration = Math.min(STEP_MAX_MS, STEP_MIN_MS + Math.abs(next - from) * STEP_MS_PER_MINUTE);
     const tick = () => {
-      const progress = Math.min(1, (Date.now() - started) / 700);
+      const progress = Math.min(1, (Date.now() - started) / duration);
       const eased = progress * progress * (3 - 2 * progress);
       commit(from + (next - from) * eased);
       animation.current = progress === 1 ? null : requestAnimationFrame(tick);

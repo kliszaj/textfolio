@@ -98,6 +98,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
     if (dark <= sky.darkness) return sky;
     return { ...sky, darkness: dark, daylight: Math.min(sky.daylight, 1 - dark), sunIntensity: sky.sunIntensity * (1 - dark) };
   }, [clock.solar, twilight.style]);
+  const windowLit = twilight.style === "window" || twilight.style === "dark";
   const dusk = useDuskSky({
     twilight,
     afternoon: colors.afternoon,
@@ -359,7 +360,15 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         // from daytime colours, and stall there while the desk is built.
         transition: shown ? "background-color 800ms ease, color 800ms ease" : "none" }}
     >
-      {background.evening && <div aria-hidden="true" className="pointer-events-none absolute inset-0">{dusk.node}</div>}
+      {/* Faded rather than mounted and unmounted: the day turns over from
+          evening to morning in the middle of a step through the night. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{ opacity: background.evening ? 1 : 0, transition: shown ? "opacity 1200ms ease" : "none" }}
+      >
+        {dusk.node}
+      </div>
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -389,8 +398,8 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         }}
       >
         <AdaptiveTextSampler base={background.text} />
-        <DeskLighting solar={solar} screen={screen} />
-        <WindowLight solar={solar} glow={twilight.glow} enabled={twilight.style === "window" || twilight.style === "dark"} />
+        <DeskLighting solar={solar} screen={screen} windowEnabled={windowLit} />
+        <WindowLight solar={solar} glow={twilight.glow} enabled={windowLit} />
         <Suspense fallback={null}>
           <DeskModel
             onScreen={setScreen}
