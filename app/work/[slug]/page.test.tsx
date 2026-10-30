@@ -13,7 +13,7 @@ jest.mock("next/navigation", () => ({
 test("renders the case study title and its opening line for a known slug", async () => {
   const jsx = await CaseStudyPage({ params: Promise.resolve({ slug: caseStudies[0].slug }) });
   render(jsx as React.ReactElement);
-  expect(screen.getByText(caseStudies[0].title)).toBeInTheDocument();
+  expect(screen.getByTestId("case-study-header")).toHaveTextContent(caseStudies[0].title);
   // The detail column leads with the overview once one is written -- or,
   // for a case study that trims its overview down to just the one-liner
   // above it (Jam), the one-liner stands in as the opening line instead.

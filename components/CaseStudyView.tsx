@@ -8,8 +8,10 @@ import { HomeIconAnimation } from "@/components/HomeIconAnimation";
 import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
-import { ABOUT_PAGE } from "@/data/about";
+import { ABOUT_PAGE, CONTACT } from "@/data/about";
+import { MADE_WITH } from "@/data/madeWith";
 import { PageIndicator } from "@/components/PageIndicator";
+import { EmailLink } from "@/components/EmailLink";
 import { CaseStudyTuning } from "@/components/CaseStudyTuning";
 import { HEADER_SETTLE_MS, HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
@@ -55,9 +57,9 @@ const EXIT_ANIMATION_MS = 420;
 // much above the bottom of the window...
 const MEDIA_PEEK_SHARE = 0.18;
 const MEDIA_PEEK_MIN_PX = 120;
-// ...showing at least this many lines of it, or, where even that would
-// crowd the video out, none: the standfirst above already sums it up.
-const READ_MORE_MIN_LINES = 2;
+// ...but always showing at least this many lines of it: on a short window
+// the video peeks a little later rather than the story vanishing.
+const READ_MORE_MIN_LINES = 4;
 // Room for the Read more button before it's on the page to measure.
 const READ_MORE_ESTIMATE_PX = 56;
 
@@ -262,9 +264,15 @@ function renderFactValue(fact: CaseStudyFact) {
           <li key={item}>{item}</li>
         ) : (
           <li key={item.href}>
-            <a href={item.href} className="underline underline-offset-2 hover:opacity-70">
-              {item.label}
-            </a>
+            {item.href.startsWith("mailto:") ? (
+              <EmailLink email={item.href.slice("mailto:".length)} className="underline underline-offset-2 hover:opacity-70">
+                {item.label}
+              </EmailLink>
+            ) : (
+              <a href={item.href} className="underline underline-offset-2 hover:opacity-70">
+                {item.label}
+              </a>
+            )}
           </li>
         )
       )}
@@ -347,6 +355,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     overview,
     overviewLink,
     overviewContactLinks,
+    profile,
     facts = [],
     introImage,
     sections = [],
@@ -397,12 +406,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   const columnsRef = useRef<HTMLDivElement>(null);
   const factsRef = useRef<HTMLElement>(null);
   const factsBlockRef = useRef(0);
-  const factsWideHeightRef = useRef(0);
   // How tall the long read may be for the first video to show on the first
-  // screen (null when it all fits anyway), and whether the facts beside it
-  // must wait behind Read more too, on a screen too short for both.
+  // screen; null when it all fits anyway.
   const [longReadCap, setLongReadCap] = useState<number | null>(null);
-  const [factsWait, setFactsWait] = useState(false);
   const longReadCut = longReadCap !== null && !isLongReadExpanded;
 
   // Read straight from the media query rather than mirrored into state by an
@@ -651,20 +657,18 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
       const gapToMedia = mediaSection.getBoundingClientRect().top - columnsBox.bottom;
       const wide = window.matchMedia("(min-width: 64rem)").matches;
       const facts = factsRef.current;
-      // Heights remembered from when the facts were showing, as they can't be
-      // measured while they wait behind Read more.
-      if (facts?.offsetParent) {
-        if (wide) factsWideHeightRef.current = facts.offsetHeight;
-        else factsBlockRef.current = facts.offsetHeight + parseFloat(getComputedStyle(columns).rowGap || "0");
+      // Below lg the facts wait behind Read more, so their height is
+      // remembered from when they were showing.
+      if (facts?.offsetParent && !wide) {
+        factsBlockRef.current = facts.offsetHeight + parseFloat(getComputedStyle(columns).rowGap || "0");
       }
       // Beside the text from lg, the facts can hold the media down on their own.
-      const factsBottom = facts && wide ? columnsBox.top + shift + factsWideHeightRef.current : 0;
+      const factsBottom = facts && wide ? columnsBox.top + shift + facts.offsetHeight : 0;
       const limit = window.innerHeight - Math.max(MEDIA_PEEK_MIN_PX, window.innerHeight * MEDIA_PEEK_SHARE) - gapToMedia;
       const fullText = longRead.scrollHeight;
       const factsBelow = wide ? 0 : factsBlockRef.current;
       if (Math.max(textTop + fullText + factsBelow, factsBottom) <= limit) {
         setLongReadCap(null);
-        setFactsWait(false);
         return;
       }
       const readMore = readMoreRef.current;
@@ -672,12 +676,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
       const lineHeight = parseFloat(getComputedStyle(longRead.querySelector(".case-study-copy") ?? longRead).lineHeight) || 28;
       // Whole lines, so the cut never slices through a row of text.
       const lines = Math.floor((limit - textTop - readMoreBlock) / lineHeight);
-      const cap = lines < READ_MORE_MIN_LINES ? 0 : lines * lineHeight;
+      const cap = Math.max(lines, READ_MORE_MIN_LINES) * lineHeight;
       setLongReadCap(cap >= fullText ? null : cap);
-      // The facts stay beside the text unless they alone would leave less
-      // than the minimum of the video showing.
-      const minimumLimit = window.innerHeight - MEDIA_PEEK_MIN_PX - gapToMedia;
-      setFactsWait(wide && factsBottom > minimumLimit);
     };
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
@@ -734,11 +734,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     <button type="button" onClick={scrollToTop} className="cursor-pointer hover:underline underline-offset-4">
       Back to top
     </button>
-  );
-  const footerDots = (
-    <nav aria-label="Portfolio pages" className="flex gap-3">
-      <PageDots current={caseStudy.slug} />
-    </nav>
   );
 
   return (
@@ -896,7 +891,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         <div
           data-testid="case-study-body"
           data-padded={mediaPadded}
-          className="case-study-body pt-10 pb-20 md:pt-16 md:pb-32"
+          className="case-study-body pt-10 pb-12 md:pt-16 md:pb-16"
         >
           <div
             ref={columnsRef}
@@ -908,6 +903,24 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             {/* Two columns on one grid: the standfirst and the long read share
                 the text column, so both end on the same edge, and the facts
                 stand beside them from the standfirst's top line. */}
+            {profile && (
+              <div data-testid="case-study-profile" className="grid items-center gap-8 md:grid-cols-[auto_1fr] md:gap-10 lg:col-span-12">
+                <div className="relative size-40 overflow-hidden rounded-full bg-ink/10 md:size-56 lg:size-64">
+                  <Image src={profile.portrait.src} alt={profile.portrait.alt} fill sizes="16rem" className="object-cover" />
+                </div>
+                <div>
+                  <p className="case-study-profile-name font-display">{profile.name}</p>
+                  {/* Set like the desk's clock line. */}
+                  <p className="case-study-profile-line mt-3">{profile.line}</p>
+                  <div className="mt-6 flex flex-wrap gap-3 font-body font-medium">
+                    <EmailLink email={CONTACT.email} className="h-12 rounded-full bg-ink px-6 text-cream transition-colors hover:bg-black" />
+                    <a href={CONTACT.linkedin} className="inline-flex h-12 items-center gap-2 rounded-full border-[1.5px] border-ink px-6 transition-colors hover:bg-ink hover:text-cream">
+                      LinkedIn <span aria-hidden="true">↗</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
             {oneLiner && (
               <p className="case-study-one-liner font-body font-medium lg:col-span-7">
                 {oneLiner}
@@ -984,12 +997,15 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   {overviewContactLinks.map((link, index) => (
                     <span key={link.href}>
                       {index > 0 && " · "}
-                      <a
-                        href={link.href}
-                        className="underline underline-offset-2 hover:opacity-70"
-                      >
-                        {link.label}
-                      </a>
+                      {link.href.startsWith("mailto:") ? (
+                        <EmailLink email={link.href.slice("mailto:".length)} className="underline underline-offset-2 hover:opacity-70">
+                          {link.label}
+                        </EmailLink>
+                      ) : (
+                        <a href={link.href} className="underline underline-offset-2 hover:opacity-70">
+                          {link.label}
+                        </a>
+                      )}
                     </span>
                   ))}
                 </p>
@@ -1002,7 +1018,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               <aside
                 ref={factsRef}
                 data-testid="case-study-facts-aside"
-                className={`case-study-facts-aside font-body font-medium lg:col-start-9 lg:col-span-4 lg:row-start-1 lg:sticky lg:top-32 lg:self-start${oneLiner ? " lg:row-span-2" : ""}${longReadCut ? (factsWait ? " hidden" : " max-lg:hidden") : ""}`}
+                className={`case-study-facts-aside font-body font-medium lg:col-start-9 lg:col-span-4 lg:row-start-1 lg:sticky lg:top-32 lg:self-start${oneLiner ? " lg:row-span-2" : ""}${longReadCut ? " max-lg:hidden" : ""}`}
               >
                 <dl className="case-study-facts">
                   {facts.map((fact) => (
@@ -1127,30 +1143,93 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         )}
         {children}
 
-        {/* Where the page ends: one quiet row under a hairline -- back to
-            top, the pages, and the next case study in the header's own
-            button. */}
+        {/* Where the page ends: the next case study as a big card in its own
+            colour, beside an index of every page (with its dot) and how to
+            get in touch, then a sign-off and back to top. */}
         <footer ref={footerRef} data-testid="case-study-footer" className="case-study-footer">
           <div className="case-study-footer-signoff">
-            <div className="mx-auto grid w-full max-w-[100rem] items-center gap-6 border-t border-ink pt-7 pb-10 font-body font-medium text-[0.9375rem] md:grid-cols-[1fr_auto_1fr]">
-              <div className="flex justify-center md:justify-start">{footerTop}</div>
-              <div className="flex justify-center max-md:order-first">{footerDots}</div>
-              {next && (
-                // The header's next button, as it looks opened: it takes over
-                // from that one, which steps aside while the footer is here.
-                <Link
-                  data-testid="case-study-footer-next"
-                  href={caseStudyRoute(next)}
-                  className="group inline-flex h-12 items-center justify-self-center rounded-full md:justify-self-end"
-                  style={{ backgroundColor: next.thumbnailColor }}
-                >
-                  <span className="sr-only">Next project:</span>
-                  <span className="pl-5 font-body font-medium text-base whitespace-nowrap">{next.title}</span>
-                  <span className="grid size-12 shrink-0 place-items-center transition-transform duration-300 group-hover:translate-x-0.5">
-                    <FooterArrow size={22} />
-                  </span>
-                </Link>
-              )}
+            <div className="mx-auto w-full max-w-[100rem] border-t border-ink pt-12 pb-10 md:pt-16">
+              <div className="grid gap-10 lg:grid-cols-[7fr_5fr] lg:gap-12">
+                {next && (
+                  // Takes over from the header's next button, which steps
+                  // aside while the footer is on screen.
+                  <Link
+                    data-testid="case-study-footer-next"
+                    href={caseStudyRoute(next)}
+                    className="case-study-footer-next group grid min-h-56 content-between gap-12 rounded-3xl p-7 md:min-h-72 md:p-8"
+                    style={{ backgroundColor: next.thumbnailColor }}
+                  >
+                    <span className="font-body font-medium text-xs uppercase tracking-[0.08em] opacity-70">
+                      <span className="sr-only">Next project: </span>
+                      <span aria-hidden="true">Next case study</span>
+                    </span>
+                    <span className="flex items-end justify-between gap-4">
+                      <span className="case-study-footer-title font-display">{next.title}</span>
+                      <span
+                        aria-hidden="true"
+                        className="grid size-14 shrink-0 place-items-center rounded-full bg-ink transition-transform duration-300 group-hover:translate-x-1 md:size-16"
+                        style={{ color: next.thumbnailColor }}
+                      >
+                        <FooterArrow size={26} />
+                      </span>
+                    </span>
+                  </Link>
+                )}
+                <div className="grid content-between gap-10 font-body font-medium">
+                  <div className="grid grid-cols-[auto_auto] justify-start gap-x-14 gap-y-4">
+                    <nav aria-label="Portfolio pages">
+                      <p className="text-xs uppercase tracking-[0.08em] opacity-60">Work</p>
+                      <ul className="mt-3 grid gap-3">
+                        {RAIL_PAGES.map((page) => (
+                          <li key={page.slug}>
+                            <Link
+                              href={caseStudyRoute(page)}
+                              aria-current={page.slug === caseStudy.slug ? "page" : undefined}
+                              className="flex items-center gap-2.5 hover:underline underline-offset-4"
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="size-2.5 rounded-full"
+                                // The page being read as a bullseye, as on the rail.
+                                style={page.slug === caseStudy.slug
+                                  ? { backgroundColor: "var(--color-cream)", boxShadow: `inset 0 0 0 2.5px ${page.thumbnailColor}`, scale: "1.3" }
+                                  : { backgroundColor: page.thumbnailColor }}
+                              />
+                              {page.title}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </nav>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.08em] opacity-60">Contact</p>
+                      <ul className="mt-3 grid gap-3">
+                        <li><EmailLink email={CONTACT.email} className="hover:underline underline-offset-4">Email</EmailLink></li>
+                        <li><a href={CONTACT.linkedin} className="hover:underline underline-offset-4">LinkedIn</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <EmailLink email={CONTACT.email} className="text-lg hover:underline underline-offset-4">
+                      {CONTACT.email} →
+                    </EmailLink>
+                    {/* The sign-off: where it was made, and with what. */}
+                    <p className="mt-6 text-sm opacity-55">Made in Stockholm on the desk you&apos;ve already seen.</p>
+                    <p className="mt-2.5 flex items-center gap-2.5">
+                      <span className="sr-only">Made with {MADE_WITH.map((tool) => tool.name).join(", ")}</span>
+                      {MADE_WITH.map((tool) => (
+                        <svg key={tool.name} aria-hidden="true" viewBox="0 0 24 24" className="size-4 fill-current opacity-75">
+                          <title>{tool.name}</title>
+                          <path d={tool.path} />
+                        </svg>
+                      ))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-12 flex justify-end font-body text-sm font-medium">
+                {footerTop}
+              </div>
             </div>
           </div>
         </footer>

@@ -1,7 +1,8 @@
 import Image from "next/image";
 
 export type AboutNowData = {
-  portrait: {
+  // Optional: About shows the portrait in its profile at the top instead.
+  portrait?: {
     src: string;
     alt: string;
   };
@@ -44,12 +45,13 @@ export function AboutNow({ now }: AboutNowProps) {
           Now
         </h2>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-3 lg:gap-10">
+        <div className={`mt-8 grid gap-8 lg:gap-10 ${now.portrait ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
           {/* aspect-[16/10] gives the portrait a sensible height on its own
               when stacked on mobile; at lg it drops out in favour of the
               grid's own row-stretch, so the photo fills to match whichever
               of reading/listening ends up taller (listening, in practice --
               the Spotify embed is the tallest of the three). */}
+          {now.portrait && (
           <div
             data-testid="about-now-portrait"
             className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-ink/10 lg:aspect-auto"
@@ -62,6 +64,7 @@ export function AboutNow({ now }: AboutNowProps) {
               className="object-cover"
             />
           </div>
+          )}
           <section aria-labelledby="currently-reading-heading">
             <p
               id="currently-reading-heading"

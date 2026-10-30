@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 
 const push = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -257,8 +257,9 @@ test("renders multi-value facts as a concise bulleted list", () => {
     />
   );
 
-  expect(screen.getByRole("list")).toHaveTextContent("First metric");
-  expect(screen.getByRole("list")).toHaveTextContent("Second metric");
+  const facts = within(screen.getByTestId("case-study-facts-aside"));
+  expect(facts.getByRole("list")).toHaveTextContent("First metric");
+  expect(facts.getByRole("list")).toHaveTextContent("Second metric");
 });
 
 test("renders link facts as real, tappable links, not plain text", () => {
@@ -280,9 +281,10 @@ test("renders link facts as real, tappable links, not plain text", () => {
     />
   );
 
-  const email = screen.getByRole("link", { name: "hello@adrianklisz.com" });
+  const facts = within(screen.getByTestId("case-study-facts-aside"));
+  const email = facts.getByRole("link", { name: "hello@adrianklisz.com" });
   expect(email).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
-  const linkedIn = screen.getByRole("link", { name: "LinkedIn" });
+  const linkedIn = facts.getByRole("link", { name: "LinkedIn" });
   expect(linkedIn).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
 });
 
@@ -398,12 +400,12 @@ test("puts contact links at the bottom of the text block, not in a separate rail
     />
   );
 
-  const email = screen.getByRole("link", { name: "hello@adrianklisz.com" });
+  const detail = screen.getByTestId("case-study-detail");
+  const email = within(detail).getByRole("link", { name: "hello@adrianklisz.com" });
   expect(email).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
-  const linkedIn = screen.getByRole("link", { name: "LinkedIn" });
+  const linkedIn = within(detail).getByRole("link", { name: "LinkedIn" });
   expect(linkedIn).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
 
-  const detail = screen.getByTestId("case-study-detail");
   expect(detail).toContainElement(email);
   expect(detail).toContainElement(linkedIn);
   // After the overview text, not before it.
@@ -728,8 +730,9 @@ test("renders a concise supporting list when a work overview needs one", () => {
   };
   render(<CaseStudyView caseStudy={withBullets} next={nextStudy} />);
 
-  expect(screen.getByRole("list")).toHaveTextContent("The constraint");
-  expect(screen.getByRole("list")).toHaveTextContent("The trade-off");
+  const detail = within(screen.getByTestId("case-study-detail"));
+  expect(detail.getByRole("list")).toHaveTextContent("The constraint");
+  expect(detail.getByRole("list")).toHaveTextContent("The trade-off");
 });
 
 test("sets the long read larger than the overview rail", () => {
@@ -921,8 +924,11 @@ test("the footer lists every page, with the one being read marked", () => {
   render(<CaseStudyView caseStudy={jam} />);
   const footer = screen.getByTestId("case-study-footer");
   const current = footer.querySelector('[aria-current="page"]');
-  expect(current).toHaveAttribute("aria-label", "Spotify Jam");
+  expect(current).toHaveTextContent("Spotify Jam");
   expect(footer.querySelectorAll("nav a")).toHaveLength(5);
+  // Signed off with the tools it was made with, named for screen readers.
+  expect(footer).toHaveTextContent("Made in Stockholm on the desk you've already seen.");
+  expect(footer).toHaveTextContent("Made with Figma, GitHub, Claude Code, ChatGPT");
 });
 
 test("the footer has no next block when there's no next case study", () => {
@@ -940,12 +946,13 @@ test("the header's next button steps aside while the footer's is on screen", () 
   expect(screen.getByTestId("case-study-footer-next")).toHaveAccessibleName(/Next project: Next Case/i);
 });
 
-test("on a screen too short for even a couple of lines, the whole long read waits behind Read more", () => {
+test("on a short screen the long read still shows its first few lines", () => {
   window.innerHeight = 800;
   const restore = layOutPage({ textTop: 560, textHeight: 2000, columnsBottom: 2600, mediaTop: 2660 });
   render(<CaseStudyView caseStudy={withMedia} next={nextStudy} />);
   restore();
 
-  expect(screen.getByTestId("case-study-long-read").style.maxHeight).toMatch(/^0(px)?$/);
+  // jsdom has no line height, so lines fall back to 28px: four of them.
+  expect(screen.getByTestId("case-study-long-read").style.maxHeight).toBe("112px");
   expect(screen.getByTestId("case-study-read-more")).toHaveTextContent("Read more");
 });

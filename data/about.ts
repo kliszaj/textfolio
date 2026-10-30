@@ -5,6 +5,12 @@ import type { AboutNowData } from "@/components/AboutNow";
 // CaseStudyPreview, and CaseStudyFocus components as a real case study --
 // but it lives here, not in the caseStudies array, so it never appears in
 // the page indicator, the "next project" cycle, or a /work/[slug] lookup.
+// How to reach Adrian, shown on About and in every page's footer.
+export const CONTACT = {
+  email: "hello@adrianklisz.com",
+  linkedin: "https://www.linkedin.com/in/adrianklisz/",
+};
+
 export const ABOUT_PAGE: CaseStudy = {
   slug: "about",
   title: "About Me",
@@ -17,28 +23,20 @@ I started out as a UX researcher, straight out of my master's — which is proba
 Outside of work I forage in the woods near where I live, ferment the results into hot sauce under my own label, shoot everything on film, and occasionally get far too deep into a game of Magic: The Gathering.
 
 I care about setting a high bar for craft, and about staying close enough to the work to help others raise theirs too.`,
-  // Based in / From aren't repeated here as their own facts -- the bio
-  // above already says both. Only the contact details actually need a
-  // tappable home, so they're all that's left: rendered at the bottom of
-  // the text block itself (see overviewContactLinks on CaseStudy) rather
-  // than in a dedicated rail with nothing else in it.
-  overviewContactLinks: [
-    { label: "hello@adrianklisz.com", href: "mailto:hello@adrianklisz.com" },
-    { label: "LinkedIn", href: "https://www.linkedin.com/in/adrianklisz/" },
-  ],
+  // Who, at a glance, with the ways to get in touch right under it (the
+  // email and LinkedIn buttons come from CONTACT). The portrait lives here
+  // now, not in the Now bento, so it shows once.
+  profile: {
+    portrait: { src: "/assets/adrian.jpeg", alt: "Portrait of Adrian" },
+    name: "adrian klisz",
+    line: "Staff Product Designer · Stockholm",
+  },
 };
 
 // Update this small record whenever the current shelf changes. The game is
 // intentionally optional: it only appears when there is something Adrian is
 // actively playing, rather than shipping a stale placeholder.
 export const ABOUT_NOW: AboutNowData = {
-  // Moved here from ABOUT_PAGE.introImage: it now sits in the Now bento
-  // alongside reading and listening, rather than at the top of the
-  // write-up's own rail -- the two used to show the same photo twice.
-  portrait: {
-    src: "/assets/adrian.jpeg",
-    alt: "Portrait of Adrian",
-  },
   books: [
     {
       title: "Loonshots",

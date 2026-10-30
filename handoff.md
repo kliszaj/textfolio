@@ -526,11 +526,22 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   Sequence media can take a `caption` (and the film a `videoCaption`); the
   captions are numbered in page order. Phone clips keep 9:16 but are capped
   at 80svh tall, so a pair fits on screen.
-- **Case-study footer.** One row under a hairline (option D of
-  `prototype-case-study-footer.html`): Back to top on the left, the dots in
-  the middle, and the next case study in the header's own pink pill on the
-  right (the header's next button steps aside while the footer is on
-  screen). On a phone it stacks, dots first.
+- **Case-study footer (F4 of `prototype-footer-about.html`).** Under a
+  hairline: the next case study as a big card in its colour, beside an index
+  of every page (the one being read as a bullseye) and contact; under the
+  email, "Made in Stockholm on the desk you've already seen." and the
+  Figma, GitHub, Claude Code and ChatGPT marks (`data/madeWith.ts`, from
+  Simple Icons); Back to top at the bottom right. The header's next button
+  steps aside while the footer is on screen.
+- **Emails copy on click, in place.** Every email on the site is an
+  `EmailLink`: a click copies the address, the link's own label slides out
+  and "Email copied to clipboard" slides in (both share one grid cell, so
+  nothing shifts), then it eases back after about 2.5s. Modified clicks, or a
+  refused clipboard, open the mail app as usual.
+- **About opens on a profile.** `profile` on ABOUT_PAGE: a round portrait,
+  "adrian klisz" in Frama, "Staff Product Designer · Stockholm" in Frama
+  Extralight, then email and LinkedIn buttons (`CONTACT` in data/about.ts).
+  The portrait moved here from the Now shelf, which now has two columns.
 - **Never two sets of dots.** The side rail and the phone's bottom row fade
   out from a quarter of a screen before the footer scrolls in
   (`FOOTER_HIDES_RAILS_AT`), a scroll check rather than an
@@ -556,12 +567,11 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   CaseStudyView measures where the first video would sit with the page at
   rest and cuts the long read (whole lines, fading out) so at least
   `MEDIA_PEEK_SHARE` (18%) of the screen, and never less than 120px, shows
-  video. Measured from things the cut doesn't move (the text's full height,
-  the gap above the media), so it can't oscillate. Fewer than two lines' room
-  means the whole long read waits behind Read more (the standfirst sums it
-  up). Below lg the facts wait too; from lg they stay beside the text unless
-  they alone would hold the video under 120px. Replaces the old count-based
-  collapse (three or more sections).
+  video, but always shows at least `READ_MORE_MIN_LINES` (4) lines: on a
+  short window the video peeks a little later rather than the story
+  vanishing. Measured from things the cut doesn't move (the text's full
+  height, the gap above the media). Below lg the facts sit under the text and
+  wait behind Read more too; from lg they always stay beside it.
 - **Flaky test:** "the board keeps each name's best run" in the leaderboard
   tests fails now and then in the full run but passes alone; looks
   timing-related, not yet looked into.

@@ -72,6 +72,13 @@ export type CaseStudy = {
   // at-a-glance rail -- for a page with nothing else worth a dedicated
   // rail (About), contact details still need a tappable home.
   overviewContactLinks?: CaseStudyFactLink[];
+  // A person rather than a project (About): a round portrait, the name, a
+  // one-line role, and buttons to get in touch, in place of a standfirst.
+  profile?: {
+    portrait: { src: string; alt: string };
+    name: string;
+    line: string;
+  };
   facts?: CaseStudyFact[];
   // "rail" keeps facts in the sticky sidebar beside the long read (the
   // default). "columns" lifts them out into an even row above the text --

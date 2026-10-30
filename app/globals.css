@@ -395,7 +395,76 @@ body {
   }
 }
 
-/* The footer: one row under a hairline. */
+/* About's profile: the name in lowercase Frama, the role like the desk's
+   clock line. */
+.case-study-profile-name {
+  font-size: clamp(3.5rem, 8vw, 8rem);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+}
+
+.case-study-profile-line {
+  font-family: var(--font-pp-frama-extralight), sans-serif;
+  font-weight: 200;
+  font-size: clamp(1.375rem, 2.2vw, 2rem);
+  line-height: 1.2;
+}
+
+/* An email that copies itself (EmailLink): its label and "Email copied to
+   clipboard" share one grid cell, so the link keeps its size while one
+   slides out and the other in, and back again a few seconds later. */
+.email-link {
+  display: inline-grid;
+  align-items: center;
+  justify-items: start;
+}
+
+.email-link-label,
+.email-link-copied {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  transition:
+    opacity 260ms ease,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.email-link-copied {
+  opacity: 0;
+  transform: translateY(0.45em);
+}
+
+.email-link[data-copied="true"] .email-link-label {
+  opacity: 0;
+  transform: translateY(-0.45em);
+}
+
+.email-link[data-copied="true"] .email-link-copied {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .email-link-label,
+  .email-link-copied {
+    transform: none !important;
+  }
+}
+
+/* The footer: the next case study's card beside the index and contact. */
+.case-study-footer-next {
+  color: var(--color-ink);
+  transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.case-study-footer-next:hover {
+  transform: translateY(-4px);
+}
+
+.case-study-footer-title {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 0.95;
+}
+
 .case-study-footer-signoff {
   padding-inline: var(--case-study-gutter);
 }

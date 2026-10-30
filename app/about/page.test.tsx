@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import AboutPage from "./page";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_NOW, ABOUT_PAGE } from "@/data/about";
@@ -7,33 +7,20 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 
-test("keeps the biography free of a redundant header or a repeated portrait", () => {
+test("opens on a profile: portrait, name, role, and the ways to get in touch", () => {
   render(<AboutPage />);
-  expect(screen.getByText(ABOUT_PAGE.title)).toBeInTheDocument();
-  expect(
-    screen.getByText(/I'm Adrian, a Staff Product Designer currently working at Spotify/)
-  ).toBeInTheDocument();
-  // The portrait now lives once, in the Now bento below -- not at the top
-  // of the write-up's own rail (see the AboutNow test for that).
+  expect(screen.getByTestId("case-study-header")).toHaveTextContent(ABOUT_PAGE.title);
+  const profile = within(screen.getByTestId("case-study-profile"));
+  expect(profile.getByText("adrian klisz")).toBeInTheDocument();
+  expect(profile.getByText("Staff Product Designer · Stockholm")).toBeInTheDocument();
+  expect(profile.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
+  expect(profile.getByRole("link", { name: /LinkedIn/ })).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
+  // The portrait shows once, here, not again in the Now shelf.
   expect(screen.getAllByRole("img", { name: "Portrait of Adrian" })).toHaveLength(1);
-  expect(screen.queryByTestId("case-study-intro-image")).not.toBeInTheDocument();
-  // Based in / From aren't their own facts any more -- the bio already
-  // says both, so the dedicated rail (and its now-unused space) is gone.
-  expect(screen.queryByTestId("case-study-overview")).not.toBeInTheDocument();
-  expect(screen.getByText(/originally from Canada/)).toBeInTheDocument();
-  // Contact links moved to the bottom of the text block instead.
-  expect(screen.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute(
-    "href",
-    "mailto:hello@adrianklisz.com"
-  );
-  expect(screen.getByRole("link", { name: "LinkedIn" })).toHaveAttribute(
-    "href",
-    "https://www.linkedin.com/in/adrianklisz/"
-  );
-  expect(screen.queryByText("Currently")).not.toBeInTheDocument();
-  expect(
-    screen.queryByText("A Staff Product Designer at Spotify, based in Stockholm and originally from Canada.")
-  ).not.toBeInTheDocument();
+  expect(profile.getByRole("img", { name: "Portrait of Adrian" })).toBeInTheDocument();
+  expect(screen.queryByTestId("about-now-portrait")).not.toBeInTheDocument();
+  // The bio follows.
+  expect(screen.getByText(/I'm Adrian, a Staff Product Designer currently working at Spotify/)).toBeInTheDocument();
 });
 
 test("uses Adrian's supplied book-cover art", () => {
