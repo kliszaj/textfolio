@@ -9,6 +9,10 @@ import type { AboutNowData } from "@/components/AboutNow";
 export const CONTACT = {
   email: "hello@adrianklisz.com",
   linkedin: "https://www.linkedin.com/in/adrianklisz/",
+  github: "https://github.com/kliszaj",
+  // The CV's address once the PDF is in public/ (e.g. "/adrian-klisz-cv.pdf");
+  // About only shows its button when this is set.
+  cv: null as string | null,
 };
 
 export const ABOUT_PAGE: CaseStudy = {
@@ -23,13 +27,11 @@ I started out as a UX researcher, straight out of my master's — which is proba
 Outside of work I forage in the woods near where I live, ferment the results into hot sauce under my own label, shoot everything on film, and occasionally get far too deep into a game of Magic: The Gathering.
 
 I care about setting a high bar for craft, and about staying close enough to the work to help others raise theirs too.`,
-  // Who, at a glance, with the ways to get in touch right under it (the
-  // email and LinkedIn buttons come from CONTACT). The portrait lives here
-  // now, not in the Now bento, so it shows once.
+  // The portrait sits beside the bio, with the email, LinkedIn and CV
+  // buttons (from CONTACT) under it. It lives here, not in the Now bento, so
+  // it shows once.
   profile: {
     portrait: { src: "/assets/adrian.jpeg", alt: "Portrait of Adrian" },
-    name: "adrian klisz",
-    line: "Staff Product Designer · Stockholm",
   },
 };
 

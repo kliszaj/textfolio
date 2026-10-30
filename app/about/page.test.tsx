@@ -7,20 +7,29 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 
-test("opens on a profile: portrait, name, role, and the ways to get in touch", () => {
+test("opens on the portrait beside the bio, with the ways to get in touch under it", () => {
   render(<AboutPage />);
   expect(screen.getByTestId("case-study-header")).toHaveTextContent(ABOUT_PAGE.title);
   const profile = within(screen.getByTestId("case-study-profile"));
-  expect(profile.getByText("adrian klisz")).toBeInTheDocument();
-  expect(profile.getByText("Staff Product Designer · Stockholm")).toBeInTheDocument();
-  expect(profile.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
-  expect(profile.getByRole("link", { name: /LinkedIn/ })).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
   // The portrait shows once, here, not again in the Now shelf.
   expect(screen.getAllByRole("img", { name: "Portrait of Adrian" })).toHaveLength(1);
   expect(profile.getByRole("img", { name: "Portrait of Adrian" })).toBeInTheDocument();
   expect(screen.queryByTestId("about-now-portrait")).not.toBeInTheDocument();
-  // The bio follows.
-  expect(screen.getByText(/I'm Adrian, a Staff Product Designer currently working at Spotify/)).toBeInTheDocument();
+  // The whole bio, once, a paragraph at a time.
+  expect(profile.getAllByText(/I'm Adrian, a Staff Product Designer currently working at Spotify/)).toHaveLength(1);
+  expect(profile.getByText(/^I care about setting a high bar for craft/)).toBeInTheDocument();
+  expect(screen.getAllByText(/I'm Adrian, a Staff Product Designer/)).toHaveLength(1);
+  expect(profile.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
+  expect(profile.getByRole("link", { name: /LinkedIn/ })).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
+  // No CV button until there's a CV to link to.
+  expect(profile.queryByRole("link", { name: /CV/ })).not.toBeInTheDocument();
+});
+
+test("the footer's links include GitHub", () => {
+  render(<AboutPage />);
+  const footer = within(screen.getByTestId("case-study-footer"));
+  expect(footer.getByText("Find me")).toBeInTheDocument();
+  expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/kliszaj");
 });
 
 test("uses Adrian's supplied book-cover art", () => {

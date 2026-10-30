@@ -912,20 +912,27 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             {/* Two columns on one grid: the standfirst and the long read share
                 the text column, so both end on the same edge, and the facts
                 stand beside them from the standfirst's top line. */}
+            {/* About: the portrait beside the whole bio, with the ways to get
+                in touch under it. */}
             {profile && (
-              <div data-testid="case-study-profile" className="grid items-center gap-8 md:grid-cols-[auto_1fr] md:gap-10 lg:col-span-12">
-                <div className="relative size-40 overflow-hidden rounded-full bg-ink/10 md:size-56 lg:size-64">
-                  <Image src={profile.portrait.src} alt={profile.portrait.alt} fill sizes="16rem" className="object-cover" />
+              <div data-testid="case-study-profile" className="grid items-start gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-12 lg:col-span-12 lg:gap-24">
+                <div className="relative aspect-[4/5] w-full max-w-md overflow-hidden rounded-2xl bg-ink/10 md:max-w-none">
+                  <Image src={profile.portrait.src} alt={profile.portrait.alt} fill sizes="(min-width: 768px) 40vw, 100vw" className="object-cover" />
                 </div>
-                <div>
-                  <p className="case-study-profile-name font-display">{profile.name}</p>
-                  {/* Set like the desk's clock line. */}
-                  <p className="case-study-profile-line mt-3">{profile.line}</p>
-                  <div className="mt-6 flex flex-wrap gap-3 font-body font-medium">
+                <div className="font-body font-medium">
+                  {overview?.split(/\n\s*\n/).map((paragraph) => (
+                    <p key={paragraph} className="case-study-copy mb-6 last:mb-0">{paragraph}</p>
+                  ))}
+                  <div className="mt-10 flex flex-wrap gap-3">
                     <EmailLink email={CONTACT.email} className="h-12 rounded-full bg-ink px-6 text-cream transition-colors hover:bg-black" />
                     <a href={CONTACT.linkedin} className="inline-flex h-12 items-center gap-2 rounded-full border-[1.5px] border-ink px-6 transition-colors hover:bg-ink hover:text-cream">
                       LinkedIn <span aria-hidden="true">↗</span>
                     </a>
+                    {CONTACT.cv && (
+                      <a href={CONTACT.cv} target="_blank" rel="noopener" className="inline-flex h-12 items-center gap-2 rounded-full border-[1.5px] border-ink px-6 transition-colors hover:bg-ink hover:text-cream">
+                        CV <span aria-hidden="true">↗</span>
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
@@ -961,7 +968,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   />
                 </figure>
               )}
-              {overview && (
+              {/* A profile page sets its bio beside the portrait instead. */}
+              {overview && !profile && (
                 <p className="case-study-copy case-study-intro-copy mb-8">
                   {renderLinkedCopy(overview, overviewLink, next?.thumbnailColor)}
                 </p>
@@ -1211,7 +1219,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                       </ul>
                     </nav>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.08em] opacity-60">Contact</p>
+                      <p className="text-xs uppercase tracking-[0.08em] opacity-60">Find me</p>
                       <ul className="mt-3 grid gap-3">
                         <li>
                           <EmailLink email={CONTACT.email} className="hover:underline underline-offset-4">
@@ -1219,6 +1227,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                           </EmailLink>
                         </li>
                         <li><a href={CONTACT.linkedin} className="hover:underline underline-offset-4">LinkedIn</a></li>
+                        <li><a href={CONTACT.github} className="hover:underline underline-offset-4">GitHub</a></li>
                       </ul>
                     </div>
                 </div>

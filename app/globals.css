@@ -397,19 +397,6 @@ body {
 
 /* About's profile: the name in lowercase Frama, the role like the desk's
    clock line. */
-.case-study-profile-name {
-  font-size: clamp(3.5rem, 8vw, 8rem);
-  line-height: 0.9;
-  letter-spacing: -0.01em;
-}
-
-.case-study-profile-line {
-  font-family: var(--font-pp-frama-extralight), sans-serif;
-  font-weight: 200;
-  font-size: clamp(1.375rem, 2.2vw, 2rem);
-  line-height: 1.2;
-}
-
 /* An email that copies itself (EmailLink): its label and "Email copied to
    clipboard" share one grid cell, so the link keeps its size while one
    slides out and the other in, and back again a few seconds later. */

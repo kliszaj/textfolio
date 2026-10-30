@@ -76,8 +76,6 @@ export type CaseStudy = {
   // one-line role, and buttons to get in touch, in place of a standfirst.
   profile?: {
     portrait: { src: string; alt: string };
-    name: string;
-    line: string;
   };
   facts?: CaseStudyFact[];
   // "rail" keeps facts in the sticky sidebar beside the long read (the
