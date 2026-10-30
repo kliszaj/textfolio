@@ -498,13 +498,12 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   shape.
 - **Stepping through the day follows the room's look.** `deskLook` (in
   `lib/deskDaylight.ts`) says which stop the room looks like now, using the
-  same thresholds that draw it (`DARK_ROOM_AT_HORIZON` lives there too), and
+  same rules that draw it (`roomIsDark`, `windowLit` live there too), and
   `nextDeskStage` steps from the nearest stop of that kind. So every scroll
   or arrow changes the room: e.g. at 15:30 in late October, already dark
   before the 15:59 sunset, forward goes to night and back to the afternoon.
 - **The dark room is day or night, never grey.** `roomDarkness` and the
-  "dark" style's wall switch at `DARK_ROOM_AT_HORIZON` (0.85, about 5 degrees
-  of sun) instead of blending; the wall fades across in 1.2s and the scene's
+  "dark" style's wall switch at sunset (`roomIsDark`) instead of blending; the wall fades across in 1.2s and the scene's
   lights ease as before.
 - **The rail on every screen.** On the desk `PageIndicator` takes
   `alwaysShown`. It's an overlay, so the desk framing is unchanged. On short
@@ -571,6 +570,14 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   numbers so they stack, and labels each row for screen readers; the full
   board adds a line saying what's ranked. Used by both the full board and
   the one under a finished test.
+- **Share thumbnail.** `app/opengraph-image.jpg` (and `twitter-image.jpg`,
+  with `.alt.txt` files) is a capture of the desk just after sunset, 2400x1260.
+  To redo it: on localhost, `?at=HH:MM` sets the desk's time and `?capture`
+  hides the local tools (and the "back to now" button), e.g.
+  `http://localhost:3020/?at=16:05&capture` at a 1200x630 window, 2x.
+- **The room goes dark at sunset.** `roomIsDark` (lib/deskDaylight): the
+  evening's dark room and window light start once the sun is down (the
+  same moment as the twilight stop), not a few degrees before.
 - **Lighter loader.** The desk's LOADING ring is set in Neue Montreal Bold
   rather than Frama Black (the only Frama weights in the repo are Black and
   Extralight).

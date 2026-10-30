@@ -76,11 +76,16 @@ describe("each step shows a different room", () => {
       .format(date)
       .replace(", ", " ");
 
-  test("before sunset but already dark, forward goes on to night, back to the afternoon", () => {
-    // 15:30: the room has gone dark ahead of the 15:59 sunset stop.
-    expect(deskLook(oct30("15:30"))).toBe("twilight");
-    expect(local(nextDeskStage(oct30("15:30"), 1))).toBe("30 17:43");
-    expect(local(nextDeskStage(oct30("15:30"), -1))).toBe("30 11:31");
+  test("the room stays light until the sun has set", () => {
+    // 15:30 and 15:55, the sun low but up: still the afternoon, so forward
+    // is the 15:59 sunset.
+    expect(deskLook(oct30("15:30"))).toBe("afternoon");
+    expect(deskLook(oct30("15:55"))).toBe("afternoon");
+    expect(local(nextDeskStage(oct30("15:30"), 1))).toBe("30 15:59");
+    // Just after sunset it's twilight: forward to night, back to midday.
+    expect(deskLook(oct30("16:10"))).toBe("twilight");
+    expect(local(nextDeskStage(oct30("16:10"), 1))).toBe("30 17:43");
+    expect(local(nextDeskStage(oct30("16:10"), -1))).toBe("30 11:31");
   });
 
   test("every stop looks like itself", () => {
@@ -105,7 +110,8 @@ test("the light comes through the window in the morning and twilight looks, from
   const at = (iso: string) => deskDaylight(new Date(iso));
   expect(windowLit(at("2026-10-30T07:46:00+01:00"))).toBe(true);
   expect(windowLit(at("2026-10-30T11:31:00+01:00"))).toBe(false);
-  // A late-October afternoon: low sun, but still the sun's.
+  // A late-October afternoon: low sun, but still the sun's, right up to sunset.
   expect(windowLit(at("2026-10-30T14:58:00+01:00"))).toBe(false);
+  expect(windowLit(at("2026-10-30T15:50:00+01:00"))).toBe(false);
   expect(windowLit(at("2026-10-30T15:59:00+01:00"))).toBe(true);
 });

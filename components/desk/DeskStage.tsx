@@ -8,6 +8,7 @@ import { CaseStudyFocus } from "@/components/CaseStudyFocus";
 import { CircularText } from "@/components/CircularText";
 import { PageIndicator } from "@/components/PageIndicator";
 import { showLocalTools } from "@/lib/localTools";
+import { roomIsDark } from "@/lib/deskDaylight";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
 import { DEFAULT_FOCUS_VARIANT_ID } from "@/lib/focusVariants";
@@ -94,7 +95,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   const solar = useMemo(() => {
     const sky = clock.solar;
     if (!sky) return sky;
-    const dark = roomDarkness(twilight.style, sky.horizonMix, sky.backgroundNightMix, sky.morning);
+    const dark = roomDarkness(twilight.style, roomIsDark(sky));
     if (dark <= sky.darkness) return sky;
     return { ...sky, darkness: dark, daylight: Math.min(sky.daylight, 1 - dark), sunIntensity: sky.sunIntensity * (1 - dark) };
   }, [clock.solar, twilight.style]);
@@ -105,6 +106,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
     night: colors.night,
     horizon: clock.solar?.horizonMix ?? 0,
     nightMix: clock.solar?.backgroundNightMix ?? 0,
+    roomDark: clock.solar ? roomIsDark(clock.solar) : false,
   });
   const background = useMemo(() => {
     const horizon = clock.solar?.horizonMix ?? 0;

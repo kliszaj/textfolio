@@ -7,9 +7,12 @@ const stockholmDate = new Intl.DateTimeFormat("en-CA", {
 
 const WINDOW_AZIMUTH_DEGREES = 45; // Northeast; +Z points out through the window.
 
-// The room goes dark (the "dark" twilight style) once the sun is this low in
-// the evening: horizonMix runs 0 at noon to 1 at 3 degrees up.
-export const DARK_ROOM_AT_HORIZON = 0.85;
+// In the evening the room goes dark (the "dark" twilight style), with the
+// sunset coming in through the window, once the sun is down: at sunset, the
+// same moment as the twilight stop, not before.
+export function roomIsDark(sky: { morning: boolean; altitude: number; backgroundNightMix: number }) {
+  return !sky.morning && (sky.altitude < 0 || sky.backgroundNightMix > 0);
+}
 // The morning window light is noticeable from here (see morningLightStrength).
 export const MORNING_LOOK_AT_HORIZON = 0.65;
 
@@ -29,8 +32,8 @@ export function deskLook(date: Date): DeskStageKind {
 // Whether the light comes in through the window (morning and twilight) or
 // from the room's sun (the rest of the day): one or the other, never both,
 // switching where the room's look does.
-export function windowLit(sky: { morning: boolean; horizonMix: number; backgroundNightMix: number }) {
-  return sky.morning ? sky.horizonMix >= MORNING_LOOK_AT_HORIZON : sky.horizonMix >= DARK_ROOM_AT_HORIZON || sky.backgroundNightMix > 0;
+export function windowLit(sky: { morning: boolean; horizonMix: number; altitude: number; backgroundNightMix: number }) {
+  return sky.morning ? sky.horizonMix >= MORNING_LOOK_AT_HORIZON : roomIsDark(sky);
 }
 
 export function nextDeskStage(date: Date, direction: -1 | 1): Date {

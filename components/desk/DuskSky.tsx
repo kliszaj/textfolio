@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
 import * as THREE from "three";
-import { DARK_ROOM_AT_HORIZON } from "@/lib/deskDaylight";
 import type { DeskTwilight } from "./DeskTwilight";
 
 // Twilight backdrops, drawn as a layer behind the transparent 3D canvas. Each
@@ -27,6 +26,8 @@ type Inputs = {
   night: string;
   horizon: number;
   nightMix: number;
+  // Whether the room has gone dark (lib/deskDaylight roomIsDark).
+  roomDark: boolean;
 };
 
 // Roughly where the name and clock sit, as a share of the stage.
@@ -59,9 +60,8 @@ export function morningLightStrength(horizon: number, nightMix: number) {
 // sunset comes in, through the window (WindowLight, in the scene). The
 // switch is eased where it's drawn: the lights in the scene, a fade on the
 // wall. 0 or 1; the lighting takes the darker of this and the real sky's.
-export function roomDarkness(style: TwilightStyle, horizon: number, nightMix: number, morning: boolean) {
-  if (style !== "dark" || morning) return 0;
-  return horizon >= DARK_ROOM_AT_HORIZON || nightMix > 0 ? 1 : 0;
+export function roomDarkness(style: TwilightStyle, roomDark: boolean) {
+  return style === "dark" && roomDark ? 1 : 0;
 }
 
 // One-click colour combinations for the twilight sky (glow, middle, edges).
@@ -77,7 +77,7 @@ export const TWILIGHT_PALETTES = [
 // 4x4 Bayer thresholds for the ordered dither.
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((n) => (n + 0.5) / 16);
 
-export function useDuskSky({ twilight, afternoon, night, horizon, nightMix }: Inputs): { node: ReactNode; corner: THREE.Color } {
+export function useDuskSky({ twilight, afternoon, night, horizon, nightMix, roomDark }: Inputs): { node: ReactNode; corner: THREE.Color } {
   const style = twilight.style;
   // Quantised so the dither only redraws when the light visibly changes.
   const qHorizon = Math.round(horizon * 100) / 100;
@@ -99,7 +99,7 @@ export function useDuskSky({ twilight, afternoon, night, horizon, nightMix }: In
     if (style === "dark") {
       // A dark room: the wall behind the desk is the afternoon colour or the
       // night colour, fading across when the room goes dark.
-      const wall = qHorizon >= DARK_ROOM_AT_HORIZON || n > 0 ? nightColor : cream;
+      const wall = roomDark ? nightColor : cream;
       return {
         node: <div className="absolute inset-0" style={{ backgroundColor: css(wall), transition: "background-color 1200ms ease" }} />,
         corner: wall,
@@ -197,5 +197,5 @@ export function useDuskSky({ twilight, afternoon, night, horizon, nightMix }: In
       node: <div className="absolute inset-0" style={{ backgroundImage: `linear-gradient(180deg, ${css(wallTop)}, ${css(wallBottom)})` }} />,
       corner: wallBottom,
     };
-  }, [style, twilight, afternoon, night, qHorizon, qNight]);
+  }, [style, twilight, afternoon, night, qHorizon, qNight, roomDark]);
 }

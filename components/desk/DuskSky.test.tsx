@@ -18,9 +18,9 @@ beforeAll(() => {
 });
 afterAll(() => jest.restoreAllMocks());
 
-function sky(style: TwilightStyle, horizon: number, nightMix: number) {
+function sky(style: TwilightStyle, horizon: number, nightMix: number, roomDark = nightMix > 0) {
   return renderHook((props) => useDuskSky(props), {
-    initialProps: { twilight: { ...DEFAULT_DESK_TWILIGHT, style }, afternoon: AFTERNOON, night: NIGHT, horizon, nightMix },
+    initialProps: { twilight: { ...DEFAULT_DESK_TWILIGHT, style }, afternoon: AFTERNOON, night: NIGHT, horizon, nightMix, roomDark },
   });
 }
 
@@ -54,12 +54,12 @@ test("tiny changes in the light reuse the same sky, so the dither doesn't redraw
   // The same twilight object throughout, as the stage passes it.
   const twilight = { ...DEFAULT_DESK_TWILIGHT, style: "dither" as const };
   const { result, rerender } = renderHook((props) => useDuskSky(props), {
-    initialProps: { twilight, afternoon: AFTERNOON, night: NIGHT, horizon: 0.5, nightMix: 0.2 },
+    initialProps: { twilight, afternoon: AFTERNOON, night: NIGHT, horizon: 0.5, nightMix: 0.2, roomDark: true },
   });
   const before = result.current;
-  rerender({ twilight, afternoon: AFTERNOON, night: NIGHT, horizon: 0.502, nightMix: 0.201 });
+  rerender({ twilight, afternoon: AFTERNOON, night: NIGHT, horizon: 0.502, nightMix: 0.201, roomDark: true });
   expect(result.current).toBe(before);
-  rerender({ twilight, afternoon: AFTERNOON, night: NIGHT, horizon: 0.6, nightMix: 0.2 });
+  rerender({ twilight, afternoon: AFTERNOON, night: NIGHT, horizon: 0.6, nightMix: 0.2, roomDark: true });
   expect(result.current).not.toBe(before);
 });
 
@@ -80,32 +80,17 @@ describe("the last sun through the window", () => {
 });
 
 test("the dark room's wall is the afternoon or the night colour, nothing between", () => {
-  const wall = (horizon: number, nightMix: number) => sky("dark", horizon, nightMix).result.current.corner;
-  expect(distance(wall(0.6, 0), AFTERNOON)).toBeLessThan(0.02);
-  expect(distance(wall(0.9, 0), NIGHT)).toBeLessThan(0.02);
+  const wall = (horizon: number, roomDark: boolean) => sky("dark", horizon, 0, roomDark).result.current.corner;
+  // Low sun, not yet set: still the afternoon colour.
+  expect(distance(wall(0.95, false), AFTERNOON)).toBeLessThan(0.02);
+  expect(distance(wall(1, true), NIGHT)).toBeLessThan(0.02);
 });
 
 describe("the dark room at twilight", () => {
-  test("is as dark as night by sunset, and light through the afternoon", () => {
-    expect(roomDarkness("dark", 1, 0, false)).toBe(1);
-    expect(roomDarkness("dark", 0.2, 0, false)).toBe(0);
-  });
-
-  test("is either light or dark, never in between", () => {
-    // A late-October afternoon in Stockholm: the sun already low, still day.
-    expect(roomDarkness("dark", 0.6, 0, false)).toBe(0);
-    expect(roomDarkness("dark", 0.84, 0, false)).toBe(0);
-    expect(roomDarkness("dark", 0.85, 0, false)).toBe(1);
-    for (let h = 0; h <= 1; h += 0.05) expect([0, 1]).toContain(roomDarkness("dark", h, 0, false));
-  });
-
-  test("stays dark into the night", () => {
-    expect(roomDarkness("dark", 0.5, 1, false)).toBe(1);
-  });
-
-  test("is only the evening, and only in that style", () => {
-    expect(roomDarkness("dark", 1, 0, true)).toBe(0);
-    expect(roomDarkness("radial", 1, 0, false)).toBe(0);
+  test("is dark only once the room is, and only in that style", () => {
+    expect(roomDarkness("dark", true)).toBe(1);
+    expect(roomDarkness("dark", false)).toBe(0);
+    expect(roomDarkness("radial", true)).toBe(0);
   });
 });
 

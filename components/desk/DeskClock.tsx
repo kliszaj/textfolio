@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { deskDaylight, nextDeskStage, sunsetOn } from "@/lib/deskDaylight";
+import { deskDaylight, nextDeskStage, stockholmPreviewDate, sunsetOn } from "@/lib/deskDaylight";
+import { localPreviewTime } from "@/lib/localTools";
 import { AdaptiveText, adaptiveRef } from "./adaptiveText";
 
 const timeFormat = new Intl.DateTimeFormat("en-GB", {
@@ -12,12 +13,22 @@ const STEP_MIN_MS = 700;
 const STEP_MAX_MS = 2000;
 const STEP_MS_PER_MINUTE = 1.5;
 
+function previewOffset() {
+  const at = localPreviewTime();
+  if (!at) return 0;
+  const base = new Date();
+  return (stockholmPreviewDate(base, at.hour).getTime() + at.minute * 60000 - base.getTime()) / 60000;
+}
+
 export function useDeskTime() {
   const [now, setNow] = useState<Date | null>(null);
-  const [offsetMinutes, setOffsetMinutes] = useState(0);
-  const [targetMinutes, setTargetMinutes] = useState(0);
-  const displayedOffset = useRef(0);
-  const targetOffset = useRef(0);
+  // Starts on the live clock, or on a set time for screenshots (localhost,
+  // ?at=HH:MM). The desk only renders in the browser, so the address is there.
+  const [startOffset] = useState(previewOffset);
+  const [offsetMinutes, setOffsetMinutes] = useState(startOffset);
+  const [targetMinutes, setTargetMinutes] = useState(startOffset);
+  const displayedOffset = useRef(startOffset);
+  const targetOffset = useRef(startOffset);
   // A requestAnimationFrame id: the readout steps in time with the frames the
   // desk draws, rather than on its own timer between them.
   const animation = useRef<number | null>(null);
@@ -71,7 +82,9 @@ export function useDeskTime() {
   };
   return {
     hour, sceneHour, solar, night: solar ? solar.darkness > 0.5 : false,
-    time, previewing: offsetMinutes !== 0,
+    // A set start time (?at=, for screenshots) reads as the present: no way
+    // "back" until it's stepped away from.
+    time, previewing: offsetMinutes !== 0 && offsetMinutes !== startOffset,
     step: (direction: -1 | 1) => {
       const base = now ?? new Date();
       const current = new Date(base.getTime() + targetOffset.current * 60000);
