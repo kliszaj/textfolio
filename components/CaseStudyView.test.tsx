@@ -655,11 +655,11 @@ test("preserves authored media proportions in a sequential gallery", () => {
   expect(screen.getByTestId("case-study-media-grid")).toHaveAttribute("data-layout", "sequence");
   const tiles = screen.getAllByTestId("case-study-tile");
   const frame = (tile: HTMLElement) => tile.querySelector(".case-study-tile-frame");
-  expect(tiles[0]).toHaveClass("col-span-2");
+  expect(tiles[0]).toHaveClass("col-span-6");
   expect(frame(tiles[0])).toHaveClass("aspect-video");
-  expect(tiles[1]).toHaveClass("col-span-1");
+  expect(tiles[1]).toHaveClass("col-span-3");
   expect(frame(tiles[1])).toHaveClass("aspect-[9/16]");
-  expect(tiles[2]).toHaveClass("col-span-1");
+  expect(tiles[2]).toHaveClass("col-span-3");
   expect(frame(tiles[2])).toHaveClass("aspect-[9/16]");
   const videos = screen.getAllByTestId("case-study-tile").map((tile) =>
     tile.querySelector("video")
@@ -667,6 +667,24 @@ test("preserves authored media proportions in a sequential gallery", () => {
   expect(videos[0]).toHaveAttribute("data-playback-row", "media-0");
   expect(videos[1]).toHaveAttribute("data-playback-row", "media-1");
   expect(videos[2]).toHaveAttribute("data-playback-row", "media-1");
+});
+
+test("puts three third-width phone clips in one row", () => {
+  const phones = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: ["a", "b", "c"].map((name) => ({
+      src: `/${name}.mp4`, alt: name, kind: "video" as const, span: "third" as const, aspect: "portrait" as const,
+    })),
+  };
+
+  render(<CaseStudyView caseStudy={phones} next={nextStudy} />);
+
+  const tiles = screen.getAllByTestId("case-study-tile");
+  for (const tile of tiles) {
+    expect(tile).toHaveClass("col-span-2");
+    expect(tile.querySelector("video")).toHaveAttribute("data-playback-row", "media-0");
+  }
 });
 
 test("renders a placeholder tile for media that has no asset yet", () => {
@@ -916,7 +934,7 @@ test("ends on a footer that leads to the next case study", () => {
   const next = screen.getByTestId("case-study-footer-next");
   expect(next).toHaveAttribute("href", "/work/next-case");
   expect(next).toHaveTextContent("Next Case");
-  expect(screen.getByTestId("case-study-footer")).toHaveTextContent("Back to top");
+  expect(screen.getByTestId("case-study-footer")).not.toHaveTextContent("Back to top");
 });
 
 test("the footer lists every page, with the one being read marked", () => {
@@ -927,8 +945,7 @@ test("the footer lists every page, with the one being read marked", () => {
   expect(current).toHaveTextContent("Spotify Jam");
   expect(footer.querySelectorAll("nav a")).toHaveLength(5);
   // Signed off with the tools it was made with, named for screen readers.
-  expect(footer).toHaveTextContent("Made in Stockholm on the desk you've already seen.");
-  expect(footer).toHaveTextContent("Made with Figma, GitHub, Claude Code, ChatGPT");
+  expect(footer).toHaveTextContent("Made in Stockholm with Figma, GitHub, Claude Code, ChatGPT");
 });
 
 test("the footer has no next block when there's no next case study", () => {

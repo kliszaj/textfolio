@@ -78,7 +78,7 @@ export function ProjectsCollection({
           Project collection
         </h2>
 
-        <div className="divide-y divide-ink/20">
+        <div>
           {projects.map((project, projectIndex) => {
             const assets = project.assets.slice(0, 3);
             const topAssets = assets.slice(0, 2);
@@ -162,7 +162,7 @@ export function ProjectsCollection({
           })}
         </div>
 
-        {showOutro && <footer className="border-t border-ink/20 py-8 md:py-10">
+        {showOutro && <footer className="py-8 md:py-10">
           <h3 className="font-display text-3xl leading-none md:text-4xl">
             more coming soon...
           </h3>

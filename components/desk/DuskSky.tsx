@@ -60,6 +60,11 @@ export function morningLightStrength(horizon: number, nightMix: number) {
 // sunset comes in, through the window (WindowLight, in the scene). The
 // switch is eased where it's drawn: the lights in the scene, a fade on the
 // wall. 0 or 1; the lighting takes the darker of this and the real sky's.
+// How long the backdrop takes to cross between day and night. Short on
+// purpose: halfway, cream and the night purple mix to a flat grey, so the
+// crossing should read as a quick dissolve rather than a grey moment.
+export const DAY_NIGHT_FADE_MS = 500;
+
 export function roomDarkness(style: TwilightStyle, roomDark: boolean) {
   return style === "dark" && roomDark ? 1 : 0;
 }
@@ -101,7 +106,7 @@ export function useDuskSky({ twilight, afternoon, night, horizon, nightMix, room
       // night colour, fading across when the room goes dark.
       const wall = roomDark ? nightColor : cream;
       return {
-        node: <div className="absolute inset-0" style={{ backgroundColor: css(wall), transition: "background-color 1200ms ease" }} />,
+        node: <div className="absolute inset-0" style={{ backgroundColor: css(wall), transition: `background-color ${DAY_NIGHT_FADE_MS}ms ease` }} />,
         corner: wall,
       };
     }

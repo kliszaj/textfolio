@@ -27,7 +27,7 @@ export type CaseStudyMedia = {
   src?: string;
   alt: string;
   kind?: "image" | "video";
-  span?: "full" | "tall" | "half";
+  span?: "full" | "tall" | "half" | "third";
   aspect?: "landscape" | "portrait" | "wide";
   // Shown under the tile, numbered in order with the page's other captions.
   caption?: string;
@@ -110,7 +110,7 @@ export const caseStudies: CaseStudy[] = [
     title: "Spotify Jam",
     thumbnailColor: "#15FF76",
     blurb: "Listen with friends from anywhere, on any device.",
-    oneLiner: "Listen together with friends from anywhere in the world, on any device.",
+    oneLiner: "Listen together with friends, from anywhere in the world.",
     facts: [
       { label: "Role • 2023-Present", value: "Design Lead" },
       { label: "Scope", value: "Design Strategy, Product Strategy" },
@@ -123,7 +123,11 @@ export const caseStudies: CaseStudy[] = [
     sections: [
       {
         body:
-          "I was responsible for finding the right value proposition communication of the feature, designing a safe and seamless proactive nudging system (which was key to scaling and finding product-market-fit), working with other designers to adapt and scale the feature to platforms like Car, Desktop, and TV, and designing a way to enable remote Jams (i.e. when two people listening together from different locations) through Listening Activity and Messages.",
+          "30% of all listening happens in the presence of others. Many media platforms tried to build synchronous experiences during the COVID pandemic, but they all failed. Interaction friction is one challenge, but the real challenge is social friction: making others feel welcome to join, and having the experience feel spontaneous rather than requiring a lot of coordination. Once people have joined, it's helping them feel comfortable contributing to the session and overcoming the anxieties of being in the presence of others, such as \"Will my friend be offended if I change the song?\"",
+      },
+      {
+        body:
+          "I was responsible for overcoming all of these challenges with Jam. I designed a safe and seamless proactive nudging system (which was key to scaling and finding product-market-fit), and worked with other designers to adapt and scale the feature to platforms like car, desktop, and TV. I designed a way to encourage remote Jams (i.e. when two people listen together from different locations) through Listening Activity and Messages.",
         bodyLinks: [
           {
             label: "proactive nudging",
@@ -155,15 +159,15 @@ export const caseStudies: CaseStudy[] = [
         alt: "Spotify Jam main flow",
         caption: "The main flow: starting a Jam",
         kind: "video",
-        span: "full",
-        aspect: "landscape",
+        span: "third",
+        aspect: "portrait",
       },
       {
         src: "/assets/jam-host.mp4",
         alt: "Hosting a Spotify Jam",
         caption: "Hosting a Jam",
         kind: "video",
-        span: "half",
+        span: "third",
         aspect: "portrait",
       },
       {
@@ -171,7 +175,7 @@ export const caseStudies: CaseStudy[] = [
         alt: "Choosing how to join a Spotify Jam",
         caption: "Choosing how to join",
         kind: "video",
-        span: "half",
+        span: "third",
         aspect: "portrait",
       },
       {

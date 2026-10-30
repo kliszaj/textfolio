@@ -60,11 +60,11 @@ export function browserLayout(viewport: Viewport) {
 export type BrowserLayout = ReturnType<typeof browserLayout>;
 
 // The vertical field of view is fixed, so a narrow viewport sees a narrow
-// slice of the desk. Below this aspect the camera backs off to keep the desk's
-// width in frame -- most of the way, since a portrait phone also has height
-// to spare below and above it.
+// slice of the desk. Below this aspect the camera backs off, but only part of
+// the way: on a phone the monitor is the subject, so the chair and the desk's
+// far end can fall off the edges.
 const FIT_WIDTH_BELOW_ASPECT = 1.3;
-const FIT_WIDTH_STRENGTH = 0.85;
+const FIT_WIDTH_STRENGTH = 0.45;
 // Narrow windows also move the desk sideways, so less of it is cut off: from
 // the default x of -3 to -5 between FIT_WIDTH_BELOW_ASPECT and a square view.
 const NARROW_X_NUDGE = -2;

@@ -485,6 +485,12 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   them all, desk and floor, once. Whenever a light starts or stops casting,
   the shadow map is redrawn (it's only redrawn on request), or a shadow
   could stay missing until the desk was turned.
+- **No grey between night and day.** The morning backdrop no longer mixes
+  the night purple into its colours by how dark the sky is (that passed
+  through a muddy grey on a step from night to morning); a night layer
+  covers it until the sky is half light, then fades. All the day/night
+  crossfades are `DAY_NIGHT_FADE_MS` (0.5s): halfway, cream and purple mix
+  to grey, so the crossing is kept quick.
 - **Smoother big steps.** A step through the day runs longer the further it
   goes (0.7s up to 2s; `STEP_*` in DeskClock), and the evening background
   layer fades in and out instead of mounting, so night to morning and back
@@ -520,7 +526,7 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Case-study layout (option A of `prototype-spotify-jam-layout.html`).**
   Two columns on one 12-column grid from lg: the standfirst (up to 44px) and
   the long read (62ch at 17–19px) share columns 1–7 and end on the same edge;
-  the facts sit on hairlines in columns 9–12, level with the standfirst's
+  the facts sit in columns 9–12, set apart by space alone, level with the standfirst's
   top. Below lg the standfirst caps at 22ch and the facts are a row of three. Spacing is on an 8px scale:
   64px above the standfirst (from md), 32 below it, 96 to the media, 48 between clips, 128 to close.
   Sequence media can take a `caption` (and the film a `videoCaption`); the
@@ -550,7 +556,7 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Phone clips and captions.** The width cap is on the whole figure
   (`.case-study-tile`), so a caption starts under its clip's own edge.
 - **Header and title knobs.** The top of `:root` in `globals.css` holds the
-  case-study header's settings: `--case-study-header-height` (28vh),
+  case-study header's settings: `--case-study-header-height` (20vh),
   `--case-study-standfirst-size`, `--case-study-title-ratio` (the title is
   2.5x the standfirst), `--case-study-title-min`/`-max` (2.75rem/7.5rem), and
   `--case-study-header-clearance` (room kept around the title: 7.5rem on
@@ -570,8 +576,27 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   video, but always shows at least `READ_MORE_MIN_LINES` (4) lines: on a
   short window the video peeks a little later rather than the story
   vanishing. Measured from things the cut doesn't move (the text's full
-  height, the gap above the media). Below lg the facts sit under the text and
-  wait behind Read more too; from lg they always stay beside it.
+  height, the gap above the media). Beside taller facts (from lg) the text
+  runs down to their foot, since they hold the media there anyway. Below lg
+  the facts sit under the text and wait behind Read more too.
+- **Phones: swipe for the time, tilt for the view.** On touch the arrows
+  are gone: a vertical swipe on the desk steps the time (up is later, as
+  scrolling down is on a computer; `SWIPE_STEP_PX`), drag-to-orbit is off
+  (`CameraRig`'s `orbit`), and the stage takes `touch-action: none`. The
+  phone's tilt leans the camera a few degrees (`deviceTilt.ts`; the resting
+  angle follows the phone, so only a change of tilt moves it). iOS asks for
+  motion access on the first touch. A row of four stops sits top centre
+  (`clock.look`), with "Swipe up to move the day on" until the first swipe.
+  On a portrait phone the camera backs off much less (`FIT_WIDTH_STRENGTH`
+  0.45), so the monitor fills the width.
+- **Jam media.** Main flow, hosting and joining are one row of phones: a
+  `third` span on a six-column sequence grid. The main flow is cropped from
+  16:9; a 1080x1920 export would be sharper.
+- **Footer.** An "Up next" card in the next study's colour, with a dot field
+  on hover (`CardDotField`: dots in the other pages' colours grow around the
+  cursor only). Beside it Work and Contact (email, LinkedIn); "Made in
+  Stockholm with" and the tool icons along the bottom. No Back to top, and no
+  divider lines anywhere on the site. Read more is Neue Montreal Bold.
 - **Flaky test:** "the board keeps each name's best run" in the leaderboard
   tests fails now and then in the full run but passes alone; looks
   timing-related, not yet looked into.

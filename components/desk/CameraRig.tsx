@@ -8,6 +8,7 @@ import * as THREE from "three";
 import type { DeskFraming } from "./DeskFraming";
 import type { ScreenPose } from "./DeskModel";
 import { idlePose, typingPose, zoomPose, type BrowserLayout, type DeskVariant, type Phase } from "./deskLayout";
+import { useDeviceTilt } from "./deviceTilt";
 
 // Timed eases rather than exponential chasing: a gentle start, a gentle
 // landing, and arrival exactly on the pose so the handoff needs no snap.
@@ -27,8 +28,17 @@ type Tween = {
   done: boolean;
 };
 
+// Without the orbit (touch), tilting the phone swings the camera round the
+// desk by up to this much, in radians: a lean, not a turn.
+const TILT_YAW = 0.12;
+const TILT_PITCH = 0.05;
+// Share of the way to the tilted pose covered each frame.
+const TILT_EASE = 0.12;
+
 // Reused every frame of a tween rather than allocated per frame.
 const scratchOffset = new THREE.Vector3();
+const scratchSpherical = new THREE.Spherical();
+const scratchPosition = new THREE.Vector3();
 
 export function CameraRig({
   framing,
@@ -41,6 +51,7 @@ export function CameraRig({
   onReturned,
   zoomTarget = "page",
   onFramed,
+  orbit = true,
 }: {
   framing: DeskFraming;
   screen: ScreenPose;
@@ -54,6 +65,9 @@ export function CameraRig({
   zoomTarget?: "page" | "typing";
   // Called once, on the frame the camera is first put in place.
   onFramed?: () => void;
+  // Dragging turns the desk. Off on touch, where a swipe changes the time
+  // and the phone's tilt leans the camera instead.
+  orbit?: boolean;
 }) {
   const { camera } = useThree();
   const invalidate = useThree((state) => state.invalidate);
@@ -63,6 +77,7 @@ export function CameraRig({
   const initialized = useRef(false);
   const previousPhase = useRef<Phase>(phase);
   const previousFraming = useRef(framing);
+  const tilt = useDeviceTilt(!orbit, invalidate);
   const size = useThree((state) => state.size);
   const aspect = size.width / size.height;
   // Both poses only change with the screen, the framing or the viewport, so
@@ -113,6 +128,17 @@ export function CameraRig({
     }
     previousPhase.current = phase;
 
+    if (phase === "idle" && !orbit) {
+      scratchSpherical.setFromVector3(scratchOffset.copy(idle.position).sub(idle.target));
+      scratchSpherical.theta -= tilt.current.x * TILT_YAW;
+      scratchSpherical.phi -= tilt.current.y * TILT_PITCH;
+      scratchPosition.copy(idle.target).add(scratchOffset.setFromSpherical(scratchSpherical));
+      cam.position.lerp(scratchPosition, TILT_EASE);
+      cam.lookAt(idle.target);
+      if (cam.position.distanceToSquared(scratchPosition) > 1e-8) invalidate();
+      return;
+    }
+
     if (phase !== "zooming" && phase !== "returning") return;
 
     // Swing round the zoom target in spherical coordinates rather than along
@@ -162,7 +188,7 @@ export function CameraRig({
   return (
     <OrbitControls
       ref={controls}
-      enabled={phase === "idle"}
+      enabled={phase === "idle" && orbit}
       target={idle.target}
       enablePan={false}
       // The wheel steps through the times of day instead.

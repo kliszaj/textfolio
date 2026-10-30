@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { deskDaylight, nextDeskStage, stockholmPreviewDate, sunsetOn } from "@/lib/deskDaylight";
+import { deskDaylight, deskLook, nextDeskStage, stockholmPreviewDate, sunsetOn, type DeskStageKind } from "@/lib/deskDaylight";
 import { localPreviewTime } from "@/lib/localTools";
 import { AdaptiveText, adaptiveRef } from "./adaptiveText";
 
@@ -82,6 +82,8 @@ export function useDeskTime() {
   };
   return {
     hour, sceneHour, solar, night: solar ? solar.darkness > 0.5 : false,
+    // Where a step is headed, so the stop rail moves as soon as it's asked.
+    look: destinationDate ? deskLook(destinationDate) : null,
     // A set start time (?at=, for screenshots) reads as the present: no way
     // "back" until it's stepped away from.
     time, previewing: offsetMinutes !== 0 && offsetMinutes !== startOffset,
@@ -99,13 +101,46 @@ export function useDeskTime() {
   };
 }
 
-// The time is changed by scrolling (or the arrow keys), so the clock is just
-// the reading, plus a way back to now while previewing another time.
-export function DeskClock({ clock, touch = false }: { clock: ReturnType<typeof useDeskTime>; touch?: boolean }) {
+// The four stops a step moves between, in the order the day reaches them.
+const STOPS: DeskStageKind[] = ["morning", "afternoon", "twilight", "night"];
+
+// The time is changed by scrolling (or the arrow keys, or on touch a swipe),
+// so the clock is just the reading, plus a way back to now while previewing
+// another time.
+export function DeskClock({ clock, touch = false, hint = false }: { clock: ReturnType<typeof useDeskTime>; touch?: boolean; hint?: boolean }) {
   // Inherits the stage's text colour: ink on a light background, cream on a
   // dark one. Letter by letter it can flip where the 3D desk passes behind
   // (AdaptiveText).
   return (
+    <>
+    {touch && (
+      <>
+        {/* Top centre, where the wall is clear at every hour: the four
+            stops, the one showing drawn long, and until the first swipe how
+            to move between them. A row rather than a column, so it isn't
+            read as more of the page dots. */}
+        <div aria-hidden="true" style={{ pointerEvents: "none" }} className="absolute left-1/2 top-6 flex -translate-x-1/2 flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            {STOPS.map((stop) => (
+              <span
+                key={stop}
+                className="h-1 rounded-full bg-current transition-[width,opacity] duration-300"
+                style={{ width: clock.look === stop ? 18 : 4, opacity: clock.look === stop ? 1 : 0.35 }}
+              />
+            ))}
+          </div>
+          <p
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-current/8 px-3 py-1.5 font-body text-xs font-medium transition-opacity duration-500"
+            style={{ opacity: hint ? 1 : 0 }}
+          >
+            <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden="true">
+              <path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Swipe up to move the day on
+          </p>
+        </div>
+      </>
+    )}
     <div
       className="absolute bottom-6 flex flex-col items-end text-right md:bottom-10"
       style={{ right: "clamp(1.5rem, 3.5vw, 4rem)" }}
@@ -129,27 +164,9 @@ export function DeskClock({ clock, touch = false }: { clock: ReturnType<typeof u
             <path d="M12.5 2.5 7 7l5.5 4.5z" fill="currentColor" />
           </svg>
         </button>
-        {/* Touch has no wheel, and dragging already orbits the desk. */}
-        {touch && <StepButton direction={-1} onStep={clock.step} />}
         <span className="tabular-nums" aria-label={`${clock.time}, Stockholm`}><span aria-hidden="true"><AdaptiveText text={`${clock.time} · Stockholm`} /></span></span>
-        {touch && <StepButton direction={1} onStep={clock.step} />}
       </div>
     </div>
-  );
-}
-
-function StepButton({ direction, onStep }: { direction: -1 | 1; onStep: (direction: -1 | 1) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onStep(direction)}
-      aria-label={direction === 1 ? "Later in the day" : "Earlier in the day"}
-      // A full 44px target around a glyph sized to the text.
-      className="-my-2 grid size-11 cursor-pointer place-items-center rounded-full transition-transform duration-200 active:scale-90"
-    >
-      <svg ref={adaptiveRef} viewBox="0 0 24 24" className="size-[0.8em] transition-colors duration-300" aria-hidden="true">
-        <path d={direction === 1 ? "M9 5l7 7-7 7" : "M15 5l-7 7 7 7"} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </button>
+    </>
   );
 }

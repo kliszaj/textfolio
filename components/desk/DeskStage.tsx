@@ -16,7 +16,7 @@ import { DeskClock, useDeskTime } from "./DeskClock";
 import { sceneForHour } from "@/lib/workspace/scenes";
 import { gradientCSS, useDeskGradients } from "./DeskGradients";
 import { useDeskTwilight } from "./DeskTwilight";
-import { roomDarkness, useDuskSky } from "./DuskSky";
+import { DAY_NIGHT_FADE_MS, roomDarkness, useDuskSky } from "./DuskSky";
 import { DeskFramingControls, useDeskFraming, useDeskColors } from "./DeskFraming";
 import {
   markDeskSession,
@@ -61,6 +61,8 @@ const SCREEN_SWAP_DELAY_MS = 1300;
 // Wheel travel that counts as one step, the pause after a step (the clock's
 // own animation), and the quiet gap that ends a scroll gesture.
 const WHEEL_STEP_PX = 40;
+// How far a finger travels up or down before it counts as a swipe.
+const SWIPE_STEP_PX = 40;
 const WHEEL_STEP_LOCK_MS = 700;
 const WHEEL_GESTURE_GAP_MS = 250;
 // The UI around the desk waits for the loader to finish fading out, then
@@ -121,21 +123,25 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
       return contrast(CREAM_LUMINANCE) > contrast(INK_LUMINANCE) ? CREAM : INK;
     };
 
+    // Whenever the sky is dark the night layer covers everything, evening or
+    // morning, so the day turning over at midnight (the evening layer giving
+    // way to the morning's) happens out of sight under it -- otherwise a
+    // step through the night flashed light at midnight before the real dawn.
+    const nightSky = night >= 0.5;
     // Evening is drawn by the dusk sky layer (DuskSky), in the chosen style.
-    if (!morning) return { image: "none", text: textOver(dusk.corner), evening: true };
+    if (!morning) return { image: "none", text: textOver(nightSky ? nightColor : dusk.corner), evening: true, night: nightSky };
 
-    const top = new THREE.Color(colors.afternoon)
-      .lerp(new THREE.Color(colors.morning), horizon)
-      .lerp(nightColor, night);
-    const bottom = new THREE.Color(colors.afternoon)
-      .lerp(new THREE.Color(colors.sunriseGlow), horizon)
-      .lerp(nightColor, night);
+    // In the morning the night layer lifts as the sky lightens: one or the
+    // other, never the two mixed, which passed through a muddy grey.
+    const top = new THREE.Color(colors.afternoon).lerp(new THREE.Color(colors.morning), horizon);
+    const bottom = new THREE.Color(colors.afternoon).lerp(new THREE.Color(colors.sunriseGlow), horizon);
     const gradient = gradients.morning;
     return {
       image: gradientCSS(gradient, top.getStyle(), bottom.getStyle()),
-      // The name and clock sit over the gradient's far colour.
-      text: textOver(gradient.swap ? top : bottom),
+      // The name and clock sit over the gradient's far colour, or the night.
+      text: textOver(nightSky ? nightColor : gradient.swap ? top : bottom),
       evening: false,
+      night: nightSky,
     };
   }, [clock.solar, colors, gradients, dusk.corner]);
   const [caseStudy, setCaseStudy] = useState<CaseStudy | null>(null);
@@ -264,6 +270,28 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
     if (step !== 0) stepTime(step);
   };
 
+  // On touch a vertical swipe is the scroll: up for later, down for earlier.
+  // Mostly sideways, or too short, and it's left alone (a tap on the monitor
+  // still opens it).
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const [swiped, setSwiped] = useState(false);
+  const onTouchStart = (event: React.TouchEvent) => {
+    const point = event.touches[0];
+    swipeStart.current = event.touches.length === 1 && point ? { x: point.clientX, y: point.clientY } : null;
+  };
+  const onTouchEnd = (event: React.TouchEvent) => {
+    const start = swipeStart.current;
+    const point = event.changedTouches[0];
+    swipeStart.current = null;
+    if (!start || !point || !active || phase !== "idle") return;
+    if (event.target instanceof Element && event.target.closest("[data-desk-settings]")) return;
+    const dx = point.clientX - start.x;
+    const dy = point.clientY - start.y;
+    if (Math.abs(dy) < SWIPE_STEP_PX || Math.abs(dy) < Math.abs(dx)) return;
+    stepTime(dy < 0 ? 1 : -1);
+    setSwiped(true);
+  };
+
   // The arrow keys step through the day too, for anyone not on a wheel.
   const stepTimeRef = useRef(stepTime);
   useEffect(() => {
@@ -354,7 +382,11 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
       // visibility, which the screen's own visibility toggle would override.
       inert={!active}
       onWheel={onWheel}
+      onTouchStart={touch ? onTouchStart : undefined}
+      onTouchEnd={touch ? onTouchEnd : undefined}
       style={{ opacity: active ? 1 : 0, zIndex: active ? undefined : -1,
+        // The swipe is the desk's own: no page scroll or pull to refresh.
+        touchAction: touch ? "none" : undefined,
         backgroundColor: colors.afternoon,
         backgroundImage: background.image,
         color: background.text,
@@ -367,10 +399,15 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
-        style={{ opacity: background.evening ? 1 : 0, transition: shown ? "opacity 1200ms ease" : "none" }}
+        style={{ opacity: background.evening ? 1 : 0, transition: shown ? `opacity ${DAY_NIGHT_FADE_MS}ms ease` : "none" }}
       >
         {dusk.node}
       </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{ backgroundColor: colors.night, opacity: background.night ? 1 : 0, transition: shown ? `opacity ${DAY_NIGHT_FADE_MS}ms ease` : "none" }}
+      />
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -477,6 +514,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
               onReturned={() => setPhase("idle")}
               zoomTarget={typingOpen ? "typing" : "page"}
               onFramed={onFramed}
+              orbit={!touch}
             />
           </>
         )}
@@ -539,7 +577,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
           data-shown={revealed}
           style={{ transitionDelay: revealed ? `${UI_REVEAL_STAGGER_MS}ms` : undefined }}
         >
-          <DeskClock clock={clock} touch={touch} />
+          <DeskClock clock={clock} touch={touch} hint={touch && !swiped} />
         </div>
         {showDeskSettings() && (
           <div

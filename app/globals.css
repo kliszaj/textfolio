@@ -222,7 +222,7 @@ body {
   /* The coloured header's height, at rest. Everything that meets it reads
      this: the settle from the home page's full-screen sheet, the desk
      monitor's copy, and the dots rail centred below it. */
-  --case-study-header-height: 28vh;
+  --case-study-header-height: 20vh;
   /* The standfirst, and the title as a multiple of it, so the hierarchy holds
      if either changes. */
   --case-study-standfirst-size: clamp(1.875rem, 3.2vw, 2.75rem);
@@ -563,10 +563,6 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   padding-top: 0;
 }
 
-.case-study-fact + .case-study-fact {
-  border-top: 1px solid color-mix(in srgb, currentColor 58%, transparent);
-}
-
 .case-study-fact dt {
   font-size: 0.8125rem;
   font-weight: 500;
@@ -587,11 +583,11 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   list-style: disc outside;
 }
 
-/* Facts beside the long read, each on a hairline: a row of three under the
-   text until there is room for them to stand in their own column. */
+/* Facts beside the long read, set apart by space alone: a row of three under
+   the text until there is room for them to stand in their own column. */
 .case-study-facts-aside .case-study-facts {
   display: grid;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 @media (min-width: 40rem) and (max-width: 63.99rem) {
@@ -600,12 +596,12 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   }
 }
 
+/* Spacing alone separates the facts, no rules. */
 .case-study-facts-aside .case-study-fact,
 .case-study-facts-aside .case-study-fact + .case-study-fact {
-  padding: 0.75rem 0 0;
+  padding: 0;
   margin: 0;
   border: none;
-  border-top: 1px solid var(--color-ink);
 }
 
 .case-study-facts-aside .case-study-fact dt {

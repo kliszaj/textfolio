@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { HomeIconAnimation } from "@/components/HomeIconAnimation";
 import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
@@ -12,6 +12,7 @@ import { ABOUT_PAGE, CONTACT } from "@/data/about";
 import { MADE_WITH } from "@/data/madeWith";
 import { PageIndicator } from "@/components/PageIndicator";
 import { EmailLink } from "@/components/EmailLink";
+import { CardDotField } from "@/components/CardDotField";
 import { CaseStudyTuning } from "@/components/CaseStudyTuning";
 import { HEADER_SETTLE_MS, HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
@@ -76,24 +77,28 @@ export function caseStudyTitleScale(naturalWidth: number, availableWidth: number
   return Math.min(1, availableWidth / naturalWidth);
 }
 
+// A row is six columns wide: a full tile takes all six, a half three and a
+// third two (a mosaic's tall tile counts as a half).
+const SPAN_COLUMNS: Record<NonNullable<CaseStudyMedia["span"]>, number> = {
+  full: 6,
+  tall: 3,
+  half: 3,
+  third: 2,
+};
+
 export function caseStudyMediaRows(media: CaseStudyMedia[]): number[] {
   let row = 0;
   let occupiedColumns = 0;
 
   return media.map((item) => {
-    if ((item.span ?? "half") === "full") {
-      if (occupiedColumns > 0) {
-        row += 1;
-        occupiedColumns = 0;
-      }
-      const itemRow = row;
+    const columns = SPAN_COLUMNS[item.span ?? "half"];
+    if (occupiedColumns + columns > 6) {
       row += 1;
-      return itemRow;
+      occupiedColumns = 0;
     }
-
     const itemRow = row;
-    occupiedColumns += 1;
-    if (occupiedColumns === 2) {
+    occupiedColumns += columns;
+    if (occupiedColumns === 6) {
       row += 1;
       occupiedColumns = 0;
     }
@@ -181,12 +186,14 @@ const SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
   full: "col-span-2 row-span-2",
   tall: "col-span-1 row-span-2",
   half: "col-span-1 row-span-1",
+  third: "col-span-1 row-span-1",
 };
 
 const SEQUENCE_SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> = {
-  full: "col-span-2",
-  tall: "col-span-1",
-  half: "col-span-1",
+  full: "col-span-6",
+  tall: "col-span-3",
+  half: "col-span-3",
+  third: "col-span-2",
 };
 
 const ASPECT_CLASS: Record<NonNullable<CaseStudyMedia["aspect"]>, string> = {
@@ -350,6 +357,11 @@ const FOOTER_HIDES_RAILS_AT = 1.25;
 const RAIL_PAGES = [...caseStudies, ABOUT_PAGE];
 
 export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps) {
+  // The card's field lights a few dots in the other pages' colours.
+  const nextCardDotColors = useMemo(
+    () => RAIL_PAGES.map((page) => page.thumbnailColor).filter((color) => color !== next?.thumbnailColor),
+    [next?.thumbnailColor],
+  );
   const {
     oneLiner,
     overview,
@@ -675,7 +687,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
       const readMoreBlock = readMore ? readMore.getBoundingClientRect().bottom - longRead.getBoundingClientRect().bottom : READ_MORE_ESTIMATE_PX;
       const lineHeight = parseFloat(getComputedStyle(longRead.querySelector(".case-study-copy") ?? longRead).lineHeight) || 28;
       // Whole lines, so the cut never slices through a row of text.
-      const lines = Math.floor((limit - textTop - readMoreBlock) / lineHeight);
+      // Beside taller facts the text runs down to their foot: they hold the
+      // media there anyway, so the extra lines cost nothing.
+      const room = Math.max(limit, factsBottom) - textTop - readMoreBlock;
+      const lines = Math.floor(room / lineHeight);
       const cap = Math.max(lines, READ_MORE_MIN_LINES) * lineHeight;
       setLongReadCap(cap >= fullText ? null : cap);
     };
@@ -729,12 +744,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         : "smooth",
     });
   }, []);
-
-  const footerTop = (
-    <button type="button" onClick={scrollToTop} className="cursor-pointer hover:underline underline-offset-4">
-      Back to top
-    </button>
-  );
 
   return (
     <>
@@ -987,7 +996,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   data-testid="case-study-read-more"
                   aria-expanded={isLongReadExpanded}
                   onClick={() => setIsLongReadExpanded((expanded) => !expanded)}
-                  className="mt-4 font-display text-xl underline underline-offset-4 transition-opacity hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+                  className="mt-4 font-body font-bold text-lg underline underline-offset-4 transition-opacity hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
                 >
                   {isLongReadExpanded ? "Show less" : "Read more"}
                 </button>
@@ -1065,10 +1074,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   ref={mediaGridRef}
                   data-testid="case-study-media-grid"
                   data-layout={mediaLayout}
-                  className={`grid grid-cols-2 ${
+                  className={`grid ${
                     mediaLayout === "mosaic"
-                      ? "mt-8 gap-4 md:gap-6 auto-rows-[11rem] md:auto-rows-[16rem]"
-                      : "mt-8 gap-x-4 gap-y-8 md:mt-12 md:gap-x-6 md:gap-y-12"
+                      ? "grid-cols-2 mt-8 gap-4 md:gap-6 auto-rows-[11rem] md:auto-rows-[16rem]"
+                      : "grid-cols-6 mt-8 gap-x-4 gap-y-8 md:mt-12 md:gap-x-6 md:gap-y-12"
                   }`}
                 >
                   {media.map((item, index) => {
@@ -1148,22 +1157,23 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             get in touch, then a sign-off and back to top. */}
         <footer ref={footerRef} data-testid="case-study-footer" className="case-study-footer">
           <div className="case-study-footer-signoff">
-            <div className="mx-auto w-full max-w-[100rem] border-t border-ink pt-12 pb-10 md:pt-16">
-              <div className="grid gap-10 lg:grid-cols-[7fr_5fr] lg:gap-12">
+            <div className="mx-auto w-full max-w-[100rem] pt-12 pb-10 md:pt-16">
+              <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:gap-12">
                 {next && (
                   // Takes over from the header's next button, which steps
                   // aside while the footer is on screen.
                   <Link
                     data-testid="case-study-footer-next"
                     href={caseStudyRoute(next)}
-                    className="case-study-footer-next group grid min-h-56 content-between gap-12 rounded-3xl p-7 md:min-h-72 md:p-8"
+                    className="case-study-footer-next group relative grid min-h-56 content-between gap-12 overflow-hidden rounded-3xl p-7 md:min-h-72 md:p-8"
                     style={{ backgroundColor: next.thumbnailColor }}
                   >
-                    <span className="font-body font-medium text-xs uppercase tracking-[0.08em] opacity-70">
+                    <CardDotField colors={nextCardDotColors} />
+                    <span className="relative font-body font-medium text-xs uppercase tracking-[0.08em] opacity-70">
                       <span className="sr-only">Next project: </span>
-                      <span aria-hidden="true">Next case study</span>
+                      <span aria-hidden="true">Up next</span>
                     </span>
-                    <span className="flex items-end justify-between gap-4">
+                    <span className="relative flex items-end justify-between gap-4">
                       <span className="case-study-footer-title font-display">{next.title}</span>
                       <span
                         aria-hidden="true"
@@ -1175,8 +1185,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     </span>
                   </Link>
                 )}
-                <div className="grid content-between gap-10 font-body font-medium">
-                  <div className="grid grid-cols-[auto_auto] justify-start gap-x-14 gap-y-4">
+                <div className="grid content-start justify-start gap-x-14 gap-y-10 font-body font-medium sm:grid-cols-[auto_auto]">
                     <nav aria-label="Portfolio pages">
                       <p className="text-xs uppercase tracking-[0.08em] opacity-60">Work</p>
                       <ul className="mt-3 grid gap-3">
@@ -1185,7 +1194,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                             <Link
                               href={caseStudyRoute(page)}
                               aria-current={page.slug === caseStudy.slug ? "page" : undefined}
-                              className="flex items-center gap-2.5 hover:underline underline-offset-4"
+                              className="flex items-center gap-2.5 whitespace-nowrap hover:underline underline-offset-4"
                             >
                               <span
                                 aria-hidden="true"
@@ -1204,31 +1213,28 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     <div>
                       <p className="text-xs uppercase tracking-[0.08em] opacity-60">Contact</p>
                       <ul className="mt-3 grid gap-3">
-                        <li><EmailLink email={CONTACT.email} className="hover:underline underline-offset-4">Email</EmailLink></li>
+                        <li>
+                          <EmailLink email={CONTACT.email} className="hover:underline underline-offset-4">
+                            {CONTACT.email} →
+                          </EmailLink>
+                        </li>
                         <li><a href={CONTACT.linkedin} className="hover:underline underline-offset-4">LinkedIn</a></li>
                       </ul>
                     </div>
-                  </div>
-                  <div>
-                    <EmailLink email={CONTACT.email} className="text-lg hover:underline underline-offset-4">
-                      {CONTACT.email} →
-                    </EmailLink>
-                    {/* The sign-off: where it was made, and with what. */}
-                    <p className="mt-6 text-sm opacity-55">Made in Stockholm on the desk you&apos;ve already seen.</p>
-                    <p className="mt-2.5 flex items-center gap-2.5">
-                      <span className="sr-only">Made with {MADE_WITH.map((tool) => tool.name).join(", ")}</span>
-                      {MADE_WITH.map((tool) => (
-                        <svg key={tool.name} aria-hidden="true" viewBox="0 0 24 24" className="size-4 fill-current opacity-75">
-                          <title>{tool.name}</title>
-                          <path d={tool.path} />
-                        </svg>
-                      ))}
-                    </p>
-                  </div>
                 </div>
               </div>
-              <div className="mt-12 flex justify-end font-body text-sm font-medium">
-                {footerTop}
+              <div className="mt-12 flex font-body text-sm font-medium">
+                {/* The sign-off: where it was made, and with what. */}
+                <p className="flex items-center gap-2.5 whitespace-nowrap">
+                  <span className="opacity-55">Made in Stockholm with</span>
+                  <span className="sr-only">{` ${MADE_WITH.map((tool) => tool.name).join(", ")}`}</span>
+                  {MADE_WITH.map((tool) => (
+                    <svg key={tool.name} aria-hidden="true" viewBox="0 0 24 24" className="size-4 fill-current opacity-75">
+                      <title>{tool.name}</title>
+                      <path d={tool.path} />
+                    </svg>
+                  ))}
+                </p>
               </div>
             </div>
           </div>
