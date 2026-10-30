@@ -273,6 +273,22 @@ body {
 }
 
 .case-study-header {
+  /* A multiple of the standfirst, but never more than the header has room
+     for once its clearance is taken out: a short window shrinks the bar, and
+     the title with it, rather than letting it ride up into Home. Held here,
+     not on the title, so Home and next can line up with it (below). */
+  --case-study-title-size: clamp(
+    var(--case-study-title-min),
+    min(
+      calc(var(--case-study-standfirst-size) * var(--case-study-title-ratio)),
+      calc(var(--case-study-header-height) - var(--case-study-header-clearance))
+    ),
+    var(--case-study-title-max)
+  );
+  /* Home and next sit level with the middle of the title's lowercase, where
+     the eye reads its centre (titles are mostly lowercase), not the middle
+     of its line box, which reads high: in Frama that's this far down. */
+  --case-study-control-drop: calc(var(--case-study-title-size) * 0.11);
   height: var(--case-study-header-height);
   background-color: var(--case-study-color, transparent);
   padding-inline: var(--case-study-gutter);
@@ -355,7 +371,7 @@ body {
 
   .case-study-header .case-study-home,
   .case-study-header[data-shrunk="true"] .case-study-home {
-    top: 50%;
+    top: calc(50% + var(--case-study-control-drop));
     left: calc(var(--case-study-margin) / -2);
     transform: translate(-50%, -50%);
     opacity: 1;
@@ -369,7 +385,7 @@ body {
 @media (min-width: 48rem) {
   .case-study-next {
     position: absolute;
-    top: 50%;
+    top: calc(50% + var(--case-study-control-drop));
     right: calc(var(--case-study-margin) / -2 - 1.5rem);
     transform: translateY(-50%);
   }
@@ -590,17 +606,8 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
 }
 
 .case-study-title {
-  /* A multiple of the standfirst, but never more than the header has room
-     for once its clearance is taken out: a short window shrinks the bar, and
-     the title with it, rather than letting it ride up into Home. */
-  font-size: clamp(
-    var(--case-study-title-min),
-    min(
-      calc(var(--case-study-standfirst-size) * var(--case-study-title-ratio)),
-      calc(var(--case-study-header-height) - var(--case-study-header-clearance))
-    ),
-    var(--case-study-title-max)
-  );
+  /* Set on the header (.case-study-header), shared with Home and next. */
+  font-size: var(--case-study-title-size);
   /* PP Frama's g/y descenders extend below its nominal line box. The title
      must stay overflow-clipped horizontally for one-line fitting, so enlarge
      that clipping box below the baseline and cancel the added layout space. */
@@ -614,8 +621,8 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   transform-origin: left center;
 }
 
-.case-study-header[data-shrunk="true"] .case-study-title {
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
+.case-study-header[data-shrunk="true"] {
+  --case-study-title-size: clamp(1.5rem, 3vw, 2.25rem);
 }
 
 .case-study-body {

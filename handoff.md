@@ -578,6 +578,11 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **The room goes dark at sunset.** `roomIsDark` (lib/deskDaylight): the
   evening's dark room and window light start once the sun is down (the
   same moment as the twilight stop), not a few degrees before.
+- **Header controls line up with the title's lowercase.** The title size is
+  `--case-study-title-size` on `.case-study-header` (a smaller value when
+  collapsed); Home and next drop `--case-study-control-drop` (0.11 of it)
+  below the row's middle, onto the middle of the lowercase letters, which is
+  where the eye reads the title's centre.
 - **Lighter loader.** The desk's LOADING ring is set in Neue Montreal Bold
   rather than Frama Black (the only Frama weights in the repo are Black and
   Extralight).
