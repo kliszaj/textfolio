@@ -68,7 +68,10 @@ export function ProjectsCollection({
   return (
     <section
       aria-labelledby="projects-collection-heading"
-      className="bg-cream px-6 pb-20 md:px-10 md:pb-28 2xl:px-14"
+      // The case studies' own side margin (globals.css), so the collection's
+      // edges line up with the text above it and every other page's.
+      className="bg-cream pb-20 md:pb-28"
+      style={{ paddingInline: "var(--case-study-gutter)" }}
     >
       <div className="mx-auto w-full max-w-[100rem]">
         <h2 id="projects-collection-heading" className="sr-only">
