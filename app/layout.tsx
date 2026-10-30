@@ -80,7 +80,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the script below marks <html> before React
+    // hydrates it.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Inside a frame (the case study on the desk's monitor), the page
+            shows at rest from its first paint: no header settle, no body
+            fade-in (globals.css, [data-embedded]). So Home on a case study
+            needn't wait for the monitor's copy to finish animating. */}
+        <script dangerouslySetInnerHTML={{ __html: "if(window.self!==window.top)document.documentElement.dataset.embedded='1'" }} />
+      </head>
       <body className={`${displayFont.variable} ${lightDisplayFont.variable} ${scriptFont.variable} ${bodyFont.variable} ${condensedFont.variable}`}>
         <LineBoil />
         {children}

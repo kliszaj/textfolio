@@ -13,9 +13,12 @@ import styles from "./DesktopWindows.module.css";
 type AppId = "figma" | "slack" | "spotify" | "claude" | "meet" | "youtube" | "prototype";
 type Side = "left" | "right";
 
+// Tucked in behind the browser, towards the middle of the screen, so only a
+// strip of each shows and the case study in front is what the monitor is
+// about. Every app is drawn in its dark theme for the same reason.
 const FRAMES: Record<Side, CSSProperties> = {
-  left: { left: 24, top: 46, width: 660, height: 500 },
-  right: { left: 852, top: 58, width: 660, height: 500 },
+  left: { left: 160, top: 86, width: 580, height: 430 },
+  right: { left: 796, top: 96, width: 580, height: 430 },
 };
 
 // At most two per time of day.
@@ -131,7 +134,7 @@ function Slack() {
               <div className="min-w-0 flex-1">
                 <div><span className="font-bold text-white">{message.name}</span> <span className="text-xs text-[#9a9b9e]">{message.time}</span></div>
                 {message.lines.map((line) => <div key={line} className="leading-snug">{line}</div>)}
-                {message.image && <div className="mt-2 h-20 w-36 rounded-md border border-[#35373b]" style={{ background: "linear-gradient(135deg, #f5ede6 55%, #a9bca7 55%)" }} />}
+                {message.image && <div className="mt-2 h-20 w-36 rounded-md border border-[#35373b]" style={{ background: "linear-gradient(135deg, #2c2a30 55%, #46564a 55%)" }} />}
                 {message.reactions && <div className="mt-1.5 flex gap-1.5">{message.reactions.map((r) => <span key={r} className="rounded-full border border-[#1d9bd1] bg-[#1d2f3b] px-2 text-xs">{r}</span>)}</div>}
               </div>
             </div>
@@ -180,18 +183,18 @@ function Figma() {
       </div>
       <div className="relative flex-1">
         <span className="absolute top-7 left-8 text-[10px] text-[#9a9a9a]">Desktop — Case study</span>
-        <div className="absolute top-12 right-8 bottom-16 left-8 flex flex-col bg-[#f5ede6] shadow-sm outline-[1.5px] outline-[#0d99ff]">
-          <div className="flex h-20 items-end justify-between px-5 pb-3" style={{ backgroundColor: "#ff4fd8" }}>
-            <span className="text-[22px] leading-none font-black text-[#1c1c1c]">Seamless Strategy</span>
+        <div className="absolute top-12 right-8 bottom-16 left-8 flex flex-col bg-[#1c1c1c] shadow-sm outline-[1.5px] outline-[#0d99ff]">
+          <div className="flex h-20 items-end justify-between px-5 pb-3" style={{ backgroundColor: "#5e2a55" }}>
+            <span className="text-[22px] leading-none font-black text-[#f5ede6]">Seamless Strategy</span>
             <span className="size-6 rounded-full bg-[#ffd400]" />
           </div>
           <div className="flex flex-1 gap-4 p-5">
             <div className="flex flex-1 flex-col gap-1.5">
-              <span className="mb-1 h-2.5 w-4/5 rounded-sm bg-[#1c1c1c]" />
-              {[100, 96, 92, 98, 70].map((w, i) => <span key={i} className="h-1.5 rounded-sm bg-[#1c1c1c]/30" style={{ width: `${w}%` }} />)}
-              <span className="mt-3 flex-1 rounded bg-[#a9bca7]" />
+              <span className="mb-1 h-2.5 w-4/5 rounded-sm bg-[#e6e6e6]" />
+              {[100, 96, 92, 98, 70].map((w, i) => <span key={i} className="h-1.5 rounded-sm bg-[#e6e6e6]/30" style={{ width: `${w}%` }} />)}
+              <span className="mt-3 flex-1 rounded bg-[#3d4a3f]" />
             </div>
-            <div className="flex w-16 flex-col gap-2">{[0, 1, 2].map((i) => <span key={i} className="h-5 rounded-sm bg-[#1c1c1c]/15" />)}</div>
+            <div className="flex w-16 flex-col gap-2">{[0, 1, 2].map((i) => <span key={i} className="h-5 rounded-sm bg-[#e6e6e6]/10" />)}</div>
           </div>
           {[["-left-1 -top-1"], ["-right-1 -top-1"], ["-left-1 -bottom-1"], ["-right-1 -bottom-1"]].map(([pos]) => <span key={pos} className={`absolute size-2 border border-[#0d99ff] bg-white ${pos}`} />)}
           <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 rounded bg-[#0d99ff] px-1.5 py-0.5 text-[10px] text-white">1440 × 1024</span>
@@ -213,7 +216,7 @@ function Figma() {
         <div className="flex items-center justify-between border-t border-[#383838] pt-3 font-semibold">Auto layout <Icon d={ICONS.plus} size={12} /></div>
         <div className="grid grid-cols-2 gap-1.5">{field("↕", "24")}{field("⊞", "56")}</div>
         <div className="flex items-center justify-between border-t border-[#383838] pt-3 font-semibold">Fill <Icon d={ICONS.plus} size={12} /></div>
-        <span className="flex h-6 items-center gap-2 rounded bg-[#383838] px-2"><span className="size-3.5 rounded-sm border border-black/10 bg-[#f5ede6]" />F5EDE6<span className="ml-auto text-[#9a9a9a]">100%</span></span>
+        <span className="flex h-6 items-center gap-2 rounded bg-[#383838] px-2"><span className="size-3.5 rounded-sm border border-white/10 bg-[#1c1c1c]" />1C1C1C<span className="ml-auto text-[#9a9a9a]">100%</span></span>
         <div className="flex items-center justify-between border-t border-[#383838] pt-3 font-semibold">Stroke <Icon d={ICONS.plus} size={12} /></div>
         <div className="flex items-center justify-between border-t border-[#383838] pt-3 font-semibold">Effects <Icon d={ICONS.plus} size={12} /></div>
         <div className="flex items-center justify-between border-t border-[#383838] pt-3 font-semibold">Export <Icon d={ICONS.plus} size={12} /></div>
@@ -255,17 +258,17 @@ function Prototype() {
           </div>
           <div className="flex flex-1 items-start justify-start px-10 pt-4">
             <div className="h-[380px] w-[180px] rounded-[30px] bg-black p-[7px] shadow-xl ring-1 ring-[#555]">
-              <div className="relative flex h-full flex-col overflow-hidden rounded-[24px] bg-[#f5ede6] px-3.5 pt-3 text-[#1c1c1c]">
+              <div className="relative flex h-full flex-col overflow-hidden rounded-[24px] bg-[#1c1c1c] px-3.5 pt-3 text-[#f5ede6]">
                 <span className="mx-auto h-4 w-14 rounded-full bg-black" />
-                <div className="mt-3 flex items-center justify-between text-[9px] font-black tracking-wide"><span>ADRIAN</span><span className="flex flex-col gap-[3px]"><span className="h-[2px] w-3.5 bg-[#1c1c1c]" /><span className="h-[2px] w-3.5 bg-[#1c1c1c]" /></span></div>
+                <div className="mt-3 flex items-center justify-between text-[9px] font-black tracking-wide"><span>ADRIAN</span><span className="flex flex-col gap-[3px]"><span className="h-[2px] w-3.5 bg-[#f5ede6]" /><span className="h-[2px] w-3.5 bg-[#f5ede6]" /></span></div>
                 <div className="mt-5 text-[22px] leading-[0.95] font-black">Made for people.</div>
-                <span className="mt-3 w-fit rounded-full bg-[#1c1c1c] px-2.5 py-1 text-[8px] font-semibold text-[#f5ede6]">Explore work ↗</span>
+                <span className="mt-3 w-fit rounded-full bg-[#f5ede6] px-2.5 py-1 text-[8px] font-semibold text-[#1c1c1c]">Explore work ↗</span>
                 <div className="mt-4 flex flex-col gap-2">
                   {[["#1ed760", "Spotify Jam"], ["#ff4fd8", "Seamless Strategy"], ["#ff9f1c", "Focals by North"]].map(([color, title]) => (
                     <div key={title} className="flex h-14 flex-col justify-end rounded-lg p-2 text-[10px] font-black" style={{ backgroundColor: color }}>{title}</div>
                   ))}
                 </div>
-                <span className="absolute bottom-1.5 left-1/2 h-1 w-16 -translate-x-1/2 rounded-full bg-black/70" />
+                <span className="absolute bottom-1.5 left-1/2 h-1 w-16 -translate-x-1/2 rounded-full bg-white/60" />
               </div>
             </div>
           </div>

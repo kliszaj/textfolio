@@ -198,3 +198,10 @@ describe("revealedCount", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 });
+
+test("in a case study's margin, the rail is gone whenever the page asks it to step aside", () => {
+  const { rerender } = render(<PageIndicator placement="margin" align="right" caseStudies={studies} fanProgress={0} />);
+  expect(screen.getByTestId("page-indicator")).toHaveStyle({ opacity: "1" });
+  rerender(<PageIndicator placement="margin" align="right" caseStudies={studies} fanProgress={1} />);
+  expect(screen.getByTestId("page-indicator")).toHaveStyle({ opacity: "0", pointerEvents: "none" });
+});

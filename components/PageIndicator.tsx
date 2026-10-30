@@ -16,10 +16,21 @@ type PageIndicatorProps = {
   // most callers want every page reachable immediately; the intro's own
   // reveal beat is what actually staggers this.
   revealedCount?: number;
+  // At every width, not only lg and up. On the desk the rail is the main way
+  // between pages, so it can't drop out on a small screen; on a short one
+  // (a phone on its side) it tightens and rises clear of the name below.
+  alwaysShown?: boolean;
+  // "stage": beside the hero or the desk. "margin": fixed in a case study's
+  // right margin (globals.css, .case-study-rail), from md up.
+  placement?: "stage" | "margin";
+  // The page being read: a bullseye, its colour around a centre of the page's
+  // cream, a little larger than the rest.
+  current?: string;
 };
 
 const DOT_SIZE = 14;
 const HOVER_TARGET_RIGHT_EXTENSION = 80;
+const MARGIN_HOVER_TARGET_EXTENSION = 20;
 // The dot's hover/focus-visible scale, applied regardless of whether the
 // cursor is over the 14px dot itself or just somewhere in the wider hit
 // area that reveals its chip.
@@ -27,6 +38,9 @@ const HOVER_DOT_SCALE = 1.5;
 // Starting scale for a dot's own pop-in, before the intro's reveal beat
 // reaches it.
 const POP_IN_DOT_SCALE = 0.5;
+// The current page's dot: 18px across, as a scale so the rail doesn't move.
+const CURRENT_DOT_SCALE = 18 / DOT_SIZE;
+const CURRENT_DOT_RING = 4;
 
 export function PageIndicator({
   align = "left",
@@ -34,7 +48,11 @@ export function PageIndicator({
   fanProgress = 0,
   onSelect,
   revealedCount = caseStudies.length,
+  alwaysShown = false,
+  placement = "stage",
+  current,
 }: PageIndicatorProps) {
+  const inMargin = placement === "margin";
   const [revealed, setRevealed] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const [fadeStart, setFadeStart] = useState(0);
@@ -56,9 +74,13 @@ export function PageIndicator({
   }, []);
 
   const fadeRange = Math.max(0.01, 1 - fadeStart);
-  const opacity = fanProgress <= fadeStart
-    ? 1
-    : 1 - Math.min(1, ((fanProgress - fadeStart) / fadeRange) * 2);
+  // In a case study's margin there is no stack to time against: the rail
+  // simply follows fanProgress (the page's footer, or its exit).
+  const opacity = inMargin
+    ? 1 - fanProgress
+    : fanProgress <= fadeStart
+      ? 1
+      : 1 - Math.min(1, ((fanProgress - fadeStart) / fadeRange) * 2);
   const interactive = opacity > 0;
 
   // Wheel input does not touch this rail at all -- it drives the stack's own
@@ -90,17 +112,21 @@ export function PageIndicator({
       ref={rootRef}
       data-testid="page-indicator"
       aria-label="Portfolio pages"
-      className="absolute top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col gap-4"
+      className={
+        inMargin
+          ? "case-study-rail fixed top-1/2 -translate-y-1/2 z-20 hidden md:flex flex-col gap-4"
+          : `absolute top-1/2 -translate-y-1/2 z-20 flex-col gap-4 ${alwaysShown ? "flex [@media(max-height:30rem)]:top-[40%] [@media(max-height:30rem)]:gap-2.5" : "hidden lg:flex"}`
+      }
       style={{
         // Hero sits on a sheet that starts at left: -60%, so an inset measured
         // from the hero's own edge lands off-screen. Counter the overscan the
         // way .coolS does, but from the constant rather than a literal 60vw.
-        left: align === "left" ? `calc(${SHEET_OVERSCAN_PERCENT}vw + clamp(1.5rem, 3.5vw, 4rem))` : undefined,
-        right: align === "right" ? "clamp(1.5rem, 3.5vw, 4rem)" : undefined,
+        left: !inMargin && align === "left" ? `calc(${SHEET_OVERSCAN_PERCENT}vw + clamp(1.5rem, 3.5vw, 4rem))` : undefined,
+        right: !inMargin && align === "right" ? "clamp(1.5rem, 3.5vw, 4rem)" : undefined,
         opacity,
         // Fades on the same curve the sheets move on, so the rail leaves as
         // the stack arrives rather than lagging behind it.
-        transition: "opacity 320ms ease-out",
+        transition: "opacity 320ms ease-out, top 320ms cubic-bezier(0.22, 1, 0.36, 1)",
         pointerEvents: interactive ? "auto" : "none",
       }}
     >
@@ -113,7 +139,9 @@ export function PageIndicator({
           data-revealed={isRevealed}
           className="relative flex items-center cursor-pointer"
           style={{
-            width: DOT_SIZE + HOVER_TARGET_RIGHT_EXTENSION,
+            // In a case study's margin the wide hit area would reach over the
+            // text beside it, so it stays close to the dot there.
+            width: DOT_SIZE + (inMargin ? MARGIN_HOVER_TARGET_EXTENSION : HOVER_TARGET_RIGHT_EXTENSION),
             justifyContent: align === "right" ? "flex-end" : undefined,
             // The pop-in itself lives on the dot below, not here: this hit
             // area is wide (it reaches right for the hover chip), so a
@@ -138,13 +166,15 @@ export function PageIndicator({
             type="button"
             data-testid="page-indicator-dot"
             aria-label={caseStudy.title}
+            aria-current={caseStudy.slug === current ? "page" : undefined}
             onFocus={() => setRevealed(index)}
             onBlur={() => setRevealed((current) => (current === index ? null : current))}
             className="rounded-full cursor-pointer focus-visible:outline-none"
             style={{
               width: DOT_SIZE,
               height: DOT_SIZE,
-              backgroundColor: caseStudy.thumbnailColor,
+              backgroundColor: caseStudy.slug === current ? "var(--color-cream)" : caseStudy.thumbnailColor,
+              boxShadow: caseStudy.slug === current ? `inset 0 0 0 ${CURRENT_DOT_RING}px ${caseStudy.thumbnailColor}` : undefined,
               opacity: isRevealed ? 1 : 0,
               // Combined into one scale rather than fighting over separate
               // transforms: the hover scale (driven by the same `revealed`
@@ -152,7 +182,7 @@ export function PageIndicator({
               // fire with the cursor directly over the dot, not the wider
               // hit area around it) and the intro's own pop-in scale can
               // both be in effect on the same dot.
-              transform: `scale(${(revealed === index ? HOVER_DOT_SCALE : 1) * (isRevealed ? 1 : POP_IN_DOT_SCALE)})`,
+              transform: `scale(${(revealed === index ? HOVER_DOT_SCALE : 1) * (isRevealed ? 1 : POP_IN_DOT_SCALE) * (caseStudy.slug === current ? CURRENT_DOT_SCALE : 1)})`,
               transition: "opacity 220ms ease-out, transform 200ms ease-out",
             }}
           />

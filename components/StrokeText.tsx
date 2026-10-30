@@ -382,7 +382,6 @@ export function StrokeText({
     // which is already listed, and it is declared further down this
     // component (after inkOffset/inkOffsetX) -- listing it here would be a
     // temporal-dead-zone reference, not just a redundant one.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characters, fontSize, fontWeight, letterSpacing, strokeWidth, hostSize, correctionIndex]);
 
   useLayoutEffect(() => {

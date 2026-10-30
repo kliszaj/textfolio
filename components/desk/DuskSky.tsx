@@ -46,6 +46,12 @@ export function windowLightStrength(horizon: number, nightMix: number) {
   return clamp01(Math.sin(Math.PI * clamp01(horizon * 1.15)) * 0.4 + d * 0.6) * (1 - clamp01(nightMix * 1.8));
 }
 
+// The first sun through the window, the morning's mirror of the above:
+// strongest from sunrise, fading as the sun climbs, absent before dawn.
+export function morningLightStrength(horizon: number, nightMix: number) {
+  return THREE.MathUtils.smoothstep(horizon, 0.45, 0.95) * (1 - clamp01(nightMix * 1.8));
+}
+
 // The dark-room twilight: through the evening the room goes dark as if its
 // lights were off -- as dark as night by sunset -- and only the sunset comes
 // in, through the window (WindowLight, in the scene). How dark, 0 to 1; the

@@ -444,6 +444,64 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   `onFramed`, on the frame it first puts the camera in place. (A load in a
   background tab now waits behind the loader until the tab is shown, since
   hidden tabs draw no frames.)
+- **No more "two twilights" stepping back.** Stepping back from the live
+  clock went to the stage just behind it, which looks like what's already
+  showing (live at 16:40 is already the dark sunset room, so back landed on
+  the 16:02 sunset). `nextDeskStage(…, -1)` now goes to the stage before the
+  one the time belongs to: unchanged from a stage, but from the live clock it
+  skips the look-alike. Tested in `lib/deskDaylight.test.ts`.
+- **Lint is clean**: `CaseStudyView`'s wide-margin media query reads through
+  `useSyncExternalStore` instead of mirroring into state in an effect, and an
+  unused eslint-disable in `StrokeText.tsx` is gone.
+- **Case-study margins.** One `--case-study-gutter` (globals.css) pads both
+  the header and the body, so the title lines up with the text at every
+  width. From 48rem, Home sits centred in that margin, level with the title
+  (also in the shrunk header). Gutters are 5.5rem from 48rem and 7rem from
+  64rem. Body copy scales down on smaller windows (about 17.5px at 1000px).
+- **Faster Home.** Inside a frame, an inline script in `app/layout.tsx` sets
+  `data-embedded` on `<html>`, and the monitor's copy of a case study shows at
+  rest from its first paint. So `PAGE_SETTLE_MS` is 150 (it was 700).
+- **Morning window.** `DeskLighting`'s `WindowPatch` draws a golden patch on
+  the left after sunrise (`morningLightStrength`), opposite the evening one
+  on the right. Both fade in slowly and move the way the sun moves them: the
+  sunset patch rises in from below and leaves upward; the morning patch comes
+  down from above and leaves downward.
+- **The rail on every screen.** On the desk `PageIndicator` takes
+  `alwaysShown`. It's an overlay, so the desk framing is unchanged. On short
+  screens (a phone on its side) it tightens and moves up, clear of the name.
+- **Calmer monitor.** Apps behind the browser are smaller and tucked in
+  towards the middle, so only a strip of each shows, at full opacity. Figma's
+  artboard, the prototype phone and Slack's image are dark-themed too.
+- **Next button and rail on case studies.** The next button is a 3rem circle
+  centred in the right margin from 48rem, mirroring Home. The case study
+  pages carry the desk's rail too: right-aligned under the next button from
+  md, centred in the cream below the header, with the page you're on as a
+  cream-centred bullseye, and as a row of dots along the bottom on a phone. Hidden
+  on the desk's monitor (`[data-embedded]`).
+- **Case-study layout (option A of `prototype-spotify-jam-layout.html`).**
+  The one-liner is a full-width standfirst (up to 52px, max 22ch). The long
+  read is held to 62ch at 17–19px. Facts sit on hairlines: in columns 9–12
+  from lg, a row of three below it on tablets. Spacing is on an 8px scale:
+  64px above the standfirst (from md), 32 below it, 96 to the media, 48 between clips, 128 to close.
+  Sequence media can take a `caption` (and the film a `videoCaption`); the
+  captions are numbered in page order. Phone clips keep 9:16 but are capped
+  at 80svh tall, so a pair fits on screen.
+- **Case-study footer.** One row under a hairline (option D of
+  `prototype-case-study-footer.html`): Home and Back to top on the left, the
+  dots in the middle, "Next" and the next title with an arrow in its colour on
+  the right. On a phone it stacks, dots first.
+- **Never two sets of dots.** The side rail and the phone's bottom row fade
+  out from a quarter of a screen before the footer scrolls in
+  (`FOOTER_HIDES_RAILS_AT`), a scroll check rather than an
+  IntersectionObserver. Note: the desktop app's browser pane pauses animation
+  frames, so scroll events never fire there; dispatch one by hand to test.
+- **Phone clips and captions.** The width cap is on the whole figure
+  (`.case-study-tile`), so a caption starts under its clip's own edge.
+- **Lighter loader.** The desk's LOADING ring is set in Neue Montreal Bold
+  rather than Frama Black (the only Frama weights in the repo are Black and
+  Extralight).
+- **Narrow windows nudge the desk.** `idlePose` eases the framing x from -3
+  to -5 as the window narrows from aspect 1.3 to square, so less is cut off.
 - **Live**: https://textfolio.kliszaj.workers.dev (Cloudflare Workers Builds
   deploys `main`). `wrangler tail textfolio` shows live requests.
 - **Tests**: `lib/leaderboard.test.ts`, and `worker/api.test.ts`, which runs

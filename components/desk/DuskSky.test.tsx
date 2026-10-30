@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import * as THREE from "three";
-import { roomDarkness, TWILIGHT_STYLES, useDuskSky, windowLightStrength, type TwilightStyle } from "./DuskSky";
+import { morningLightStrength, roomDarkness, TWILIGHT_STYLES, useDuskSky, windowLightStrength, type TwilightStyle } from "./DuskSky";
 import { DEFAULT_DESK_TWILIGHT } from "./DeskTwilight";
 
 const AFTERNOON = "#f5ede6";
@@ -93,5 +93,21 @@ describe("the dark room at twilight", () => {
   test("is only the evening, and only in that style", () => {
     expect(roomDarkness("dark", 1, 0, true)).toBe(0);
     expect(roomDarkness("radial", 1, 0, false)).toBe(0);
+  });
+});
+
+describe("the first sun through the window", () => {
+  test("is strong just after sunrise", () => {
+    // The morning stop: sun low (horizon 0.91), sky no longer night.
+    expect(morningLightStrength(0.91, 0)).toBeGreaterThan(0.9);
+  });
+
+  test("fades as the sun climbs, and is gone by mid-morning", () => {
+    expect(morningLightStrength(0.7, 0)).toBeLessThan(morningLightStrength(0.91, 0));
+    expect(morningLightStrength(0.4, 0)).toBe(0);
+  });
+
+  test("isn't there before dawn", () => {
+    expect(morningLightStrength(1, 1)).toBe(0);
   });
 });

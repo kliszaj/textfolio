@@ -220,17 +220,30 @@ body {
   --case-study-header-shrunk-height: 5.25rem;
   --case-study-header-inline-inset: 1.5rem;
   --case-study-page-margin: 0px;
+  /* The page's side margin: the header's title and the body's text both start
+     here, so they always line up. From 48rem the Home icon sits centred in
+     it, beside the title. Every page gets the same one. */
+  --case-study-gutter: 1.5rem;
 }
 
 @media (min-width: 48rem) {
   :root {
     --case-study-header-inline-inset: 2.5rem;
+    /* Room for Home, centred in the margin, to sit clear of the title. */
+    --case-study-gutter: 5.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --case-study-gutter: 7rem;
   }
 }
 
 @media (min-width: 80rem) {
   :root {
     --case-study-page-margin: 5rem;
+    --case-study-gutter: calc(var(--case-study-page-margin) + var(--case-study-header-inline-inset));
   }
 }
 
@@ -244,14 +257,8 @@ body {
 .case-study-header {
   height: var(--case-study-header-height);
   background-color: var(--case-study-color, transparent);
-  padding-inline: var(--case-study-header-inline-inset);
+  padding-inline: var(--case-study-gutter);
   animation: case-study-header-settle 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@media (min-width: 80rem) {
-  .case-study-header {
-    padding-inline: calc(var(--case-study-page-margin) + var(--case-study-header-inline-inset));
-  }
 }
 
 @keyframes case-study-header-settle {
@@ -290,12 +297,12 @@ body {
 /* The control shrinks with the bar, so it sits inside it rather than filling
    it edge to edge. */
 .case-study-header[data-shrunk="true"] .case-study-next {
-  height: 3.25rem;
+  height: 2.75rem;
 }
 
 .case-study-header[data-shrunk="true"] .case-study-next-arrow {
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .case-study-next,
@@ -307,46 +314,76 @@ body {
     opacity 200ms ease-out;
 }
 
-/* Left side, over the title -- the same inset the title itself sits at. */
+/* Phones: above the title, at the same inset the title sits at. */
 .case-study-home {
-  left: max(
-    var(--case-study-header-inline-inset),
-    calc((100% - 100rem) / 2)
-  );
+  left: max(var(--case-study-gutter), calc((100% - 100rem) / 2));
 }
 
-@media (min-width: 80rem) {
-  .case-study-home {
-    left: calc((var(--case-study-page-margin) + var(--case-study-header-inline-inset)) / 2);
-    transform: translateX(-50%);
-  }
-
-  .case-study-next {
-    position: absolute;
-    right: calc((var(--case-study-page-margin) + var(--case-study-header-inline-inset)) / 2 - 2rem);
-    bottom: 1.75rem;
-  }
-
-  .case-study-header[data-shrunk="true"] .case-study-next {
-    bottom: 50%;
-    transform: translateY(50%);
-  }
-}
-
-/* Home has no room in the collapsed bar on narrow viewports. At 80rem+ the
-   icon lives in its own margin and stays visible. */
+/* Home has no room in the collapsed bar on narrow viewports. */
 .case-study-header[data-shrunk="true"] .case-study-home {
   opacity: 0;
   pointer-events: none;
 }
 
-@media (min-width: 80rem) {
+/* From 48rem the margin can hold the controls: positioned against the
+   header's content box (the title row), each sits centred in its margin and
+   level with the title, expanded or collapsed. The margin is the gutter, or
+   wider once the 100rem content column is centred on a very wide screen. */
+@media (min-width: 48rem) {
+  .case-study-header-inner {
+    position: relative;
+    --case-study-margin: max(var(--case-study-gutter), calc((100vw - 100rem) / 2));
+  }
+
+  .case-study-header .case-study-home,
   .case-study-header[data-shrunk="true"] .case-study-home {
+    top: 50%;
+    left: calc(var(--case-study-margin) / -2);
+    transform: translate(-50%, -50%);
     opacity: 1;
     pointer-events: auto;
-    top: 50%;
-    transform: translate(-50%, -50%);
   }
+}
+
+/* The next button mirrors it in the right margin, centred there as Home is
+   in the left. Anchored by its right edge (half its 3rem circle past the
+   margin's centre), so the pill still opens leftwards on hover. */
+@media (min-width: 48rem) {
+  .case-study-next {
+    position: absolute;
+    top: 50%;
+    right: calc(var(--case-study-margin) / -2 - 1.5rem);
+    transform: translateY(-50%);
+  }
+
+  .case-study-header[data-shrunk="true"] .case-study-next {
+    right: calc(var(--case-study-margin) / -2 - 1.375rem);
+  }
+}
+
+/* The footer: one row under a hairline. */
+.case-study-footer-signoff {
+  padding-inline: var(--case-study-gutter);
+}
+
+/* The pages rail, right-aligned under the next button, and centred in the
+   cream below the header rather than in the whole window,
+   following the header as it collapses. */
+.case-study-rail {
+  /* Right edge on the next button's: half its 3rem circle past the
+     margin's centre. */
+  right: calc(max(var(--case-study-gutter), (100vw - 100rem) / 2) / 2 - 1.5rem);
+  top: calc(50% + var(--case-study-header-height) / 2);
+}
+
+body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
+  top: calc(50% + var(--case-study-header-shrunk-height) / 2);
+}
+
+/* Not on the desk's monitor, which has its own rail beside the desk. */
+[data-embedded] .case-study-rail,
+[data-embedded] .case-study-rail-row {
+  display: none;
 }
 
 /* Rests as a circle around the arrow and opens into a pill naming the next
@@ -361,14 +398,14 @@ body {
     padding-left 320ms cubic-bezier(0.22, 1, 0.36, 1),
     padding-right 320ms cubic-bezier(0.22, 1, 0.36, 1);
   padding-left: 0;
-  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  font-size: 1rem;
 }
 
 .case-study-next:hover .case-study-next-label,
 .case-study-next:focus-visible .case-study-next-label {
   max-width: 22rem;
   opacity: 1;
-  padding-left: 1.5rem;
+  padding-left: 1.25rem;
 }
 
 /* The long read is the page's voice, so it is set a step up from the
@@ -397,9 +434,12 @@ body {
   }
 }
 
+/* The long read: a size down from the standfirst by more than double, and
+   held to a comfortable measure however wide the column gets. */
 .case-study-copy {
-  font-size: clamp(1.25rem, 1.5vw, 1.6rem);
-  line-height: 1.55;
+  font-size: clamp(1.0625rem, 1.3vw, 1.1875rem);
+  line-height: 1.6;
+  max-width: 62ch;
 }
 
 .case-study-facts {
@@ -426,7 +466,7 @@ body {
 
 .case-study-fact dd {
   margin-top: 0.75rem;
-  font-size: clamp(1.25rem, 1.6vw, 1.6rem);
+  font-size: clamp(1.0625rem, 0.5rem + 1vw, 1.6rem);
   line-height: 1.15;
   white-space: pre-line;
 }
@@ -437,20 +477,60 @@ body {
   list-style: disc outside;
 }
 
-/* Right-column facts: stacked vertically, no separators, compact spacing. */
-.case-study-facts-aside .case-study-fact {
-  padding: 0;
-  border: none;
+/* Facts beside the long read, each on a hairline: a row of three under the
+   text until there is room for them to stand in their own column. */
+.case-study-facts-aside .case-study-facts {
+  display: grid;
+  gap: 1.5rem;
 }
 
+@media (min-width: 40rem) and (max-width: 63.99rem) {
+  .case-study-facts-aside .case-study-facts {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.case-study-facts-aside .case-study-fact,
 .case-study-facts-aside .case-study-fact + .case-study-fact {
-  margin-top: 1.5rem;
+  padding: 0.75rem 0 0;
+  margin: 0;
   border: none;
+  border-top: 1px solid var(--color-ink);
+}
+
+.case-study-facts-aside .case-study-fact dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
 }
 
 .case-study-facts-aside .case-study-fact dd {
-  margin-top: 0.25rem;
-  font-size: 1.25rem;
+  margin-top: 0.375rem;
+  font-size: 1.0625rem;
+  line-height: 1.35;
+}
+
+/* Under each clip in a sequence, numbered in page order. */
+.case-study-caption {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  padding-top: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.case-study-caption-number {
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A phone clip keeps its 9:16 frame but never outgrows the screen, so a pair
+   of them can be seen whole, side by side. The whole figure narrows, not just
+   the frame, so its caption starts under the clip's own edge. */
+[data-layout="sequence"] > .case-study-tile[data-aspect="portrait"] {
+  width: min(100%, calc(80svh * 9 / 16));
+  justify-self: center;
 }
 
 .case-study-facts-aside .case-study-fact-list {
@@ -473,9 +553,10 @@ body {
    display face -- narrow enough to hold a full sentence at a size the
    regular display face would run wide at. */
 .case-study-one-liner {
-  font-size: clamp(1.5rem, 2.4vw, 2.15rem);
-  line-height: 1.1;
-  letter-spacing: -0.005em;
+  max-width: 22ch;
+  font-size: clamp(1.875rem, 3.6vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
 }
 
 .case-study-title {
@@ -506,7 +587,6 @@ body {
 }
 
 .case-study-body {
-  padding-inline: 1.5rem;
   animation: case-study-body-in 400ms ease-out both;
   animation-delay: 240ms;
 }
@@ -516,27 +596,21 @@ body {
   animation: none;
 }
 
-@media (min-width: 48rem) {
-  .case-study-body { padding-inline: 2.5rem; }
-  .case-study-body[data-padded="true"] { padding-inline: 4rem; }
+/* The copy on the desk's monitor (an iframe; see app/layout.tsx) is at rest
+   from its first paint, so the desk can switch back to it without waiting. */
+[data-embedded] .case-study-header {
+  animation: none;
+  height: var(--case-study-header-height);
 }
 
-@media (min-width: 64rem) {
-  .case-study-body[data-padded="true"] { padding-inline: 6rem; }
+[data-embedded] .case-study-body {
+  animation: none;
 }
 
-@media (min-width: 80rem) {
-  .case-study-body,
-  .case-study-body[data-padded="true"] {
-    padding-inline: calc(var(--case-study-page-margin) + var(--case-study-header-inline-inset));
-  }
-}
-
-@media (min-width: 96rem) {
-  .case-study-body,
-  .case-study-body[data-padded="true"] {
-    padding-inline: calc(var(--case-study-page-margin) + var(--case-study-header-inline-inset));
-  }
+/* The same gutter as the header, so the text lines up with the title. */
+.case-study-body,
+.case-study-body[data-padded="true"] {
+  padding-inline: var(--case-study-gutter);
 }
 
 @keyframes case-study-body-in {

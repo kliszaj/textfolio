@@ -65,6 +65,10 @@ export type BrowserLayout = ReturnType<typeof browserLayout>;
 // to spare below and above it.
 const FIT_WIDTH_BELOW_ASPECT = 1.3;
 const FIT_WIDTH_STRENGTH = 0.85;
+// Narrow windows also move the desk sideways, so less of it is cut off: from
+// the default x of -3 to -5 between FIT_WIDTH_BELOW_ASPECT and a square view.
+const NARROW_X_NUDGE = -2;
+const NARROW_X_FULL_AT_ASPECT = 1;
 
 export function idlePose(screen: ScreenPose, framing: DeskFraming, aspect: number) {
   const narrow = Math.pow(Math.max(1, FIT_WIDTH_BELOW_ASPECT / aspect), FIT_WIDTH_STRENGTH);
@@ -72,7 +76,8 @@ export function idlePose(screen: ScreenPose, framing: DeskFraming, aspect: numbe
   const right = new THREE.Vector3().crossVectors(offset, new THREE.Vector3(0, 1, 0)).normalize().negate();
   const up = new THREE.Vector3().crossVectors(offset, right).normalize();
   const height = 2 * offset.length() * Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-  const shift = right.multiplyScalar(-framing.x / 100 * height * aspect).addScaledVector(up, -framing.y / 100 * height);
+  const nudge = NARROW_X_NUDGE * THREE.MathUtils.clamp((FIT_WIDTH_BELOW_ASPECT - aspect) / (FIT_WIDTH_BELOW_ASPECT - NARROW_X_FULL_AT_ASPECT), 0, 1);
+  const shift = right.multiplyScalar(-(framing.x + nudge) / 100 * height * aspect).addScaledVector(up, -framing.y / 100 * height);
   return {
     position: screen.center.clone().add(offset).add(shift),
     target: screen.center.clone().add(new THREE.Vector3(0, -IDLE_TARGET_DROP, 0)).add(shift),

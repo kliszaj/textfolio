@@ -5,7 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { useDeskTime } from "./DeskClock";
 import type { ScreenPose } from "./DeskModel";
-import { windowLightStrength } from "./DuskSky";
+import { morningLightStrength, windowLightStrength } from "./DuskSky";
 import { MAX_FRAME_DELTA, useRenderAfterChange } from "./renderOnDemand";
 
 const FLOOR_SHADOW_OPACITY = 0.3;
@@ -115,78 +115,138 @@ export function DeskLighting({ solar, screen }: { solar: ReturnType<typeof useDe
   </>;
 }
 
-// The last sun through the window, falling on the wall behind the desk in the
-// Window light twilight style. A soft four-pane patch in the scene rather than
-// on the backdrop, so it turns with the room when the desk is orbited. It
-// slides down, stretches and fades as the sun sets.
-const WINDOW_LIGHT_AT = { x: 0.75, z: -0.5 };
-const WINDOW_LIGHT_OPACITY = 1;
-// windowLightStrength peaks around 0.6 at sunset; this lifts the patch to
-// nearly full there.
+// Sun through the window, falling on the wall behind the desk: the last of it
+// at sunset, pink to amber, on one side; the first of it after sunrise,
+// golden, on the other, since the sun rises and sets on opposite sides. A
+// soft four-pane patch in the scene rather than on the backdrop, so it turns
+// with the room when the desk is orbited, plus a little of its light on the
+// desk. Both fade in slowly while moving the way the sun moves them: the
+// sunset patch climbs the wall as the sun sinks, so it rises in from below
+// and leaves upward; the morning one slides down as the sun climbs, so it
+// comes in from above and leaves downward.
+type WindowSide = {
+  // Across the wall, and which way the panes lean.
+  x: number;
+  lean: number;
+  stops: [number, string][];
+  glowColor: string;
+  glowAt: [number, number, number];
+  active: (morning: boolean) => boolean;
+  strength: (horizon: number, nightMix: number) => number;
+  // Which way the patch travels up the wall over its time: 1 rising, -1 falling.
+  travel: 1 | -1;
+};
+const EVENING: WindowSide = {
+  x: 0.75,
+  lean: -0.1,
+  stops: [[0, "#ff7fae"], [0.5, "#ff9a8f"], [1, "#ffbf72"]],
+  glowColor: "#ff94a8",
+  glowAt: [0.55, 1.35, -0.35],
+  active: (morning) => !morning,
+  strength: windowLightStrength,
+  travel: 1,
+};
+const MORNING: WindowSide = {
+  x: -0.75,
+  lean: 0.1,
+  stops: [[0, "#ffe39a"], [0.5, "#ffca5c"], [1, "#ffab45"]],
+  glowColor: "#ffc46a",
+  glowAt: [-0.55, 1.35, -0.35],
+  active: (morning) => morning,
+  strength: morningLightStrength,
+  travel: -1,
+};
+const WINDOW_LIGHT_Z = -0.5;
+// The strength functions peak around 0.6 (evening) or 1 (morning); this lifts
+// the evening patch to nearly full at sunset, and is capped at 1.
 const WINDOW_LIGHT_BOOST = 1.7;
-// Sunset through the glass: pink at the top of the panes, warming to amber.
-const SUNSET_STOPS: [number, string][] = [[0, "#ff7fae"], [0.5, "#ff9a8f"], [1, "#ffbf72"]];
-// A little of that light reaching the desk, from the window's side.
-const WINDOW_GLOW_COLOR = "#ff94a8";
 const WINDOW_GLOW_INTENSITY = 2.4;
+// Slower than the room's lights: the patch fades in over a couple of seconds
+// while easing a short way into place, rather than sliding with the clock.
+const PATCH_FADE_RATE = 1.6;
+const PATCH_DRIFT_RATE = 1.2;
+// The entrance: how far below or above it starts, and how quickly it arrives.
+const PATCH_ENTRANCE_DISTANCE = 0.3;
+const PATCH_ARRIVE_RATE = 0.9;
+const PATCH_SETTLE_SECONDS = 6;
 const scratchToCamera = new THREE.Vector3();
 
-export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof useDeskTime>["solar"]; glow: string; enabled: boolean }) {
+function paneTexture(side: WindowSide) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d")!;
+  ctx.filter = "blur(16px)";
+  ctx.fillStyle = "#ffffff";
+  // Four panes thrown across the wall, upright with just a slight lean...
+  ctx.setTransform(1, 0.03 * Math.sign(-side.lean), side.lean, 1, side.lean < 0 ? 150 : 115, 70);
+  for (const [x, y] of [[0, 0], [150, 0], [0, 190], [150, 190]]) ctx.fillRect(x, y, 135, 175);
+  // ...coloured top to bottom by the light, keeping their soft edges.
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-in";
+  const gradient = ctx.createLinearGradient(0, 40, 0, 480);
+  for (const [at, color] of side.stops) gradient.addColorStop(at, color);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 512, 512);
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  return map;
+}
+
+function WindowPatch({ side, solar, tint, enabled }: { side: WindowSide; solar: ReturnType<typeof useDeskTime>["solar"]; tint: THREE.Color; enabled: boolean }) {
   const patch = useRef<THREE.Mesh>(null);
-  const material = useMemo(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext("2d")!;
-    ctx.filter = "blur(16px)";
-    ctx.fillStyle = "#ffffff";
-    // Four panes thrown across the wall, upright with just a slight lean...
-    ctx.setTransform(1, 0.03, -0.1, 1, 150, 70);
-    for (const [x, y] of [[0, 0], [150, 0], [0, 190], [150, 190]]) ctx.fillRect(x, y, 135, 175);
-    // ...coloured top to bottom by the sunset, keeping their soft edges.
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.filter = "none";
-    ctx.globalCompositeOperation = "source-in";
-    const sunset = ctx.createLinearGradient(0, 40, 0, 480);
-    for (const [at, color] of SUNSET_STOPS) sunset.addColorStop(at, color);
-    ctx.fillStyle = sunset;
-    ctx.fillRect(0, 0, 512, 512);
-    const map = new THREE.CanvasTexture(canvas);
-    map.colorSpace = THREE.SRGBColorSpace;
-    return new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, opacity: 0, toneMapped: false });
-  }, []);
+  const glowLight = useRef<THREE.PointLight>(null);
+  const material = useMemo(
+    () => new THREE.MeshBasicMaterial({ map: paneTexture(side), transparent: true, depthWrite: false, opacity: 0, toneMapped: false }),
+    [side],
+  );
   useEffect(() => () => {
     material.map?.dispose();
     material.dispose();
   }, [material]);
-  // The panes carry the sunset's colours; the twilight glow only nudges them.
-  const tint = useMemo(() => new THREE.Color("#ffffff").lerp(new THREE.Color(glow), 0.2), [glow]);
-  const glowLight = useRef<THREE.PointLight>(null);
-  useRenderAfterChange(LIGHT_SETTLE_SECONDS, [solar, tint, enabled]);
+  useRenderAfterChange(PATCH_SETTLE_SECONDS, [solar, tint, enabled]);
+  // How low the sun is, eased: where the patch sits follows this, not the
+  // clock, so a jump in time is a gentle drift. null until the first frame.
+  const drift = useRef<number | null>(null);
+  // 0 away, 1 in place, eased; and which end of the wall it's coming from or
+  // going to (-1 below, 1 above), picked only while it is fully in or out so
+  // a change of mind mid-way turns it back rather than making it jump.
+  const arrival = useRef(0);
+  const away = useRef(-side.travel);
 
   useFrame(({ camera }, delta) => {
     const mesh = patch.current;
     if (!mesh) return;
+    const step = Math.min(delta, MAX_FRAME_DELTA);
     const horizon = solar?.horizonMix ?? 0;
-    const evening = !(solar?.morning ?? true);
-    const d = THREE.MathUtils.smoothstep(horizon, 0.35, 1);
+    const nightMix = solar?.backgroundNightMix ?? 0;
+    const on = enabled && side.active(solar?.morning ?? true);
+    const strength = on ? side.strength(horizon, nightMix) : 0;
+    const low = THREE.MathUtils.smoothstep(horizon, 0.35, 1);
+    drift.current = drift.current === null ? low : THREE.MathUtils.lerp(drift.current, low, 1 - Math.exp(-step * PATCH_DRIFT_RATE));
+    const d = drift.current;
     // The wall itself isn't drawn, so fade the light as the orbit turns to
     // see it edge-on rather than leave a floating sliver.
     const toCamera = scratchToCamera.copy(camera.position).sub(mesh.position).normalize();
     const facing = THREE.MathUtils.smoothstep(toCamera.z, 0.25, 0.7);
-    const target = enabled && evening
-      ? Math.min(1, windowLightStrength(horizon, solar?.backgroundNightMix ?? 0) * WINDOW_LIGHT_BOOST) * WINDOW_LIGHT_OPACITY * facing
-      : 0;
-    const blend = 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * LIGHT_EASE_RATE);
+    const fade = 1 - Math.exp(-step * PATCH_FADE_RATE);
     const light = mesh.material as THREE.MeshBasicMaterial;
-    light.opacity = THREE.MathUtils.lerp(light.opacity, target, blend);
-    // Not faded with the orbit: the light on the desk is there from any side.
-    const glowTarget = enabled && evening ? windowLightStrength(horizon, solar?.backgroundNightMix ?? 0) * WINDOW_GLOW_INTENSITY : 0;
-    if (glowLight.current) glowLight.current.intensity = THREE.MathUtils.lerp(glowLight.current.intensity, glowTarget, blend);
-    light.color.lerp(tint, blend);
+    light.opacity = THREE.MathUtils.lerp(light.opacity, Math.min(1, strength * WINDOW_LIGHT_BOOST) * facing, fade);
+    light.color.lerp(tint, fade);
     mesh.visible = light.opacity > 0.003;
-    mesh.position.set(WINDOW_LIGHT_AT.x - 0.25 * d, THREE.MathUtils.lerp(1.5, 1.1, d), WINDOW_LIGHT_AT.z);
-    mesh.scale.set(1 + 0.15 * d, 1 + 0.35 * d, 1);
+    const present = strength > 0.02 ? 1 : 0;
+    if (arrival.current < 0.02 && present) away.current = -side.travel;
+    if (arrival.current > 0.98 && !present) away.current = side.travel;
+    arrival.current = THREE.MathUtils.lerp(arrival.current, present, 1 - Math.exp(-step * PATCH_ARRIVE_RATE));
+    const entrance = away.current * PATCH_ENTRANCE_DISTANCE * (1 - THREE.MathUtils.smootherstep(arrival.current, 0, 1));
+    // The lower the sun, the higher and longer the patch, and the further it
+    // reaches across: a small range, so it settles rather than slides.
+    const toward = Math.sign(side.lean);
+    mesh.position.set(side.x + 0.12 * d * toward, 1.22 - 0.18 * (1 - d) + entrance, WINDOW_LIGHT_Z);
+    mesh.scale.set(1 + 0.08 * d, 1 + 0.18 * d, 1);
+    // Not faded with the orbit: the light on the desk is there from any side.
+    if (glowLight.current) glowLight.current.intensity = THREE.MathUtils.lerp(glowLight.current.intensity, strength * WINDOW_GLOW_INTENSITY, fade);
   });
 
   return (
@@ -194,7 +254,18 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
       <mesh ref={patch} material={material} renderOrder={-1}>
         <planeGeometry args={[1.1, 1.1]} />
       </mesh>
-      <pointLight ref={glowLight} position={[0.55, 1.35, -0.35]} color={WINDOW_GLOW_COLOR} intensity={0} distance={2.6} decay={2} />
+      <pointLight ref={glowLight} position={side.glowAt} color={side.glowColor} intensity={0} distance={2.6} decay={2} />
+    </>
+  );
+}
+
+export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof useDeskTime>["solar"]; glow: string; enabled: boolean }) {
+  // The panes carry their own colours; the twilight glow only nudges them.
+  const tint = useMemo(() => new THREE.Color("#ffffff").lerp(new THREE.Color(glow), 0.2), [glow]);
+  return (
+    <>
+      <WindowPatch side={EVENING} solar={solar} tint={tint} enabled={enabled} />
+      <WindowPatch side={MORNING} solar={solar} tint={tint} enabled={enabled} />
     </>
   );
 }

@@ -20,11 +20,16 @@ export function nextDeskStage(date: Date, direction: -1 | 1): Date {
     stages.push(morning, afternoon, twilight, night);
   }
   stages.sort((a, b) => a.getTime() - b.getTime());
-  // A preview follows the live clock between clicks; ignore up to a minute
-  // of drift so a stage cannot accidentally select itself again.
-  return direction === 1
-    ? stages.find((stage) => stage.getTime() > date.getTime() + 60000)!
-    : stages.reverse().find((stage) => stage.getTime() < date.getTime() - 60000)!;
+  // A preview follows the live clock between clicks; allow a minute of drift
+  // so a stage cannot accidentally select itself again.
+  if (direction === 1) return stages.find((stage) => stage.getTime() > date.getTime() + 60000)!;
+  // Back goes to the stage before the one this time belongs to. From a stage
+  // that's simply the previous one; from the live clock between stages it
+  // skips the stage just behind, which looks like what's already showing (at
+  // 16:40 the room is already in its sunset look, so stepping back to the
+  // 16:02 sunset would seem to show twilight twice).
+  const current = stages.findLastIndex((stage) => stage.getTime() <= date.getTime() + 60000);
+  return stages[current - 1];
 }
 
 // Today's Stockholm sunset: the same moment the clock's twilight stop uses.

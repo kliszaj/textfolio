@@ -18,8 +18,9 @@ test("renders the case study title and its opening line for a known slug", async
   // for a case study that trims its overview down to just the one-liner
   // above it (Jam), the one-liner stands in as the opening line instead.
   const opener = caseStudies[0].oneLiner ?? caseStudies[0].overview!;
-  const detail = document.querySelector('[data-testid="case-study-detail"]');
-  expect(detail).toHaveTextContent(opener.split(/\s{2,}/)[0]);
+  // The standfirst leads the reading columns, ahead of the long read.
+  const columns = document.querySelector('[data-testid="case-study-columns"]');
+  expect(columns).toHaveTextContent(opener.split(/\s{2,}/)[0]);
 });
 
 test("sends the last case study's next arrow to About, not back to Jam", async () => {

@@ -228,11 +228,11 @@ test("uses the medium body face for the right-hand reading column", () => {
   expect(screen.getByTestId("case-study-detail")).toHaveClass("font-medium");
 });
 
-test("keeps the framing headline close to the first paragraph while preserving the wide columns", () => {
+test("spaces the standfirst, long read and facts on the 8px scale", () => {
   render(<CaseStudyView caseStudy={written} />);
   expect(screen.getByTestId("case-study-columns")).toHaveClass(
-    "gap-y-8",
-    "gap-x-12"
+    "gap-x-6",
+    "gap-y-8"
   );
 });
 
@@ -496,7 +496,7 @@ test("sets the facts column beside the long read once there are facts in it", ()
   render(<CaseStudyView caseStudy={written} />);
   expect(screen.getByTestId("case-study-facts-aside")).toBeInTheDocument();
   expect(screen.getByTestId("case-study-columns")).toHaveClass(
-    "xl:grid-cols-[1fr_18rem]"
+    "lg:grid-cols-12"
   );
 });
 
@@ -504,7 +504,7 @@ test("drops the facts column and runs the text full width when there are no fact
   render(<CaseStudyView caseStudy={caseStudy} />);
   expect(screen.queryByTestId("case-study-facts-aside")).not.toBeInTheDocument();
   expect(screen.getByTestId("case-study-columns")).not.toHaveClass(
-    "xl:grid-cols-[1fr_18rem]"
+    "lg:grid-cols-12"
   );
 });
 
@@ -514,7 +514,7 @@ test("renders facts in the right column regardless of factsLayout", () => {
   expect(aside).toHaveTextContent("Role");
   expect(aside).toHaveTextContent("Lead Designer");
   expect(screen.getByTestId("case-study-columns")).toHaveClass(
-    "xl:grid-cols-[1fr_18rem]"
+    "lg:grid-cols-12"
   );
 });
 
@@ -641,9 +641,13 @@ test("preserves authored media proportions in a sequential gallery", () => {
 
   expect(screen.getByTestId("case-study-media-grid")).toHaveAttribute("data-layout", "sequence");
   const tiles = screen.getAllByTestId("case-study-tile");
-  expect(tiles[0]).toHaveClass("col-span-2", "aspect-video");
-  expect(tiles[1]).toHaveClass("col-span-1", "aspect-[9/16]");
-  expect(tiles[2]).toHaveClass("col-span-1", "aspect-[9/16]");
+  const frame = (tile: HTMLElement) => tile.querySelector(".case-study-tile-frame");
+  expect(tiles[0]).toHaveClass("col-span-2");
+  expect(frame(tiles[0])).toHaveClass("aspect-video");
+  expect(tiles[1]).toHaveClass("col-span-1");
+  expect(frame(tiles[1])).toHaveClass("aspect-[9/16]");
+  expect(tiles[2]).toHaveClass("col-span-1");
+  expect(frame(tiles[2])).toHaveClass("aspect-[9/16]");
   const videos = screen.getAllByTestId("case-study-tile").map((tile) =>
     tile.querySelector("video")
   );
@@ -787,7 +791,7 @@ test("offers a sketched home icon in the header's upper-right corner", () => {
   // CSS shares the header's responsive content inset (including the 100rem
   // centred cap); the link itself must not carry a separate right offset.
   expect(home.className).toMatch(/top-5/);
-  expect(home.className).toMatch(/md:top-7/);
+  // From 48rem the stylesheet centres it in the margin, level with the title.
   expect(home.className).not.toMatch(/(?:^|\s)(?:left|md:left|2xl:left)-/);
   expect(home.className).not.toMatch(/-translate-x-1\/2/);
   expect(home.className).not.toMatch(/hover:opacity-/);
@@ -851,4 +855,44 @@ test("leaves modified clicks to the browser", () => {
   // Opening home in a new tab should not start an animation in this one.
   fireEvent.click(screen.getByTestId("case-study-home"), { button: 0, metaKey: true });
   expect(screen.getByTestId("case-study-view")).toHaveAttribute("data-exiting", "false");
+});
+
+test("numbers a sequence's captions in page order, the film first", () => {
+  const captioned = {
+    ...caseStudy,
+    videoSrc: "/film.mp4",
+    videoCaption: "The film",
+    mediaLayout: "sequence" as const,
+    media: [
+      { src: "/a.mp4", alt: "A", kind: "video" as const, span: "full" as const, aspect: "landscape" as const, caption: "First clip" },
+      { src: "/b.mp4", alt: "B", kind: "video" as const, span: "full" as const, aspect: "landscape" as const },
+      { src: "/c.mp4", alt: "C", kind: "video" as const, span: "full" as const, aspect: "landscape" as const, caption: "Second clip" },
+    ],
+  };
+  const { container } = render(<CaseStudyView caseStudy={captioned} />);
+  const captions = [...container.querySelectorAll("figcaption")].map((caption) => caption.textContent);
+  expect(captions).toEqual(["01The film", "02First clip", "03Second clip"]);
+});
+
+test("ends on a footer that leads to the next case study, its arrow in that colour", () => {
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  const next = screen.getByTestId("case-study-footer-next");
+  expect(next).toHaveAttribute("href", "/work/next-case");
+  expect(next).toHaveTextContent("Next Case");
+  expect(next.querySelector('[aria-hidden="true"]')).toHaveStyle({ backgroundColor: "#F850C0" });
+});
+
+test("the footer lists every page, with the one being read marked", () => {
+  const jam = getCaseStudyBySlug("spotify-jam")!;
+  render(<CaseStudyView caseStudy={jam} />);
+  const footer = screen.getByTestId("case-study-footer");
+  const current = footer.querySelector('[aria-current="page"]');
+  expect(current).toHaveAttribute("aria-label", "Spotify Jam");
+  expect(footer.querySelectorAll("nav a")).toHaveLength(5);
+});
+
+test("the footer has no next block when there's no next case study", () => {
+  render(<CaseStudyView caseStudy={caseStudy} />);
+  expect(screen.getByTestId("case-study-footer")).toBeInTheDocument();
+  expect(screen.queryByTestId("case-study-footer-next")).not.toBeInTheDocument();
 });

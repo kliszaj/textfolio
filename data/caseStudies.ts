@@ -29,6 +29,8 @@ export type CaseStudyMedia = {
   kind?: "image" | "video";
   span?: "full" | "tall" | "half";
   aspect?: "landscape" | "portrait" | "wide";
+  // Shown under the tile, numbered in order with the page's other captions.
+  caption?: string;
 };
 
 // An editorial portrait that belongs beside the introduction rather than in
@@ -55,6 +57,8 @@ export type CaseStudy = {
   blurb: string;
   // Optional showreel for the case study, played on its own page.
   videoSrc?: string;
+  // Caption for videoSrc; it counts as the first numbered caption.
+  videoCaption?: string;
   // A short, hand-trimmed restatement of the overview's opening thought,
   // set above it in the condensed display face -- authored rather than
   // sliced out of overview, so it can drop words like the project's own
@@ -135,12 +139,14 @@ export const caseStudies: CaseStudy[] = [
       },
     ],
     videoSrc: "/assets/jam.mp4",
+    videoCaption: "Jam, in the launch film",
     mediaLayout: "sequence",
     mediaPadded: true,
     media: [
       {
         src: "/assets/jam-main-flow.mp4",
         alt: "Spotify Jam main flow",
+        caption: "The main flow: starting a Jam",
         kind: "video",
         span: "full",
         aspect: "landscape",
@@ -148,6 +154,7 @@ export const caseStudies: CaseStudy[] = [
       {
         src: "/assets/jam-host.mp4",
         alt: "Hosting a Spotify Jam",
+        caption: "Hosting a Jam",
         kind: "video",
         span: "half",
         aspect: "portrait",
@@ -155,6 +162,7 @@ export const caseStudies: CaseStudy[] = [
       {
         src: "/assets/jam-two-choice.mp4",
         alt: "Choosing how to join a Spotify Jam",
+        caption: "Choosing how to join",
         kind: "video",
         span: "half",
         aspect: "portrait",
@@ -162,6 +170,7 @@ export const caseStudies: CaseStudy[] = [
       {
         src: "/assets/jam-desktop.mp4",
         alt: "Spotify Jam desktop experience",
+        caption: "On desktop",
         kind: "video",
         span: "full",
         aspect: "landscape",
@@ -169,6 +178,7 @@ export const caseStudies: CaseStudy[] = [
       {
         src: "/assets/jam-tv.mp4",
         alt: "Spotify Jam TV experience",
+        caption: "On TV",
         kind: "video",
         span: "full",
         aspect: "landscape",

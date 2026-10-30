@@ -3,11 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { HomeIconAnimation } from "@/components/HomeIconAnimation";
 import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
-import { caseStudyRoute } from "@/data/caseStudies";
+import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
+import { ABOUT_PAGE } from "@/data/about";
+import { PageIndicator } from "@/components/PageIndicator";
 import { HEADER_SETTLE_MS, HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
 import {
@@ -34,6 +36,18 @@ type CaseStudyViewProps = {
 // header rather than filling it.
 
 // The drop back onto the stack. The inverse of the sheet lift that opened it.
+// The page's margin is wide enough to hold the Home icon beside the title
+// (globals.css, from 48rem), so it stays there when the header collapses
+// rather than playing its shrink-away animation.
+const WIDE_MARGIN_QUERY = "(min-width: 48rem)";
+function subscribeWideMargin(onChange: () => void) {
+  const mql = window.matchMedia(WIDE_MARGIN_QUERY);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+const getWideMargin = () => window.matchMedia(WIDE_MARGIN_QUERY).matches;
+const getWideMarginOnServer = () => false;
+
 const EXIT_ANIMATION_MS = 420;
 // Keep the first beat visible, then invite the reader onward before the long
 // read pushes the first evidence tile below the initial viewport.
@@ -253,6 +267,75 @@ function renderFactValue(fact: CaseStudyFact) {
   );
 }
 
+// A sequence tile's media sits in its own rounded frame so a caption can
+// follow it; a mosaic tile is the frame itself.
+function MaybeFrame({ className, aspect, children }: { className?: string; aspect?: CaseStudyMedia["aspect"]; children: ReactNode }) {
+  if (!className) return <>{children}</>;
+  return <div className={className} data-aspect={aspect}>{children}</div>;
+}
+
+function MediaCaption({ number, children }: { number?: string; children: ReactNode }) {
+  return (
+    <figcaption className="case-study-caption font-body font-medium">
+      {number && <span className="case-study-caption-number">{number}</span>}
+      {children}
+    </figcaption>
+  );
+}
+
+// The pages as a row of dots, each naming itself in a chip above on hover
+// or focus: along the foot of a phone screen, and in the footer.
+function PageDots({ current }: { current: string }) {
+  return (
+    <>
+      {RAIL_PAGES.map((page) => (
+        <Link
+          key={page.slug}
+          href={caseStudyRoute(page)}
+          aria-label={page.title}
+          aria-current={page.slug === current ? "page" : undefined}
+          className="group relative grid place-items-center focus-visible:outline-none"
+        >
+          <span
+            aria-hidden="true"
+            className="size-3 rounded-full transition-transform duration-200 group-hover:scale-150 group-focus-visible:scale-150"
+            // The current page as on the margin rail: a bullseye, larger.
+            style={page.slug === current ? {
+              backgroundColor: "var(--color-cream)",
+              boxShadow: `inset 0 0 0 3.5px ${page.thumbnailColor}`,
+              scale: "1.3",
+            } : { backgroundColor: page.thumbnailColor }}
+          />
+          {/* Its name on hover or focus, above the row, as the margin
+              rail's chip opens beside it. Drawn from data-title so the
+              name isn't in the page twice; the link already carries it. */}
+          <span
+            aria-hidden="true"
+            data-title={page.title}
+            className="pointer-events-none absolute bottom-[calc(100%+1.25rem)] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-sm font-body font-bold text-ink opacity-0 transition-opacity duration-150 after:content-[attr(data-title)] group-hover:opacity-100 group-focus-visible:opacity-100"
+            style={{ backgroundColor: page.thumbnailColor }}
+          />
+        </Link>
+      ))}
+    </>
+  );
+}
+
+function FooterArrow({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 12h15m0 0-6-6m6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// The footer's top within this many screen heights of the top of the window
+// hides the side rail: a quarter of a screen before it scrolls into view.
+const FOOTER_HIDES_RAILS_AT = 1.25;
+
+// Every page the desk's rail offers, About last.
+const RAIL_PAGES = [...caseStudies, ABOUT_PAGE];
+
 export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps) {
   const {
     oneLiner,
@@ -266,7 +349,13 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     mediaLayout = "mosaic",
     mediaPadded = false,
     videoSrc,
+    videoCaption,
   } = caseStudy;
+  // Captions are numbered in page order, the film's first.
+  const captionNumbers = new Map<string | number, string>();
+  for (const key of [...(videoSrc && videoCaption ? ["video"] : []), ...media.flatMap((item, index) => (item.caption ? [index] : []))]) {
+    captionNumbers.set(key, String(captionNumbers.size + 1).padStart(2, "0"));
+  }
   const hasMedia = Boolean(videoSrc) || media.length > 0;
   const hasFacts = facts.length > 0;
   const hasBodyContent = hasFacts || Boolean(overview) || Boolean(introImage) || sections.length > 0 || hasMedia || !children;
@@ -303,15 +392,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     ? sections.slice(0, COLLAPSED_SECTION_COUNT)
     : sections;
 
-  const [hasWideMargin, setHasWideMargin] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 80rem)");
-    setHasWideMargin(mql.matches);
-    const onChange = () => setHasWideMargin(mql.matches);
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
+  // Read straight from the media query rather than mirrored into state by an
+  // effect. False on the server, as before, so hydration is unchanged.
+  const hasWideMargin = useSyncExternalStore(subscribeWideMargin, getWideMargin, getWideMarginOnServer);
 
   useEffect(() => {
     clearArrivingFromDesk();
@@ -530,6 +613,32 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     return () => window.removeEventListener("keydown", onKey);
   }, [leave]);
 
+  // The footer carries its own dots, and two sets of dots are never on screen
+  // at once: the side rail and the phone row step aside from just before the
+  // footer's first pixel scrolls in (a quarter of a screen early), so their
+  // fade is done by the time its dots arrive.
+  const footerRef = useRef<HTMLElement>(null);
+  const [footerInView, setFooterInView] = useState(false);
+  useEffect(() => {
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      const footer = footerRef.current;
+      if (footer) setFooterInView(footer.getBoundingClientRect().top < window.innerHeight * FOOTER_HIDES_RAILS_AT);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
+
   const scrollToTop = useCallback(() => {
     // The title is an explicit request to return homeward, so reveal the full
     // header immediately instead of waiting for the smooth scroll to finish.
@@ -543,10 +652,59 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     });
   }, []);
 
+  const footerHome = (
+    <Link
+      href="/"
+      onClick={(event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        leave();
+      }}
+      className="hover:underline underline-offset-4"
+    >
+      Home
+    </Link>
+  );
+  const footerTop = (
+    <button type="button" onClick={scrollToTop} className="cursor-pointer hover:underline underline-offset-4">
+      Back to top ↑
+    </button>
+  );
+  const footerDots = (
+    <nav aria-label="Portfolio pages" className="flex gap-3">
+      <PageDots current={caseStudy.slug} />
+    </nav>
+  );
+
   return (
     <>
       {/* Revealed behind the page during the explicit home transition. */}
       <div aria-hidden="true" className="fixed inset-0 -z-10 bg-cream" />
+      {/* The same pages as the desk's rail, so any of them is a click away
+          from any other: in the right margin from md, a row along the foot of
+          the screen on a phone. Outside <main>, whose exit slide would carry
+          fixed children with it; they fade as it leaves instead. */}
+      <PageIndicator
+        placement="margin"
+        align="right"
+        caseStudies={RAIL_PAGES}
+        current={caseStudy.slug}
+        fanProgress={exiting || footerInView ? 1 : 0}
+        onSelect={(picked) => {
+          if (picked.slug !== caseStudy.slug) router.push(caseStudyRoute(picked));
+        }}
+      />
+      <nav
+        aria-label="Portfolio pages"
+        className="case-study-rail-row fixed bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-3 rounded-full bg-cream/90 px-4 py-2.5 shadow-md ring-1 ring-ink/10 backdrop-blur md:hidden"
+        style={{
+          opacity: exiting || footerInView ? 0 : 1,
+          pointerEvents: exiting || footerInView ? "none" : undefined,
+          transition: "opacity 200ms ease-out",
+        }}
+      >
+        <PageDots current={caseStudy.slug} />
+      </nav>
       <main
         data-testid="case-study-view"
         data-exiting={exiting}
@@ -601,7 +759,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 leave();
               }}
               aria-label="Home"
-              className="case-study-home absolute top-5 md:top-7 xl:top-8"
+              className="case-study-home absolute top-5"
             >
               {/* boil-line redraws the icon's edges each frame with the same
                   turbulence displacement as the rest of the hand-drawn marks,
@@ -634,7 +792,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   // opens into a pill naming it, so the next sheet announces
                   // itself before you commit to it.
                   style={{ backgroundColor: next.thumbnailColor }}
-                  className="case-study-next group shrink-0 inline-flex items-center rounded-full h-14 md:h-16"
+                  className="case-study-next group shrink-0 inline-flex items-center rounded-full h-12"
                 >
                   <span className="sr-only">Next project:</span>
                   <span
@@ -643,8 +801,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   >
                     {next.title}
                   </span>
-                  <span className="case-study-next-arrow grid place-items-center size-14 md:size-16 shrink-0">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <span className="case-study-next-arrow grid place-items-center size-12 shrink-0">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path
                         d="M4 12h15m0 0-6-6m6 6-6 6"
                         stroke="currentColor"
@@ -664,17 +822,24 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         <div
           data-testid="case-study-body"
           data-padded={mediaPadded}
-          className="case-study-body py-10 md:py-14"
+          className="case-study-body pt-10 pb-20 md:pt-16 md:pb-32"
         >
           <div
             data-testid="case-study-columns"
-            className={`mx-auto grid w-full max-w-[100rem] gap-x-12 gap-y-8${
-              hasFacts ? " xl:grid-cols-[1fr_18rem] xl:gap-x-16" : ""
+            className={`mx-auto grid w-full max-w-[100rem] gap-x-6 gap-y-8${
+              hasFacts ? " lg:grid-cols-12" : ""
             }`}
           >
+            {/* The standfirst leads, across the full width; the long read
+                and the facts share the row below it. */}
+            {oneLiner && (
+              <p className="case-study-one-liner font-body font-medium lg:col-span-12">
+                {oneLiner}
+              </p>
+            )}
             <div
               data-testid="case-study-detail"
-              className="font-body font-medium"
+              className={`font-body font-medium${hasFacts ? " lg:col-span-7" : ""}`}
             >
               {introImage && (
                 <figure
@@ -691,11 +856,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   />
                 </figure>
               )}
-              {oneLiner && (
-                <p className="case-study-one-liner font-body font-medium mb-6">
-                  {oneLiner}
-                </p>
-              )}
               {overview && (
                 <p className="case-study-copy case-study-intro-copy mb-8">
                   {renderLinkedCopy(overview, overviewLink, next?.thumbnailColor)}
@@ -704,7 +864,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               {sections.length > 0 ? (
                 <>
                 {visibleSections.map((section) => (
-                  <section key={section.heading ?? section.body} className="case-study-copy mb-8 last:mb-0">
+                  <section key={section.heading ?? section.body} className="case-study-copy mb-6 last:mb-0">
                     {section.heading && (
                       <h2 className="font-body font-bold text-2xl leading-none mb-3">{section.heading}</h2>
                     )}
@@ -756,7 +916,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             {hasFacts && (
               <aside
                 data-testid="case-study-facts-aside"
-                className="case-study-facts-aside font-body font-medium xl:sticky xl:top-32 xl:self-start"
+                className="case-study-facts-aside font-body font-medium lg:col-start-9 lg:col-span-4 lg:sticky lg:top-32 lg:self-start"
               >
                 <dl className="case-study-facts">
                   {facts.map((fact) => (
@@ -778,9 +938,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               ref={mediaSectionRef}
               data-testid="case-study-media"
               data-padded={mediaPadded}
-              className="mx-auto mt-10 w-full max-w-[100rem]"
+              className="mx-auto mt-16 w-full max-w-[100rem] md:mt-24"
             >
               {videoSrc && (
+                <figure>
                 <LazyVideo
                   data-testid="case-study-video"
                   className="w-full mx-auto rounded-2xl"
@@ -794,21 +955,27 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   playsInline
                   controls
                 />
+                {videoCaption && <MediaCaption number={captionNumbers.get("video")}>{videoCaption}</MediaCaption>}
+                </figure>
               )}
               {media.length > 0 && (
                 <div
                   ref={mediaGridRef}
                   data-testid="case-study-media-grid"
                   data-layout={mediaLayout}
-                  className={`mt-8 grid grid-cols-2 gap-4 md:gap-6 ${
-                    mediaLayout === "mosaic" ? "auto-rows-[11rem] md:auto-rows-[16rem]" : ""
+                  className={`grid grid-cols-2 ${
+                    mediaLayout === "mosaic"
+                      ? "mt-8 gap-4 md:gap-6 auto-rows-[11rem] md:auto-rows-[16rem]"
+                      : "mt-8 gap-x-4 gap-y-8 md:mt-12 md:gap-x-6 md:gap-y-12"
                   }`}
                 >
                   {media.map((item, index) => {
                     const span = item.span ?? "half";
-                    const tileLayout = mediaLayout === "sequence"
-                      ? `${SEQUENCE_SPAN_CLASS[span]} ${item.aspect ? ASPECT_CLASS[item.aspect] : ""}`
-                      : SPAN_CLASS[span];
+                    const sequence = mediaLayout === "sequence";
+                    // In a sequence the tile is a figure holding its frame and
+                    // caption; a mosaic's fixed rows leave no room for one.
+                    const tileLayout = sequence ? SEQUENCE_SPAN_CLASS[span] : `${SPAN_CLASS[span]} overflow-hidden rounded-2xl bg-ink/20`;
+                    const frameLayout = `case-study-tile-frame overflow-hidden rounded-2xl bg-ink/20 ${item.aspect ? ASPECT_CLASS[item.aspect] : ""}`;
                     const row = mediaRows[index];
                     const paired = isPairedVideoTile(media, mediaRows, index);
                     // The pointer's x position across the whole row decides
@@ -828,8 +995,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         data-testid="case-study-tile"
                         data-span={span}
                         data-aspect={item.aspect}
-                        className={`${tileLayout} overflow-hidden rounded-2xl bg-ink/20`}
+                        className={`case-study-tile ${tileLayout}`}
                       >
+                        <MaybeFrame className={sequence ? frameLayout : undefined} aspect={item.aspect}>
                         {item.src ? (
                           item.kind === "video" ? (
                             <LazyVideo
@@ -856,7 +1024,11 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         ) : (
                           // No asset yet: hold the cell rather than render a
                           // broken image, so the gallery rhythm is still visible.
-                          <figcaption className="sr-only">{item.alt}</figcaption>
+                          <span className="sr-only">{item.alt}</span>
+                        )}
+                        </MaybeFrame>
+                        {sequence && item.caption && (
+                          <MediaCaption number={captionNumbers.get(index)}>{item.caption}</MediaCaption>
                         )}
                       </figure>
                     );
@@ -868,6 +1040,37 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         </div>
         )}
         {children}
+
+        {/* Where the page ends: one quiet row under a hairline -- Home and
+            back to top, the pages, and the next case study with an arrow in
+            its colour -- mirroring the header's Home and next. */}
+        <footer ref={footerRef} data-testid="case-study-footer" className="case-study-footer">
+          <div className="case-study-footer-signoff">
+            <div className="mx-auto grid w-full max-w-[100rem] items-center gap-6 border-t border-ink pt-7 pb-10 font-body font-medium text-[0.9375rem] md:grid-cols-[1fr_auto_1fr]">
+              <div className="flex justify-center gap-5 md:justify-start">
+                {footerHome}
+                {footerTop}
+              </div>
+              <div className="flex justify-center max-md:order-first">{footerDots}</div>
+              {next && (
+                <Link
+                  data-testid="case-study-footer-next"
+                  href={caseStudyRoute(next)}
+                  className="group inline-flex items-center justify-center gap-3 md:justify-self-end"
+                >
+                  <span><span className="opacity-60">Next </span><span className="font-bold">{next.title}</span></span>
+                  <span
+                    aria-hidden="true"
+                    className="grid size-11 place-items-center rounded-full transition-transform duration-300 group-hover:translate-x-1"
+                    style={{ backgroundColor: next.thumbnailColor }}
+                  >
+                    <FooterArrow size={20} />
+                  </span>
+                </Link>
+              )}
+            </div>
+          </div>
+        </footer>
       </main>
     </>
   );

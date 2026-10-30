@@ -46,9 +46,10 @@ import {
 
 export type { DeskVariant } from "./deskLayout";
 
-// A freshly loaded case study opens its header full-bleed and settles over
-// 620ms. Coming back, the monitor waits that out so it shows the page at rest.
-const PAGE_SETTLE_MS = 700;
+// The monitor's copy of a case study shows at rest from its first paint (it
+// knows it's in a frame: app/layout.tsx), so coming back only waits a moment
+// for it to be painted after its HTML is parsed.
+const PAGE_SETTLE_MS = 150;
 // A cap on Home's wait for the monitor: past this the camera pulls back anyway
 // rather than leave the visitor staring at a page that seems not to respond.
 const PREPARE_TIMEOUT_MS = 1500;
@@ -483,6 +484,10 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
           visibility: shown ? "hidden" : "visible",
           // The same ink or cream as the name, so it reads on any background.
           "--circular-text-color": background.text,
+          // A step lighter than the display face's Black (the only heavier
+          // weight shipped): the body face in bold.
+          "--circular-text-font-family": "var(--font-pp-neue-montreal)",
+          "--circular-text-font-weight": 700,
         } as React.CSSProperties}
       >
         {/* A fixed 200px ring; three quarters of that on a phone. */}
@@ -505,6 +510,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
           <div className="desk-reveal absolute inset-0" data-shown={revealed}>
             <PageIndicator
               align="right"
+              alwaysShown
               caseStudies={SHEETS}
               // The one already on the monitor needs no reveal: zoom straight in.
               onSelect={(picked) => zoomTo(picked.slug === caseStudy?.slug ? { kind: "monitor" } : { kind: "caseStudy", caseStudy: picked })}
