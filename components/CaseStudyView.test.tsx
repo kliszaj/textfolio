@@ -542,8 +542,19 @@ test("inks the next control in the colour of the project it leads to", () => {
   });
 });
 
+// Places the footer this far down the page; jsdom otherwise measures
+// everything at 0, which reads as the footer already on screen.
+function placeFooterAt(top: number) {
+  return jest.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const at = this.dataset.testid === "case-study-footer" ? top : 0;
+    return { top: at, bottom: at, left: 0, right: 0, width: 0, height: 0, x: 0, y: at, toJSON() {} } as DOMRect;
+  });
+}
+
 test("names the next control after where it goes", () => {
+  const spy = placeFooterAt(5000);
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  spy.mockRestore();
   expect(screen.getByTestId("case-study-next")).toHaveAccessibleName(
     /Next project: Next Case/i
   );
@@ -727,48 +738,71 @@ test("sets the long read larger than the overview rail", () => {
   expect(body.closest(".case-study-copy")).not.toBeNull();
 });
 
-test("collapses long reads until the reader asks to continue", () => {
-  const longRead = {
-    ...written,
-    sections: [
-      { heading: "One", body: "First section." },
-      { heading: "Two", body: "Second section." },
-      { heading: "Three", body: "Third section." },
-      { heading: "Four", body: "Fourth section." },
-    ],
+// A page laid out in jsdom: the long read's top and full height, and where
+// the reading columns end and the media begins.
+function layOutPage({ textTop, textHeight, columnsBottom, mediaTop }: { textTop: number; textHeight: number; columnsBottom: number; mediaTop: number }) {
+  const box = (top: number, bottom = top) => ({ top, bottom, left: 0, right: 0, width: 0, height: bottom - top, x: 0, y: top, toJSON() {} }) as DOMRect;
+  const rect = jest.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    switch (this.dataset.testid) {
+      case "case-study-long-read": return box(textTop, textTop + textHeight);
+      case "case-study-columns": return box(0, columnsBottom);
+      case "case-study-media": return box(mediaTop);
+      case "case-study-footer": return box(10000);
+      default: return box(0);
+    }
+  });
+  const scroll = jest.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLElement) {
+    return this.dataset.testid === "case-study-long-read" ? textHeight : 0;
+  });
+  return () => {
+    rect.mockRestore();
+    scroll.mockRestore();
   };
-  render(<CaseStudyView caseStudy={longRead} next={nextStudy} />);
+}
 
-  expect(screen.getByText("First section.")).toBeInTheDocument();
-  expect(screen.queryByText("Second section.")).not.toBeInTheDocument();
-  expect(screen.queryByText("Third section.")).not.toBeInTheDocument();
+const withMedia = {
+  ...written,
+  videoSrc: "/assets/jam.mp4",
+  sections: [{ body: "First paragraph." }, { body: "Second paragraph." }],
+};
+
+test("cuts the long read short so the first video shows on the first screen", () => {
+  window.innerHeight = 800;
+  const restore = layOutPage({ textTop: 300, textHeight: 2000, columnsBottom: 2500, mediaTop: 2560 });
+  render(<CaseStudyView caseStudy={withMedia} next={nextStudy} />);
+  restore();
+
+  const longRead = screen.getByTestId("case-study-long-read");
+  expect(longRead).toHaveAttribute("data-cut", "true");
+  // Every paragraph is still there, just behind the cut.
+  expect(screen.getByText("Second paragraph.")).toBeInTheDocument();
   const toggle = screen.getByTestId("case-study-read-more");
   expect(toggle).toHaveTextContent("Read more");
   expect(toggle).toHaveAttribute("aria-expanded", "false");
 
   fireEvent.click(toggle);
-  expect(screen.getByText("Second section.")).toBeInTheDocument();
-  expect(screen.getByText("Third section.")).toBeInTheDocument();
-  expect(screen.getByText("Fourth section.")).toBeInTheDocument();
+  expect(longRead).toHaveAttribute("data-cut", "false");
   expect(toggle).toHaveTextContent("Show less");
   expect(toggle).toHaveAttribute("aria-expanded", "true");
 });
 
-test("keeps a continuous narrative unheaded while still offering Read more", () => {
-  const continuous = {
-    ...written,
-    sections: [
-      { body: "First continuation." },
-      { body: "Second continuation." },
-      { body: "Third continuation." },
-    ],
-  };
-  render(<CaseStudyView caseStudy={continuous} next={nextStudy} />);
+test("leaves the long read whole when the video already shows", () => {
+  window.innerHeight = 800;
+  const restore = layOutPage({ textTop: 100, textHeight: 200, columnsBottom: 300, mediaTop: 360 });
+  render(<CaseStudyView caseStudy={withMedia} next={nextStudy} />);
+  restore();
 
-  expect(screen.getByText("First continuation.")).toBeInTheDocument();
-  expect(screen.queryByText("Second continuation.")).not.toBeInTheDocument();
-  expect(screen.getByTestId("case-study-read-more")).toHaveTextContent("Read more");
-  expect(screen.queryByRole("heading", { name: "First continuation." })).not.toBeInTheDocument();
+  expect(screen.getByTestId("case-study-long-read")).toHaveAttribute("data-cut", "false");
+  expect(screen.queryByTestId("case-study-read-more")).not.toBeInTheDocument();
+});
+
+test("never cuts a page with no media to show", () => {
+  window.innerHeight = 800;
+  const restore = layOutPage({ textTop: 300, textHeight: 2000, columnsBottom: 2500, mediaTop: 2560 });
+  render(<CaseStudyView caseStudy={{ ...written, videoSrc: undefined, media: [], sections: withMedia.sections }} next={nextStudy} />);
+  restore();
+
+  expect(screen.queryByTestId("case-study-read-more")).not.toBeInTheDocument();
 });
 
 test("centres the collapsed bar's controls instead of letting them overflow it", () => {
@@ -874,12 +908,12 @@ test("numbers a sequence's captions in page order, the film first", () => {
   expect(captions).toEqual(["01The film", "02First clip", "03Second clip"]);
 });
 
-test("ends on a footer that leads to the next case study, its arrow in that colour", () => {
+test("ends on a footer that leads to the next case study", () => {
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
   const next = screen.getByTestId("case-study-footer-next");
   expect(next).toHaveAttribute("href", "/work/next-case");
   expect(next).toHaveTextContent("Next Case");
-  expect(next.querySelector('[aria-hidden="true"]')).toHaveStyle({ backgroundColor: "#F850C0" });
+  expect(screen.getByTestId("case-study-footer")).toHaveTextContent("Back to top");
 });
 
 test("the footer lists every page, with the one being read marked", () => {
@@ -895,4 +929,23 @@ test("the footer has no next block when there's no next case study", () => {
   render(<CaseStudyView caseStudy={caseStudy} />);
   expect(screen.getByTestId("case-study-footer")).toBeInTheDocument();
   expect(screen.queryByTestId("case-study-footer-next")).not.toBeInTheDocument();
+});
+
+test("the header's next button steps aside while the footer's is on screen", () => {
+  const spy = placeFooterAt(200);
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  spy.mockRestore();
+  expect(screen.getByTestId("case-study-next")).toHaveAttribute("aria-hidden", "true");
+  expect(screen.getByTestId("case-study-next")).toHaveAttribute("tabindex", "-1");
+  expect(screen.getByTestId("case-study-footer-next")).toHaveAccessibleName(/Next project: Next Case/i);
+});
+
+test("on a screen too short for even a couple of lines, the whole long read waits behind Read more", () => {
+  window.innerHeight = 800;
+  const restore = layOutPage({ textTop: 560, textHeight: 2000, columnsBottom: 2600, mediaTop: 2660 });
+  render(<CaseStudyView caseStudy={withMedia} next={nextStudy} />);
+  restore();
+
+  expect(screen.getByTestId("case-study-long-read").style.maxHeight).toMatch(/^0(px)?$/);
+  expect(screen.getByTestId("case-study-read-more")).toHaveTextContent("Read more");
 });

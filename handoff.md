@@ -479,17 +479,19 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   cream-centred bullseye, and as a row of dots along the bottom on a phone. Hidden
   on the desk's monitor (`[data-embedded]`).
 - **Case-study layout (option A of `prototype-spotify-jam-layout.html`).**
-  The one-liner is a full-width standfirst (up to 52px, max 22ch). The long
-  read is held to 62ch at 17–19px. Facts sit on hairlines: in columns 9–12
-  from lg, a row of three below it on tablets. Spacing is on an 8px scale:
+  Two columns on one 12-column grid from lg: the standfirst (up to 44px) and
+  the long read (62ch at 17–19px) share columns 1–7 and end on the same edge;
+  the facts sit on hairlines in columns 9–12, level with the standfirst's
+  top. Below lg the standfirst caps at 22ch and the facts are a row of three. Spacing is on an 8px scale:
   64px above the standfirst (from md), 32 below it, 96 to the media, 48 between clips, 128 to close.
   Sequence media can take a `caption` (and the film a `videoCaption`); the
   captions are numbered in page order. Phone clips keep 9:16 but are capped
   at 80svh tall, so a pair fits on screen.
 - **Case-study footer.** One row under a hairline (option D of
-  `prototype-case-study-footer.html`): Home and Back to top on the left, the
-  dots in the middle, "Next" and the next title with an arrow in its colour on
-  the right. On a phone it stacks, dots first.
+  `prototype-case-study-footer.html`): Back to top on the left, the dots in
+  the middle, and the next case study in the header's own pink pill on the
+  right (the header's next button steps aside while the footer is on
+  screen). On a phone it stacks, dots first.
 - **Never two sets of dots.** The side rail and the phone's bottom row fade
   out from a quarter of a screen before the footer scrolls in
   (`FOOTER_HIDES_RAILS_AT`), a scroll check rather than an
@@ -497,6 +499,33 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   frames, so scroll events never fire there; dispatch one by hand to test.
 - **Phone clips and captions.** The width cap is on the whole figure
   (`.case-study-tile`), so a caption starts under its clip's own edge.
+- **Header and title knobs.** The top of `:root` in `globals.css` holds the
+  case-study header's settings: `--case-study-header-height` (28vh),
+  `--case-study-standfirst-size`, `--case-study-title-ratio` (the title is
+  2.5x the standfirst), `--case-study-title-min`/`-max` (2.75rem/7.5rem), and
+  `--case-study-header-clearance` (room kept around the title: 7.5rem on
+  phones where Home sits above it, 4.5rem from 48rem). The title is the
+  standfirst times the ratio, capped by what the header has room for. Nothing
+  in TypeScript repeats these: the settle from the home page, the desk
+  monitor's copy and the dots rail all read the variables.
+- **Header panel (localhost only).** `CaseStudyTuning` puts a "Header" button
+  bottom-left on case studies, with sliders for height, ratio and max. It
+  saves to localStorage (so the desk monitor's copy follows) and has "Copy
+  CSS" to paste the values into `globals.css`, and Reset. The localhost check
+  is shared with the desk's settings in `lib/localTools.ts`.
+- **Read more keeps the work above the fold.** On case studies with media,
+  CaseStudyView measures where the first video would sit with the page at
+  rest and cuts the long read (whole lines, fading out) so at least
+  `MEDIA_PEEK_SHARE` (18%) of the screen, and never less than 120px, shows
+  video. Measured from things the cut doesn't move (the text's full height,
+  the gap above the media), so it can't oscillate. Fewer than two lines' room
+  means the whole long read waits behind Read more (the standfirst sums it
+  up). Below lg the facts wait too; from lg they stay beside the text unless
+  they alone would hold the video under 120px. Replaces the old count-based
+  collapse (three or more sections).
+- **Flaky test:** "the board keeps each name's best run" in the leaderboard
+  tests fails now and then in the full run but passes alone; looks
+  timing-related, not yet looked into.
 - **Lighter loader.** The desk's LOADING ring is set in Neue Montreal Bold
   rather than Frama Black (the only Frama weights in the repo are Black and
   Extralight).

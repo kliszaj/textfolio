@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { CaseStudyFocus } from "@/components/CaseStudyFocus";
 import { CircularText } from "@/components/CircularText";
 import { PageIndicator } from "@/components/PageIndicator";
+import { showLocalTools } from "@/lib/localTools";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import type { CaseStudy } from "@/data/caseStudies";
 import { DEFAULT_FOCUS_VARIANT_ID } from "@/lib/focusVariants";
@@ -65,14 +66,10 @@ const WHEEL_GESTURE_GAP_MS = 250;
 // comes in one piece after another.
 const UI_REVEAL_DELAY_MS = 500;
 const UI_REVEAL_STAGGER_MS = 140;
-// The settings panel is a tuning tool, not something visitors should meet:
-// it shows in development and on any build served from this machine
-// (localhost), never on the live site. DeskStage only runs in the browser
-// (DeskHost loads it with ssr: false), so the address is always there.
-const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$|\.localhost$/;
-function showDeskSettings() {
-  return process.env.NODE_ENV !== "production" || (typeof window !== "undefined" && LOCAL_HOST.test(window.location.hostname));
-}
+// The settings panel is a tuning tool (lib/localTools). DeskStage only runs
+// in the browser (DeskHost loads it with ssr: false), so the address is
+// always there to check.
+const showDeskSettings = showLocalTools;
 
 // Text over the stage background is plain ink or cream, never blended.
 const INK = "#1c1c1c";

@@ -10,6 +10,7 @@ import { LazyVideo } from "@/components/LazyVideo";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import { PageIndicator } from "@/components/PageIndicator";
+import { CaseStudyTuning } from "@/components/CaseStudyTuning";
 import { HEADER_SETTLE_MS, HEADER_SHRINK_AT_PX, nextHeaderShrunk } from "@/lib/stickyHeader";
 import { markReturningHome } from "@/hooks/useStackCollapse";
 import {
@@ -49,12 +50,16 @@ const getWideMargin = () => window.matchMedia(WIDE_MARGIN_QUERY).matches;
 const getWideMarginOnServer = () => false;
 
 const EXIT_ANIMATION_MS = 420;
-// Keep the first beat visible, then invite the reader onward before the long
-// read pushes the first evidence tile below the initial viewport.
-const COLLAPSED_SECTION_COUNT = 1;
-// Two concise beats are already an overview, not a long read. Preserve those
-// in full; three or more use the shorter opening above.
-const COLLAPSIBLE_SECTION_MINIMUM = COLLAPSED_SECTION_COUNT + 1;
+// The first screen always shows some of the work: the long read is cut short,
+// behind Read more, wherever it would push the first video lower than this
+// much above the bottom of the window...
+const MEDIA_PEEK_SHARE = 0.18;
+const MEDIA_PEEK_MIN_PX = 120;
+// ...showing at least this many lines of it, or, where even that would
+// crowd the video out, none: the standfirst above already sums it up.
+const READ_MORE_MIN_LINES = 2;
+// Room for the Read more button before it's on the page to measure.
+const READ_MORE_ESTIMATE_PX = 56;
 
 export function caseStudyTitleScale(naturalWidth: number, availableWidth: number): number {
   if (
@@ -387,10 +392,18 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   const mediaRows = caseStudyMediaRows(media);
   const hasPairedVideoRow = media.some((_, index) => isPairedVideoTile(media, mediaRows, index));
   const hasPlayableMedia = Boolean(videoSrc) || media.some((item) => item.kind === "video");
-  const hasCollapsibleLongRead = sections.length > COLLAPSIBLE_SECTION_MINIMUM;
-  const visibleSections = hasCollapsibleLongRead && !isLongReadExpanded
-    ? sections.slice(0, COLLAPSED_SECTION_COUNT)
-    : sections;
+  const longReadRef = useRef<HTMLDivElement>(null);
+  const readMoreRef = useRef<HTMLButtonElement>(null);
+  const columnsRef = useRef<HTMLDivElement>(null);
+  const factsRef = useRef<HTMLElement>(null);
+  const factsBlockRef = useRef(0);
+  const factsWideHeightRef = useRef(0);
+  // How tall the long read may be for the first video to show on the first
+  // screen (null when it all fits anyway), and whether the facts beside it
+  // must wait behind Read more too, on a screen too short for both.
+  const [longReadCap, setLongReadCap] = useState<number | null>(null);
+  const [factsWait, setFactsWait] = useState(false);
+  const longReadCut = longReadCap !== null && !isLongReadExpanded;
 
   // Read straight from the media query rather than mirrored into state by an
   // effect. False on the server, as before, so hydration is unchanged.
@@ -613,6 +626,71 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     return () => window.removeEventListener("keydown", onKey);
   }, [leave]);
 
+  // Works out where the first video would sit with the page at rest (header at
+  // its full height, scrolled to the top) and cuts the long read so it shows
+  // on the first screen. Measured from things the cut doesn't move -- the
+  // text's full height, the gap above the media -- so cutting it doesn't
+  // change the answer.
+  useEffect(() => {
+    if (!hasMedia) return;
+    const measure = () => {
+      const longRead = longReadRef.current;
+      const columns = columnsRef.current;
+      const mediaSection = mediaSectionRef.current;
+      const header = document.querySelector<HTMLElement>("[data-testid='case-study-header']");
+      if (!longRead || !columns || !mediaSection || !header) return;
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:absolute;visibility:hidden;height:var(--case-study-header-height)";
+      document.body.append(probe);
+      const restHeader = probe.offsetHeight;
+      probe.remove();
+      // Document positions as they'd be with the header at rest.
+      const shift = restHeader - header.offsetHeight + window.scrollY;
+      const textTop = longRead.getBoundingClientRect().top + shift;
+      const columnsBox = columns.getBoundingClientRect();
+      const gapToMedia = mediaSection.getBoundingClientRect().top - columnsBox.bottom;
+      const wide = window.matchMedia("(min-width: 64rem)").matches;
+      const facts = factsRef.current;
+      // Heights remembered from when the facts were showing, as they can't be
+      // measured while they wait behind Read more.
+      if (facts?.offsetParent) {
+        if (wide) factsWideHeightRef.current = facts.offsetHeight;
+        else factsBlockRef.current = facts.offsetHeight + parseFloat(getComputedStyle(columns).rowGap || "0");
+      }
+      // Beside the text from lg, the facts can hold the media down on their own.
+      const factsBottom = facts && wide ? columnsBox.top + shift + factsWideHeightRef.current : 0;
+      const limit = window.innerHeight - Math.max(MEDIA_PEEK_MIN_PX, window.innerHeight * MEDIA_PEEK_SHARE) - gapToMedia;
+      const fullText = longRead.scrollHeight;
+      const factsBelow = wide ? 0 : factsBlockRef.current;
+      if (Math.max(textTop + fullText + factsBelow, factsBottom) <= limit) {
+        setLongReadCap(null);
+        setFactsWait(false);
+        return;
+      }
+      const readMore = readMoreRef.current;
+      const readMoreBlock = readMore ? readMore.getBoundingClientRect().bottom - longRead.getBoundingClientRect().bottom : READ_MORE_ESTIMATE_PX;
+      const lineHeight = parseFloat(getComputedStyle(longRead.querySelector(".case-study-copy") ?? longRead).lineHeight) || 28;
+      // Whole lines, so the cut never slices through a row of text.
+      const lines = Math.floor((limit - textTop - readMoreBlock) / lineHeight);
+      const cap = lines < READ_MORE_MIN_LINES ? 0 : lines * lineHeight;
+      setLongReadCap(cap >= fullText ? null : cap);
+      // The facts stay beside the text unless they alone would leave less
+      // than the minimum of the video showing.
+      const minimumLimit = window.innerHeight - MEDIA_PEEK_MIN_PX - gapToMedia;
+      setFactsWait(wide && factsBottom > minimumLimit);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (longReadRef.current) observer?.observe(longReadRef.current);
+    if (columnsRef.current) observer?.observe(columnsRef.current);
+    window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure, () => {});
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hasMedia, settled]);
+
   // The footer carries its own dots, and two sets of dots are never on screen
   // at once: the side rail and the phone row step aside from just before the
   // footer's first pixel scrolls in (a quarter of a screen early), so their
@@ -652,22 +730,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     });
   }, []);
 
-  const footerHome = (
-    <Link
-      href="/"
-      onClick={(event) => {
-        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        event.preventDefault();
-        leave();
-      }}
-      className="hover:underline underline-offset-4"
-    >
-      Home
-    </Link>
-  );
   const footerTop = (
     <button type="button" onClick={scrollToTop} className="cursor-pointer hover:underline underline-offset-4">
-      Back to top ↑
+      Back to top
     </button>
   );
   const footerDots = (
@@ -680,6 +745,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     <>
       {/* Revealed behind the page during the explicit home transition. */}
       <div aria-hidden="true" className="fixed inset-0 -z-10 bg-cream" />
+      {/* Localhost only: live sliders for the header's size. */}
+      <CaseStudyTuning />
       {/* The same pages as the desk's rail, so any of them is a click away
           from any other: in the right margin from md, a row along the foot of
           the screen on a phone. Outside <main>, whose exit slide would carry
@@ -791,7 +858,14 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   // The control wears the colour of the project it leads to, and
                   // opens into a pill naming it, so the next sheet announces
                   // itself before you commit to it.
-                  style={{ backgroundColor: next.thumbnailColor }}
+                  // Steps aside while the footer's own next link is on screen.
+                  style={{
+                    backgroundColor: next.thumbnailColor,
+                    opacity: footerInView ? 0 : undefined,
+                    pointerEvents: footerInView ? "none" : undefined,
+                  }}
+                  aria-hidden={footerInView || undefined}
+                  tabIndex={footerInView ? -1 : undefined}
                   className="case-study-next group shrink-0 inline-flex items-center rounded-full h-12"
                 >
                   <span className="sr-only">Next project:</span>
@@ -825,15 +899,17 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
           className="case-study-body pt-10 pb-20 md:pt-16 md:pb-32"
         >
           <div
+            ref={columnsRef}
             data-testid="case-study-columns"
             className={`mx-auto grid w-full max-w-[100rem] gap-x-6 gap-y-8${
               hasFacts ? " lg:grid-cols-12" : ""
             }`}
           >
-            {/* The standfirst leads, across the full width; the long read
-                and the facts share the row below it. */}
+            {/* Two columns on one grid: the standfirst and the long read share
+                the text column, so both end on the same edge, and the facts
+                stand beside them from the standfirst's top line. */}
             {oneLiner && (
-              <p className="case-study-one-liner font-body font-medium lg:col-span-12">
+              <p className="case-study-one-liner font-body font-medium lg:col-span-7">
                 {oneLiner}
               </p>
             )}
@@ -841,6 +917,13 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               data-testid="case-study-detail"
               className={`font-body font-medium${hasFacts ? " lg:col-span-7" : ""}`}
             >
+              <div
+                ref={longReadRef}
+                data-testid="case-study-long-read"
+                data-cut={longReadCut}
+                className="case-study-long-read"
+                style={longReadCut ? { maxHeight: longReadCap } : undefined}
+              >
               {introImage && (
                 <figure
                   data-testid="case-study-intro-image"
@@ -862,8 +945,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 </p>
               )}
               {sections.length > 0 ? (
-                <>
-                {visibleSections.map((section) => (
+                sections.map((section) => (
                   <section key={section.heading ?? section.body} className="case-study-copy mb-6 last:mb-0">
                     {section.heading && (
                       <h2 className="font-body font-bold text-2xl leading-none mb-3">{section.heading}</h2>
@@ -877,25 +959,26 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                       </ul>
                     )}
                   </section>
-                ))}
-                {hasCollapsibleLongRead && (
-                  <button
-                    type="button"
-                    data-testid="case-study-read-more"
-                    aria-expanded={isLongReadExpanded}
-                    onClick={() => setIsLongReadExpanded((expanded) => !expanded)}
-                    className="mt-2 font-display text-xl underline underline-offset-4 transition-opacity hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
-                  >
-                    {isLongReadExpanded ? "Show less" : "Read more"}
-                  </button>
-                )}
-                </>
+                ))
               ) : !overview && !children ? (
                 <p className="case-study-copy">
                   Placeholder body copy for {caseStudy.title}. The real write-up goes
                   here: process, decisions, and the work itself.
                 </p>
               ) : null}
+              </div>
+              {longReadCap !== null && (
+                <button
+                  ref={readMoreRef}
+                  type="button"
+                  data-testid="case-study-read-more"
+                  aria-expanded={isLongReadExpanded}
+                  onClick={() => setIsLongReadExpanded((expanded) => !expanded)}
+                  className="mt-4 font-display text-xl underline underline-offset-4 transition-opacity hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+                >
+                  {isLongReadExpanded ? "Show less" : "Read more"}
+                </button>
+              )}
               {overviewContactLinks && overviewContactLinks.length > 0 && (
                 <p className="case-study-copy mt-8">
                   {overviewContactLinks.map((link, index) => (
@@ -914,9 +997,12 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             </div>
 
             {hasFacts && (
+              // Below lg the facts sit under the text, between it and the
+              // media, so while the text is cut they wait behind Read more too.
               <aside
+                ref={factsRef}
                 data-testid="case-study-facts-aside"
-                className="case-study-facts-aside font-body font-medium lg:col-start-9 lg:col-span-4 lg:sticky lg:top-32 lg:self-start"
+                className={`case-study-facts-aside font-body font-medium lg:col-start-9 lg:col-span-4 lg:row-start-1 lg:sticky lg:top-32 lg:self-start${oneLiner ? " lg:row-span-2" : ""}${longReadCut ? (factsWait ? " hidden" : " max-lg:hidden") : ""}`}
               >
                 <dl className="case-study-facts">
                   {facts.map((fact) => (
@@ -1041,30 +1127,27 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         )}
         {children}
 
-        {/* Where the page ends: one quiet row under a hairline -- Home and
-            back to top, the pages, and the next case study with an arrow in
-            its colour -- mirroring the header's Home and next. */}
+        {/* Where the page ends: one quiet row under a hairline -- back to
+            top, the pages, and the next case study in the header's own
+            button. */}
         <footer ref={footerRef} data-testid="case-study-footer" className="case-study-footer">
           <div className="case-study-footer-signoff">
             <div className="mx-auto grid w-full max-w-[100rem] items-center gap-6 border-t border-ink pt-7 pb-10 font-body font-medium text-[0.9375rem] md:grid-cols-[1fr_auto_1fr]">
-              <div className="flex justify-center gap-5 md:justify-start">
-                {footerHome}
-                {footerTop}
-              </div>
+              <div className="flex justify-center md:justify-start">{footerTop}</div>
               <div className="flex justify-center max-md:order-first">{footerDots}</div>
               {next && (
+                // The header's next button, as it looks opened: it takes over
+                // from that one, which steps aside while the footer is here.
                 <Link
                   data-testid="case-study-footer-next"
                   href={caseStudyRoute(next)}
-                  className="group inline-flex items-center justify-center gap-3 md:justify-self-end"
+                  className="group inline-flex h-12 items-center justify-self-center rounded-full md:justify-self-end"
+                  style={{ backgroundColor: next.thumbnailColor }}
                 >
-                  <span><span className="opacity-60">Next </span><span className="font-bold">{next.title}</span></span>
-                  <span
-                    aria-hidden="true"
-                    className="grid size-11 place-items-center rounded-full transition-transform duration-300 group-hover:translate-x-1"
-                    style={{ backgroundColor: next.thumbnailColor }}
-                  >
-                    <FooterArrow size={20} />
+                  <span className="sr-only">Next project:</span>
+                  <span className="pl-5 font-body font-medium text-base whitespace-nowrap">{next.title}</span>
+                  <span className="grid size-12 shrink-0 place-items-center transition-transform duration-300 group-hover:translate-x-0.5">
+                    <FooterArrow size={22} />
                   </span>
                 </Link>
               )}

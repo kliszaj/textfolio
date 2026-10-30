@@ -216,7 +216,22 @@ body {
    margin so edges align. */
 
 :root {
-  --case-study-header-height: 22vh;
+  /* ---- Case-study header and type: the knobs. ----
+     Tune them live on localhost with the Header panel on any case study
+     (CaseStudyTuning), then copy the values here. */
+  /* The coloured header's height, at rest. Everything that meets it reads
+     this: the settle from the home page's full-screen sheet, the desk
+     monitor's copy, and the dots rail centred below it. */
+  --case-study-header-height: 28vh;
+  /* The standfirst, and the title as a multiple of it, so the hierarchy holds
+     if either changes. */
+  --case-study-standfirst-size: clamp(1.875rem, 3.2vw, 2.75rem);
+  --case-study-title-ratio: 2.5;
+  /* Bounds on the title, and the room the header keeps around it: on phones
+     Home sits above the title, so it needs more. */
+  --case-study-title-min: 2.75rem;
+  --case-study-title-max: 7.5rem;
+  --case-study-header-clearance: 7.5rem;
   --case-study-header-shrunk-height: 5.25rem;
   --case-study-header-inline-inset: 1.5rem;
   --case-study-page-margin: 0px;
@@ -228,6 +243,9 @@ body {
 
 @media (min-width: 48rem) {
   :root {
+    /* Home moves beside the title, so only the header's padding and the
+       title's descenders need room. */
+    --case-study-header-clearance: 4.5rem;
     --case-study-header-inline-inset: 2.5rem;
     /* Room for Home, centred in the margin, to sit clear of the title. */
     --case-study-gutter: 5.5rem;
@@ -434,6 +452,13 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   }
 }
 
+/* Cut short so the first video shows on the first screen (CaseStudyView
+   measures how much fits): the last lines fade out above Read more. */
+.case-study-long-read[data-cut="true"] {
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 3.2em), transparent);
+}
+
 /* The long read: a size down from the standfirst by more than double, and
    held to a comfortable measure however wide the column gets. */
 .case-study-copy {
@@ -549,26 +574,33 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   white-space: pre-line;
 }
 
-/* The overview's hand-trimmed one-liner, pulled out in the condensed
-   display face -- narrow enough to hold a full sentence at a size the
-   regular display face would run wide at. */
+/* The standfirst. Fills the text column from lg (its width is the column's); below that, a
+   capped measure so it doesn't run the full width of a tablet. */
 .case-study-one-liner {
   max-width: 22ch;
-  font-size: clamp(1.875rem, 3.6vw, 3.25rem);
+  font-size: var(--case-study-standfirst-size);
   line-height: 1.08;
   letter-spacing: -0.015em;
 }
 
+@media (min-width: 64rem) {
+  .case-study-one-liner {
+    max-width: none;
+  }
+}
+
 .case-study-title {
-  /* The header's own height is 22vh (see --case-study-header-height), so a
-     short window shrinks the bar but this was sized off width alone -- the
-     title kept its full size and read over the top of the home icon, which
-     sits a fixed distance from the header's top regardless of how little
-     height is left below the title. Capping the preferred size against the
-     header's real height, minus the icon and the padding it and the title
-     both sit inside, keeps a paragraph of clearance between them at any
-     window size instead of just on tall ones. */
-  font-size: clamp(2.75rem, min(7vw, calc(var(--case-study-header-height) - 7.5rem)), 5.25rem);
+  /* A multiple of the standfirst, but never more than the header has room
+     for once its clearance is taken out: a short window shrinks the bar, and
+     the title with it, rather than letting it ride up into Home. */
+  font-size: clamp(
+    var(--case-study-title-min),
+    min(
+      calc(var(--case-study-standfirst-size) * var(--case-study-title-ratio)),
+      calc(var(--case-study-header-height) - var(--case-study-header-clearance))
+    ),
+    var(--case-study-title-max)
+  );
   /* PP Frama's g/y descenders extend below its nominal line box. The title
      must stay overflow-clipped horizontally for one-line fitting, so enlarge
      that clipping box below the baseline and cancel the added layout space. */
