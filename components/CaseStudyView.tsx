@@ -193,7 +193,9 @@ const SEQUENCE_SPAN_CLASS: Record<NonNullable<CaseStudyMedia["span"]>, string> =
   full: "col-span-6",
   tall: "col-span-3",
   half: "col-span-3",
-  third: "col-span-2",
+  // Phone clips read one at a time on a narrow screen, then return to a
+  // compact three-up row once there is room for their captions.
+  third: "col-span-6 md:col-span-2",
 };
 
 const ASPECT_CLASS: Record<NonNullable<CaseStudyMedia["aspect"]>, string> = {
@@ -346,6 +348,23 @@ function FooterArrow({ size }: { size: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 12h15m0 0-6-6m6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function FooterMadeWith({ className = "" }: { className?: string }) {
+  return (
+    <p className={`flex items-center gap-1.5 whitespace-nowrap pt-10 text-sm ${className}`}>
+      <span className="opacity-55">Made in Stockholm with</span>
+      <span className="sr-only">{` ${MADE_WITH.map((tool) => tool.name).join(", ")}`}</span>
+      <span aria-hidden="true" className="flex items-center gap-2.5">
+        {MADE_WITH.map((tool) => (
+          <svg key={tool.name} viewBox="0 0 24 24" className="size-4 fill-current opacity-75">
+            <title>{tool.name}</title>
+            <path d={tool.path} />
+          </svg>
+        ))}
+      </span>
+    </p>
   );
 }
 
@@ -1201,7 +1220,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 )}
                 {/* Beside the card (lg), dropped by the card's own padding so
                     Work and Find me line up with Up next. */}
-                <div className="grid content-start justify-start gap-x-14 gap-y-10 font-body font-medium sm:grid-cols-[auto_auto] lg:pt-8">
+                <div className="grid h-full justify-start gap-x-14 gap-y-10 font-body font-medium sm:grid-cols-[auto_auto] lg:grid-rows-[auto_1fr_auto] lg:py-8">
                     <nav aria-label="Portfolio pages">
                       <p className="text-xs uppercase tracking-[0.08em] opacity-60">Work</p>
                       <ul className="mt-3 grid gap-3">
@@ -1226,7 +1245,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         ))}
                       </ul>
                     </nav>
-                    <div>
+                    <div className="flex h-full flex-col">
                       <p className="text-xs uppercase tracking-[0.08em] opacity-60">Find me</p>
                       <ul className="mt-3 grid gap-3">
                         <li>
@@ -1237,21 +1256,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         <li><a href={CONTACT.linkedin} className="hover:underline underline-offset-4">LinkedIn</a></li>
                         <li><a href={CONTACT.github} className="hover:underline underline-offset-4">GitHub</a></li>
                       </ul>
+                      <FooterMadeWith className="mt-auto lg:hidden" />
                     </div>
+                    <FooterMadeWith className="hidden lg:col-start-1 lg:row-start-3 lg:block" />
                 </div>
-              </div>
-              <div className="mt-12 flex font-body text-sm font-medium">
-                {/* The sign-off: where it was made, and with what. */}
-                <p className="flex items-center gap-2.5 whitespace-nowrap">
-                  <span className="opacity-55">Made in Stockholm with</span>
-                  <span className="sr-only">{` ${MADE_WITH.map((tool) => tool.name).join(", ")}`}</span>
-                  {MADE_WITH.map((tool) => (
-                    <svg key={tool.name} aria-hidden="true" viewBox="0 0 24 24" className="size-4 fill-current opacity-75">
-                      <title>{tool.name}</title>
-                      <path d={tool.path} />
-                    </svg>
-                  ))}
-                </p>
               </div>
             </div>
           </div>

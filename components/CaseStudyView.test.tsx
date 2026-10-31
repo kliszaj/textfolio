@@ -669,7 +669,7 @@ test("preserves authored media proportions in a sequential gallery", () => {
   expect(videos[2]).toHaveAttribute("data-playback-row", "media-1");
 });
 
-test("puts three third-width phone clips in one row", () => {
+test("stacks third-width phone clips on small screens and makes them three-up from md", () => {
   const phones = {
     ...caseStudy,
     mediaLayout: "sequence" as const,
@@ -682,7 +682,7 @@ test("puts three third-width phone clips in one row", () => {
 
   const tiles = screen.getAllByTestId("case-study-tile");
   for (const tile of tiles) {
-    expect(tile).toHaveClass("col-span-2");
+    expect(tile).toHaveClass("col-span-6", "md:col-span-2");
     expect(tile.querySelector("video")).toHaveAttribute("data-playback-row", "media-0");
   }
 });
