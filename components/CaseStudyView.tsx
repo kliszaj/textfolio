@@ -1258,7 +1258,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                       </ul>
                       <FooterMadeWith className="mt-auto lg:hidden" />
                     </div>
-                    <FooterMadeWith className="hidden lg:col-start-1 lg:row-start-3 lg:block" />
+                    <FooterMadeWith className="hidden lg:col-start-1 lg:row-start-3 lg:flex" />
                 </div>
               </div>
             </div>
