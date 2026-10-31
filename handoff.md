@@ -598,9 +598,9 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   Stockholm with" and the tool icons along the bottom. No Back to top, and no
   divider lines anywhere on the site. Read more is Neue Montreal Bold.
 - **About.** The portrait (rounded, 4:5) sits beside the whole bio, with
-  the email and LinkedIn buttons under it; the Now shelf follows. A CV
-  button shows once `CONTACT.cv` (data/about.ts) points at a PDF in
-  public/: it's null until the revised CV, without the phone number, is in.
+  the email and LinkedIn buttons under it; the Now shelf follows. The CV
+  button links `CONTACT.cv` (data/about.ts), public/adrian-klisz-cv.pdf;
+  null hides it. Keep phone numbers out of the PDF: it's public.
   The footer's link column is "Find me": email, LinkedIn, GitHub.
 - **Flaky test:** "the board keeps each name's best run" in the leaderboard
   tests fails now and then in the full run but passes alone; looks

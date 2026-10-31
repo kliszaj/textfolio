@@ -10,9 +10,9 @@ export const CONTACT = {
   email: "hello@adrianklisz.com",
   linkedin: "https://www.linkedin.com/in/adrianklisz/",
   github: "https://github.com/kliszaj",
-  // The CV's address once the PDF is in public/ (e.g. "/adrian-klisz-cv.pdf");
-  // About only shows its button when this is set.
-  cv: null as string | null,
+  // A PDF in public/. About only shows its button when this is set, so it
+  // can be emptied (null) to take the CV down.
+  cv: "/adrian-klisz-cv.pdf" as string | null,
 };
 
 export const ABOUT_PAGE: CaseStudy = {
@@ -20,7 +20,7 @@ export const ABOUT_PAGE: CaseStudy = {
   title: "About Me",
   thumbnailColor: "#FDD721",
   blurb: "",
-  overview: `I'm Adrian, a Staff Product Designer currently working at Spotify. I'm based in Stockholm but I'm originally from Canada.
+  overview: `I'm Adrian, a Staff Designer currently working at Spotify. I'm based in Stockholm but I'm originally from Canada.
 
 I started out as a UX researcher, straight out of my master's — which is probably why I still can't design anything without wanting to test it first. From there I moved into hardware interaction design, where I properly cut my teeth: nothing forces you to think about real constraints like designing something people have to physically hold and push buttons on. For the last six years I've been at Spotify, where I've helped shape how the design team itself works — most recently, what design looks like in the age of agentic coding.
 

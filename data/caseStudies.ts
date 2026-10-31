@@ -236,7 +236,7 @@ export const caseStudies: CaseStudy[] = [
     thumbnailColor: "#FFA52E",
     blurb: "Designing an operating system that you're barely meant to use.",
     overview:
-      "Before Meta made smartglasses creepy again, I was a Senior Product Designer at a stealth startup in Canada called North.  We had the mission of making createing the next mode of computer a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
+      "Before Meta made smartglasses creepy again, I was a Senior UX Designer at a stealth startup in Canada called North. We had the mission of creating the next mode of computing: a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
     overviewLink: {
       label: "Meta made smartglasses creepy again",
       href: "https://www.wired.com/story/zuckoff-app-sees-meta-glasses-before-they-see-you/",

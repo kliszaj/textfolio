@@ -15,7 +15,7 @@ export default function HomePage() {
   return (
     <main className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:top-4 focus-within:left-4 focus-within:z-50 focus-within:max-w-sm focus-within:rounded-xl focus-within:bg-cream focus-within:p-6 focus-within:text-ink focus-within:shadow-2xl">
       <h1 className="font-display text-3xl">Adrian Klisz</h1>
-      <p className="mt-2 font-body">Staff Product Designer in Stockholm. Designer, tinkerer, zero-to-one builder.</p>
+      <p className="mt-2 font-body">Staff Designer in Stockholm. Designer, tinkerer, zero-to-one builder.</p>
       <nav aria-label="Case studies" className="mt-4 font-body">
         <ul className="flex flex-col gap-2">
           {caseStudies.map((caseStudy) => (

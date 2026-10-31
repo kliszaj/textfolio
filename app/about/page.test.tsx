@@ -16,13 +16,12 @@ test("opens on the portrait beside the bio, with the ways to get in touch under 
   expect(profile.getByRole("img", { name: "Portrait of Adrian" })).toBeInTheDocument();
   expect(screen.queryByTestId("about-now-portrait")).not.toBeInTheDocument();
   // The whole bio, once, a paragraph at a time.
-  expect(profile.getAllByText(/I'm Adrian, a Staff Product Designer currently working at Spotify/)).toHaveLength(1);
+  expect(profile.getAllByText(/I'm Adrian, a Staff Designer currently working at Spotify/)).toHaveLength(1);
   expect(profile.getByText(/^I care about setting a high bar for craft/)).toBeInTheDocument();
-  expect(screen.getAllByText(/I'm Adrian, a Staff Product Designer/)).toHaveLength(1);
+  expect(screen.getAllByText(/I'm Adrian, a Staff Designer/)).toHaveLength(1);
   expect(profile.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
   expect(profile.getByRole("link", { name: /LinkedIn/ })).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
-  // No CV button until there's a CV to link to.
-  expect(profile.queryByRole("link", { name: /CV/ })).not.toBeInTheDocument();
+  expect(profile.getByRole("link", { name: /CV/ })).toHaveAttribute("href", "/adrian-klisz-cv.pdf");
 });
 
 test("the footer's links include GitHub", () => {
