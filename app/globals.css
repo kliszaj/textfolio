@@ -773,3 +773,275 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
     transition: opacity 400ms ease;
   }
 }
+
+/* About's shelf (AboutShelf): CSS 3D boxes in a scene that leans with the
+   cursor. --shelf-rx/--shelf-ry are set from script. */
+/* On the page's own side margins, like the bio above it. */
+.about-shelf {
+  padding-inline: var(--case-study-gutter);
+}
+
+.shelf-viewport {
+  position: relative;
+  /* The shelf's ends may run off the sides on a narrow screen. clip, unlike
+     hidden, leaves the vertical axis free for a thing lifted off the shelf. */
+  overflow-x: clip;
+  perspective: 1500px;
+  perspective-origin: 50% 35%;
+  touch-action: pan-y;
+}
+
+.shelf-fit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: scale(var(--shelf-fit, 1));
+  transform-style: preserve-3d;
+}
+
+.shelf-stage {
+  position: absolute;
+  inset: 0;
+  /* Pointing is worked out by the viewport (AboutShelf's thingAt), not by
+     hit-testing the 3D faces, which Safari gets wrong. */
+  pointer-events: none;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--shelf-rx, -8deg)) rotateY(var(--shelf-ry, 0deg));
+  transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shelf-stage[data-tracking] {
+  transition: transform 250ms linear;
+}
+
+.shelf-at,
+.shelf-3d,
+.shelf-model {
+  position: absolute;
+  bottom: 0;
+  transform-style: preserve-3d;
+}
+
+.shelf-3d {
+  left: 0;
+}
+
+.shelf-face {
+  position: absolute;
+  backface-visibility: hidden;
+}
+
+/* The board, in the desk's birch (lib/workspace/grain.ts): the ivory top with
+   its grain, and the layered edge under a thin lip of the top. */
+.shelf-grain {
+  background-image: var(--shelf-grain);
+  /* The grain at the scale it has across the desk's own top, repeated
+     along a board that's wider than one drawing. */
+  background-size: 820px 410px;
+  background-position: center;
+}
+
+.shelf-board-edge {
+  background:
+    linear-gradient(#eee8d7 0 22%, transparent 22%),
+    linear-gradient(transparent 46%, #8b765b 46% 49%, transparent 49% 62%, #8b765b 62% 65%, transparent 65% 78%, #8b765b 78% 81%, transparent 81%),
+    #c7b293 !important;
+}
+
+.shelf-shade-top { filter: brightness(1.06); }
+.shelf-shade-side { filter: brightness(0.86); }
+.shelf-shade-back { filter: brightness(0.75); }
+.shelf-shade-bottom { filter: brightness(0.6); }
+
+/* A thing on the board: it lifts toward you under the pointer, and comes off
+   the shelf (forward, and toward the middle) when picked. */
+.shelf-thing {
+  position: absolute;
+  bottom: 22px;
+  transform-style: preserve-3d;
+  transform: var(--shelf-home);
+  /* No filter or opacity on a thing (or anything holding faces): either
+     flattens its 3D, and it reads as a cut-out. */
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+}
+
+.shelf-thing[data-hover],
+.shelf-thing:focus-visible {
+  transform: var(--shelf-home) translate3d(0, -10px, 26px);
+  outline: none;
+}
+
+.shelf-thing[data-picked] {
+  transform: var(--shelf-home) translate3d(var(--shelf-reach), -36px, 220px);
+}
+
+.shelf-model {
+  left: 0;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shelf-shadow {
+  position: absolute;
+  bottom: 0;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(rgb(28 28 28 / 0.28), transparent 70%);
+  transform-origin: bottom;
+  transform: rotateX(90deg) translateZ(1px);
+}
+
+/* Books: spine out; picked, the cover turns to you, then follows the cursor. */
+.shelf-thing[data-kind="book"][data-picked] .shelf-model {
+  transform: rotateY(-90deg);
+}
+
+.shelf-thing[data-turning] .shelf-model {
+  transition: transform 200ms linear;
+}
+
+.shelf-spine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  font: 700 13px/1 var(--font-pp-neue-montreal), sans-serif;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.shelf-cover {
+  background-size: cover;
+  background-position: center;
+  filter: none;
+}
+
+.shelf-pages {
+  background: repeating-linear-gradient(90deg, #f7f2ea 0 2px, #e6dccd 2px 3px) !important;
+}
+
+/* The record: its sleeve (the playlist's cover) faces out, the vinyl slides
+   out and spins, and the Spotify player opens in the caption. */
+.shelf-sleeve-art {
+  background-size: cover;
+  background-position: center;
+  filter: none;
+}
+
+.shelf-player {
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--color-ink) 10%, transparent);
+  animation: shelf-caption 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shelf-player iframe {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.shelf-player[data-loaded] iframe {
+  opacity: 1;
+}
+
+.shelf-vinyl {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 214px;
+  height: 214px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #15ff76 0 17%, #0e0e0e 17.5% 20%, #1b1b1b 20.5% 100%);
+  transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shelf-vinyl::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle, transparent 0 3px, rgb(255 255 255 / 0.05) 3px 4px),
+    conic-gradient(from 30deg, transparent 0 40deg, rgb(255 255 255 / 0.12) 55deg, transparent 70deg 220deg, rgb(255 255 255 / 0.1) 235deg, transparent 250deg);
+}
+
+.shelf-thing[data-kind="record"][data-hover] .shelf-vinyl,
+.shelf-thing[data-kind="record"]:focus-visible .shelf-vinyl {
+  transform: translate3d(70px, 0, -2px);
+}
+
+.shelf-thing[data-kind="record"][data-picked] .shelf-vinyl {
+  animation: shelf-spin 2.4s linear infinite;
+}
+
+@keyframes shelf-spin {
+  from { transform: translate3d(118px, 0, -2px) rotate(0deg); }
+  to { transform: translate3d(118px, 0, -2px) rotate(360deg); }
+}
+
+/* The deck: a short stack of cards lying on the board, the commander face up
+   on top. Under the pointer the top card tips up a little; picked, it's
+   lifted off the stack and turned to face you, big enough to read. */
+.shelf-deck-edges {
+  background: repeating-linear-gradient(#0d0d0d 0 2px, #3a3a3a 2px 3px) !important;
+}
+
+.shelf-topcard {
+  position: absolute;
+  left: 0;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+  transform-origin: 50% 100%;
+  transform: translateZ(var(--deck-half)) rotateX(90deg) rotateZ(-7deg);
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 0 1px #0d0d0d;
+}
+
+.shelf-thing[data-kind="deck"][data-hover] .shelf-topcard,
+.shelf-thing[data-kind="deck"]:focus-visible .shelf-topcard {
+  transform: translateZ(var(--deck-half)) rotateX(62deg) rotateZ(-4deg);
+}
+
+.shelf-thing[data-kind="deck"][data-picked] .shelf-topcard {
+  transform: translateZ(var(--deck-half)) translateY(-14px) rotateX(0deg) scale(2.1);
+}
+
+/* The stack itself stays near the shelf; only its top card comes up. */
+.shelf-thing[data-kind="deck"][data-picked] {
+  transform: var(--shelf-home) translate3d(var(--shelf-reach), 0, 90px);
+}
+
+.shelf-cards {
+  background: repeating-linear-gradient(90deg, #f2efe8 0 1px, #d9d4ca 1px 2px) !important;
+}
+
+/* The caption's title: Neue Montreal, like the bio beside it. */
+.shelf-caption-title {
+  font-size: clamp(1.75rem, 2.4vw, 2.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+
+.shelf-caption-in {
+  animation: shelf-caption 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes shelf-caption {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shelf-stage,
+  .shelf-thing,
+  .shelf-model,
+  .shelf-vinyl { transition: none; }
+  .shelf-thing[data-kind="record"][data-picked] .shelf-vinyl { animation: none; transform: translate3d(118px, 0, -2px); }
+  /* The caption's title: Neue Montreal, like the bio beside it. */
+.shelf-caption-title {
+  font-size: clamp(1.75rem, 2.4vw, 2.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+
+.shelf-caption-in { animation: none; }
+}

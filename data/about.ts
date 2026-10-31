@@ -1,5 +1,5 @@
 import type { CaseStudy } from "./caseStudies";
-import type { AboutNowData } from "@/components/AboutNow";
+import type { AboutShelfData } from "@/components/AboutShelf";
 
 // Shaped like a CaseStudy so it renders through the same CaseStudyView,
 // CaseStudyPreview, and CaseStudyFocus components as a real case study --
@@ -35,16 +35,19 @@ I care about setting a high bar for craft, and about staying close enough to the
   },
 };
 
-// Update this small record whenever the current shelf changes. The game is
-// intentionally optional: it only appears when there is something Adrian is
-// actively playing, rather than shipping a stale placeholder.
-export const ABOUT_NOW: AboutNowData = {
+// What's on the shelf at the foot of About. Update it whenever the reading,
+// the playlist or the game changes. The game is optional: the deck box only
+// stands on the shelf while something is being played.
+export const ABOUT_SHELF: AboutShelfData = {
   books: [
     {
       title: "Loonshots",
       author: "Safi Bahcall",
       href: "https://www.bahcall.com/book/",
       coverSrc: "https://m.media-amazon.com/images/I/71aYLQxV4tL._SL1500_.jpg",
+      note: "Why great teams and companies kill their craziest ideas, and how to nurture the ones that end up changing everything.",
+      spine: "#efe7d6",
+      spineText: "#1c1c1c",
     },
     {
       title: "Mina vänner",
@@ -52,11 +55,43 @@ export const ABOUT_NOW: AboutNowData = {
       href: "https://www.norstedts.se/bok/9789113143835/mina-vanner-v618798",
       coverSrc:
         "https://www.studentapan.se/images/format:webp/size:640:0/quality:100/asset/book-cover/mina-vanner-9789113143804",
+      note: "Fredrik Backman's novel about friendship, art and growing up, read slowly, in Swedish.",
+      spine: "#2f5d8a",
+      spineText: "#ffffff",
+    },
+    {
+      title: "Mistborn",
+      author: "Brandon Sanderson",
+      href: "https://www.goodreads.com/book/show/68428.Mistborn",
+      coverSrc: "/assets/book-mistborn.jpg",
+      note: "Brandon Sanderson's fantasy about a crew of thieves planning to overthrow an immortal emperor.",
+      spine: "#5b4a86",
+      spineText: "#f4a582",
+    },
+    {
+      title: "Rules to Live By",
+      author: "Jimmy Chin",
+      href: "https://www.goodreads.com/book/show/244963836-rules-to-live-by",
+      coverSrc: "/assets/book-rules-to-live-by.jpg",
+      note: "Jimmy Chin on the rules that people living extraordinary lives actually live by.",
+      spine: "#2b3138",
+      spineText: "#ffffff",
     },
   ],
   playlist: {
     title: "sept '26",
     href: "https://open.spotify.com/playlist/6Elc9EJreVRGJnM38lOE1E?si=e15070e9a39a4583",
+    // Spotify's own cover for it (from its oEmbed thumbnail), kept here.
+    coverSrc: "/assets/playlist-sept-26.jpg",
     embedSrc: "https://open.spotify.com/embed/playlist/6Elc9EJreVRGJnM38lOE1E?utm_source=generator",
+    note: "What I've had on this month.",
+  },
+  game: {
+    title: "Magic: The Gathering",
+    note: "The Commander deck I'm brewing right now is Slimefoot and Squee.",
+    // The commander's card (Scryfall's image) fronts the deck on the shelf.
+    commander: "Slimefoot and Squee",
+    cardSrc: "/assets/mtg-slimefoot-and-squee.jpg",
+    deckHref: "https://moxfield.com/decks/9QQ-zl_89ECf2Lj7bUCDDw",
   },
 };

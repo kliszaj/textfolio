@@ -606,6 +606,17 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   button links `CONTACT.cv` (data/about.ts), public/adrian-klisz-cv.pdf;
   null hides it. Keep phone numbers out of the PDF: it's public.
   The footer's link column is "Find me": email, LinkedIn, GitHub.
+- **About's shelf** (`components/AboutShelf.tsx`, replacing the Now section).
+  A CSS 3D shelf (no three.js) under the bio, on the page margins: four
+  books, this month's playlist as a record, and the Commander deck being
+  brewed. Contents live in `ABOUT_SHELF` (data/about.ts), each with a short
+  note; covers and the commander card are saved in public/assets. Picked up,
+  a book turns its cover to you and follows the cursor, the record's vinyl
+  slides out and Spotify's player opens beside it, the deck's top card
+  stands up. Pointing is worked out by the viewport (`thingAt`), not by
+  hit-testing 3D faces (Safari gets that wrong), and nothing holding faces
+  may take a filter or opacity, which would flatten it. The board is the
+  desk's birch, drawn by `lib/workspace/grain.ts`, shared with the desk.
 - **Flaky test:** "the board keeps each name's best run" in the leaderboard
   tests fails now and then in the full run but passes alone; looks
   timing-related, not yet looked into.

@@ -1,6 +1,7 @@
 // Personal workspace reconstructed from the owner’s scan. Dimensions in metres.
 import * as T from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { drawDeskGrain, seededRandom } from './grain';
 type V = [number, number, number];
 
 /** Photo-guided workstation, deliberately stylized with generous bevels and readable details. */
@@ -22,13 +23,9 @@ export function buildWorkstation(parent:T.Group, importedMouse?:T.Object3D) {
  // Laminated birch top and telescopic powder-coated standing-desk chassis.
  const desk=new T.Group();desk.name='Standing desk';root.add(desk);
  box(desk,'Birch layered edge',[1.287,.036,.78],[0,.752,0],edge,.013);
- // Faint grain running the length of the top: thin wavering lines over a few soft bands.
- let seed=11;const rand=()=>(seed=seed*16807%2147483647)/2147483647;
- const grain=texture(2048,1024,ctx=>{
-  ctx.fillStyle='#eee8d7';ctx.fillRect(0,0,2048,1024);
-  for(let i=0;i<14;i++){ctx.strokeStyle=`rgba(196,170,128,${.03+rand()*.04})`;ctx.lineWidth=12+rand()*36;const y=rand()*1024;ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=2048;x+=64)ctx.lineTo(x,y+Math.sin(x*.002+i)*18);ctx.stroke();}
-  for(let i=0;i<220;i++){ctx.strokeStyle=`rgba(160,128,86,${.03+rand()*.06})`;ctx.lineWidth=.6+rand()*1.6;const y=rand()*1024,wave=4+rand()*10,phase=rand()*6;ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=2048;x+=32)ctx.lineTo(x,y+Math.sin(x*.003+phase)*wave+Math.sin(x*.011+phase*2)*2);ctx.stroke();}
- });
+ // Faint grain running the length of the top (grain.ts, shared with About's shelf).
+ const rand=seededRandom(11);
+ const grain=texture(2048,1024,ctx=>drawDeskGrain(ctx,rand));
  box(desk,'Warm ivory work surface',[1.285,.010,.779],[0,.773,0],new T.MeshStandardMaterial({map:grain,roughness:.55}),.012);
  for(const y of [.742,.749,.756])box(desk,'Plywood lamination',[1.265,.0012,.002],[0,y,.389],material('#8b765b'),.0003);
  for(const x of [-.50,.50]){
