@@ -438,13 +438,9 @@ body {
 }
 
 /* The footer: the next case study's card beside the index and contact. */
+/* Holds still on hover: the dot field is its hover. */
 .case-study-footer-next {
   color: var(--color-ink);
-  transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.case-study-footer-next:hover {
-  transform: translateY(-4px);
 }
 
 .case-study-footer-title {

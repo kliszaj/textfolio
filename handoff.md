@@ -594,7 +594,11 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   16:9; a 1080x1920 export would be sharper.
 - **Footer.** An "Up next" card in the next study's colour, with a dot field
   on hover (`CardDotField`: dots in the other pages' colours grow around the
-  cursor only). Beside it Work and Contact (email, LinkedIn); "Made in
+  cursor only). The card holds still. Over its arrow button
+  (`data-dot-target`, 48px like the header's) the dots pour into it and it
+  fills with one of their colours, never the same twice in a row
+  (`--pour-color`, via the card's `data-absorbing`). Work and Find me drop
+  by the card's padding (lg) to line up with "Up next". Beside it Work and Contact (email, LinkedIn); "Made in
   Stockholm with" and the tool icons along the bottom. No Back to top, and no
   divider lines anywhere on the site. Read more is Neue Montreal Bold.
 - **About.** The portrait (rounded, 4:5) sits beside the whole bio, with

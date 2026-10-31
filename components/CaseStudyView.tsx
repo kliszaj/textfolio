@@ -1183,17 +1183,24 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     </span>
                     <span className="relative flex items-end justify-between gap-4">
                       <span className="case-study-footer-title font-display">{next.title}</span>
+                      {/* The header's next button, in ink. Under the pointer the
+                          card's dots pour into it (CardDotField) and it fills
+                          with one of their colours. */}
                       <span
                         aria-hidden="true"
-                        className="grid size-14 shrink-0 place-items-center rounded-full bg-ink transition-transform duration-300 group-hover:translate-x-1 md:size-16"
-                        style={{ color: next.thumbnailColor }}
+                        data-dot-target
+                        className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[var(--next-color)] transition-colors duration-300 group-focus-visible:text-ink group-data-[absorbing=true]:text-ink group-data-[absorbing=true]:delay-150"
+                        style={{ "--next-color": next.thumbnailColor } as React.CSSProperties}
                       >
-                        <FooterArrow size={26} />
+                        <span className="absolute inset-0 scale-0 rounded-full bg-[var(--pour-color,var(--next-color))] transition-transform duration-300 ease-out group-focus-visible:scale-100 group-data-[absorbing=true]:scale-100 group-data-[absorbing=true]:delay-150" />
+                        <span className="relative"><FooterArrow size={22} /></span>
                       </span>
                     </span>
                   </Link>
                 )}
-                <div className="grid content-start justify-start gap-x-14 gap-y-10 font-body font-medium sm:grid-cols-[auto_auto]">
+                {/* Beside the card (lg), dropped by the card's own padding so
+                    Work and Find me line up with Up next. */}
+                <div className="grid content-start justify-start gap-x-14 gap-y-10 font-body font-medium sm:grid-cols-[auto_auto] lg:pt-8">
                     <nav aria-label="Portfolio pages">
                       <p className="text-xs uppercase tracking-[0.08em] opacity-60">Work</p>
                       <ul className="mt-3 grid gap-3">
