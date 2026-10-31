@@ -530,8 +530,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
           visibility: shown ? "hidden" : "visible",
           // The same ink or cream as the name, so it reads on any background.
           "--circular-text-color": background.text,
-          // A step lighter than the display face's Black (the only heavier
-          // weight shipped): the body face in bold.
+          // The body face in Bold (Medium read too light at this size).
           "--circular-text-font-family": "var(--font-pp-neue-montreal)",
           "--circular-text-font-weight": 700,
         } as React.CSSProperties}

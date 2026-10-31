@@ -43,6 +43,10 @@ const BOARD_D = 240;
 // The board runs on well past the scene either side, and the viewport clips
 // it, so it always spans its column: margin to margin, however wide.
 const BOARD_OVERHANG = 1600;
+// The viewport's height, and how far the scene is moved up within it, at
+// full size: the empty space above the tallest book is left out.
+const SHELF_VIEW_H = 330;
+const SHELF_SHIFT = 92;
 // The width that has to fit on screen: the things and a little either side.
 const FIT_W = 700;
 // Books' width (the spine), height and depth, in turn.
@@ -150,7 +154,11 @@ export function AboutShelf({ shelf }: { shelf: AboutShelfData }) {
       // everything to fit them.
       const scale = Math.min(1, viewport.clientWidth / FIT_W);
       viewport.style.setProperty("--shelf-fit", String(scale));
-      viewport.style.height = `${Math.round((SCENE_H + 80) * scale)}px`;
+      // Only as tall as what stands on the board (the tallest book down to
+      // the brackets), with the scene shifted up to match: a lifted thing
+      // may rise out of the top, which isn't clipped.
+      viewport.style.height = `${Math.round(SHELF_VIEW_H * scale)}px`;
+      viewport.style.setProperty("--shelf-shift", `${Math.round(-SHELF_SHIFT * scale)}px`);
     };
     fit();
     // Its column only changes width with the window.

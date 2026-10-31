@@ -556,9 +556,9 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Phone clips and captions.** The width cap is on the whole figure
   (`.case-study-tile`), so a caption starts under its clip's own edge.
 - **Header and title knobs.** The top of `:root` in `globals.css` holds the
-  case-study header's settings: `--case-study-header-height` (20vh),
+  case-study header's settings: `--case-study-header-height` (24vh),
   `--case-study-standfirst-size`, `--case-study-title-ratio` (the title is
-  2.5x the standfirst), `--case-study-title-min`/`-max` (2.75rem/7.5rem), and
+  1.8x the standfirst), `--case-study-title-min`/`-max` (2.75rem/7.5rem), and
   `--case-study-header-clearance` (room kept around the title: 7.5rem on
   phones where Home sits above it, 4.5rem from 48rem). The title is the
   standfirst times the ratio, capped by what the header has room for. Nothing
@@ -617,6 +617,15 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   hit-testing 3D faces (Safari gets that wrong), and nothing holding faces
   may take a filter or opacity, which would flatten it. The board is the
   desk's birch, drawn by `lib/workspace/grain.ts`, shared with the desk.
+- **Header look.** 24vh with the title at 1.8x the standfirst; bottom
+  corners rounded (`--case-study-header-radius`, 2rem); a soft ink shadow
+  fades in once scrolled (data-shrunk), none at the top.
+- **Daytime light.** Between the morning panes and the sunset, the window
+  lets in the day's skylight (`DAYTIME` in DeskLighting.tsx,
+  `daylightWindowStrength`): soft, faintly blue, no shadows of its own; the
+  room's sun stays the main light, and the ambient and sky fill lean cool
+  (DAY_*), fading back to warm as the sun gets low. Kept soft on purpose: the
+  panes barely show.
 - **Flaky test:** "the board keeps each name's best run" in the leaderboard
   tests fails now and then in the full run but passes alone; looks
   timing-related, not yet looked into.

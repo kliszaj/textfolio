@@ -20,13 +20,11 @@ export const ABOUT_PAGE: CaseStudy = {
   title: "About Me",
   thumbnailColor: "#FDD721",
   blurb: "",
-  overview: `I'm Adrian, a Staff Designer currently working at Spotify. I'm based in Stockholm but I'm originally from Canada.
+  overview: `I'm Adrian, designer from Toronto, Canada but currently based in Stockholm, Sweden.
 
-I started out as a UX researcher, straight out of my master's — which is probably why I still can't design anything without wanting to test it first. From there I moved into hardware interaction design, where I properly cut my teeth: nothing forces you to think about real constraints like designing something people have to physically hold and push buttons on. For the last six years I've been at Spotify, where I've helped shape how the design team itself works — most recently, what design looks like in the age of agentic coding.
+Outside of work I love to spend time in the outdoors - whether it's gravel biking, camping, or foraging. I tend to collect new hobbies and I'm always tinkering with something I know completely nothing about. Lately I've been really into 3D printing and I've started playing the classic card game Magic: the Gathering.
 
-Outside of work I forage in the woods near where I live, ferment the results into hot sauce under my own label, shoot everything on film, and occasionally get far too deep into a game of Magic: The Gathering.
-
-I care about setting a high bar for craft, and about staying close enough to the work to help others raise theirs too.`,
+Whatever I do, I approach it with an innate curiosity and a high bar for craft.`,
   // The portrait sits beside the bio, with the email, LinkedIn and CV
   // buttons (from CONTACT) under it. It lives here, not in the Now bento, so
   // it shows once.

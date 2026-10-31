@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { useDeskTime } from "./DeskClock";
 import type { ScreenPose } from "./DeskModel";
 import { morningLightStrength, windowLightStrength } from "./DuskSky";
-import { windowLit } from "@/lib/deskDaylight";
+import { roomIsDark, windowLit } from "@/lib/deskDaylight";
 import { MAX_FRAME_DELTA, useRenderAfterChange } from "./renderOnDemand";
 
 const FLOOR_SHADOW_OPACITY = 0.3;
@@ -23,6 +23,11 @@ const LIGHT_SETTLE_SECONDS = 2.5;
 // chair; a weak point light just fills around the panel.
 const MONITOR_NIGHT_SPOT = 2.4;
 const MONITOR_NIGHT_FILL = 0.2;
+// The day's colours: the sun a near-neutral white (about 5500K), the room's
+// ambient and sky fill a faint blue (skylight, about 7000K).
+const DAY_SUN = "#fff9f2";
+const DAY_AMBIENT = "#f0f3ff";
+const DAY_SKY = "#e6ecff";
 
 export function DeskLighting({ solar, screen, windowEnabled }: { solar: ReturnType<typeof useDeskTime>["solar"]; screen: ScreenPose | null; windowEnabled: boolean }) {
   const ambient = useRef<THREE.AmbientLight>(null);
@@ -56,11 +61,16 @@ export function DeskLighting({ solar, screen, windowEnabled }: { solar: ReturnTy
       2.8 + Math.max(0, sunPosition.y) * 0.7,
       7,
     );
+    // In the day (the sun the room's light, high and white) the sky that
+    // fills the room reads cool: the ambient and the sky fill lean blue, so
+    // the shadows do. Not with the window lit (morning, sunset: warm) and
+    // less the lower the sun, so golden hour stays golden.
+    const cool = windowShare ? 0 : (1 - (solar?.warmSun ?? 0)) * (1 - darkness);
     return {
       position: windowPosition.lerp(sunPosition, directWeight),
-      color: new THREE.Color("#fff6ee").lerp(new THREE.Color("#ffd1a1"), (solar?.warmSun ?? 0) * directWeight),
-      ambientColor: new THREE.Color("#fff6ee").lerp(new THREE.Color("#3A3A5A"), darkness),
-      skyColor: new THREE.Color("#fffaf4").lerp(new THREE.Color("#6C63FF"), darkness),
+      color: new THREE.Color("#fff6ee").lerp(new THREE.Color("#ffd1a1"), (solar?.warmSun ?? 0) * directWeight).lerp(new THREE.Color(DAY_SUN), cool),
+      ambientColor: new THREE.Color("#fff6ee").lerp(new THREE.Color(DAY_AMBIENT), cool).lerp(new THREE.Color("#3A3A5A"), darkness),
+      skyColor: new THREE.Color("#fffaf4").lerp(new THREE.Color(DAY_SKY), cool).lerp(new THREE.Color("#6C63FF"), darkness),
       groundColor: new THREE.Color("#e9dccf").lerp(new THREE.Color("#181828"), darkness),
       intensity: directIntensity + windowIntensity,
       shadowRadius: THREE.MathUtils.lerp(6, 2, directWeight),
@@ -68,7 +78,7 @@ export function DeskLighting({ solar, screen, windowEnabled }: { solar: ReturnTy
       // bottom of the frame; tint it with the night's purple as dusk comes on.
       floorShadow: new THREE.Color(NEUTRAL_SHADOW).lerp(new THREE.Color(TWILIGHT_SHADOW), solar && !solar.morning ? solar.horizonMix : 0),
     };
-  }, [solar, darkness]);
+  }, [solar, darkness, windowShare]);
   useRenderAfterChange(LIGHT_SETTLE_SECONDS, [sunlight, darkness, screen, windowShare], { shadows: true });
   useFrame(({ gl, invalidate }, delta) => {
     const blend = 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * LIGHT_EASE_RATE);
@@ -157,13 +167,15 @@ export function DeskLighting({ solar, screen, windowEnabled }: { solar: ReturnTy
 // the window itself is never in view, only its light, thrown across the
 // desk, the monitor and everything on them as a grid of soft panes. The last of
 // it at sunset, pink to amber, from one side; the first of it after sunrise,
-// golden, from the other, since the sun rises and sets on opposite sides. A
+// golden, from the other, since the sun rises and sets on opposite sides; and
+// in between, the day's skylight, a soft cool glow (DAYTIME). A
 // spotlight carrying the panes as its pattern (three's SpotLight.map, which
 // needs the light's shadow on), plus a little warm fill on the desk. Both
 // fade in slowly while moving the way the sun moves them: the sunset panes
 // climb as the sun sinks, so they rise in from below and leave upward; the
 // morning ones slide down as the sun climbs, so they come in from above and
 // leave downward.
+type Sky = NonNullable<ReturnType<typeof useDeskTime>["solar"]>;
 type WindowSide = {
   // Where the window is, behind and above the viewer, and which way the
   // panes lean.
@@ -172,8 +184,15 @@ type WindowSide = {
   stops: [number, string][];
   glowColor: string;
   glowAt: [number, number, number];
-  active: (morning: boolean) => boolean;
-  strength: (horizon: number, nightMix: number) => number;
+  // How strong it is now: 0 outside its part of the day.
+  strength: (sky: Sky) => number;
+  // How soft the panes' edges are (px of blur on the pattern), and the
+  // cone's edge.
+  blur: number;
+  penumbra: number;
+  // Whether the twilight's glow colour nudges it (the sunset and sunrise
+  // panes); daylight stays its own white.
+  tinted: boolean;
   // Which way the panes travel over their time: 1 rising, -1 falling.
   travel: 1 | -1;
   // Whether it casts the shadows itself. Not in the morning: the room is
@@ -187,8 +206,10 @@ const EVENING: WindowSide = {
   stops: [[0, "#ff7fae"], [0.5, "#ff9a8f"], [1, "#ffbf72"]],
   glowColor: "#ff94a8",
   glowAt: [0.55, 1.35, 0.4],
-  active: (morning) => !morning,
-  strength: windowLightStrength,
+  strength: (sky) => (!sky.morning && windowLit(sky) ? windowLightStrength(sky.horizonMix, sky.backgroundNightMix) : 0),
+  blur: 4,
+  penumbra: 0.15,
+  tinted: true,
   travel: 1,
   castsShadows: true,
 };
@@ -198,8 +219,28 @@ const MORNING: WindowSide = {
   stops: [[0, "#ffe39a"], [0.5, "#ffca5c"], [1, "#ffab45"]],
   glowColor: "#ffc46a",
   glowAt: [-0.55, 1.35, 0.4],
-  active: (morning) => morning,
-  strength: morningLightStrength,
+  strength: (sky) => (sky.morning && windowLit(sky) ? morningLightStrength(sky.horizonMix, sky.backgroundNightMix) : 0),
+  blur: 4,
+  penumbra: 0.15,
+  tinted: true,
+  travel: -1,
+  castsShadows: false,
+};
+// The rest of the day, between the morning light and the sunset. The window
+// faces northeast, so the sun itself no longer comes through it: what does
+// is skylight, from higher up, cool and soft. Its panes are blurred to a
+// glow, faintly blue, and it casts no shadows: the room's sun, still the
+// main light, draws those (DeskLighting).
+const DAYTIME: WindowSide = {
+  from: [0.6, 3.4, 3.4],
+  lean: -0.04,
+  stops: [[0, "#f3f6ff"], [0.5, "#e9efff"], [1, "#dfe7ff"]],
+  glowColor: "#e2eaff",
+  glowAt: [0, 1.35, 0.4],
+  strength: daylightWindowStrength,
+  blur: 6,
+  penumbra: 0.35,
+  tinted: false,
   travel: -1,
   castsShadows: false,
 };
@@ -218,6 +259,17 @@ const MORNING_FLOOR_SUN = new THREE.Vector3(-4.4, 2.6, 6.6);
 const MORNING_SUN_KEEPS = 0.45;
 const EVENING_FLOOR_SUN = new THREE.Vector3(4.4, 4.4, 6.4);
 
+// The daylight window's strength, before WINDOW_LIGHT_BOOST: a soft
+// secondary light, well under the sunrise and sunset panes.
+const DAYTIME_STRENGTH = 0.45;
+
+// How strong the day's skylight through the window is: on from when the
+// morning panes give way until the room goes dark, never alongside either
+// of the other two window lights.
+export function daylightWindowStrength(sky: Sky) {
+  return !windowLit(sky) && !roomIsDark(sky) && sky.altitude > 0 ? DAYTIME_STRENGTH * sky.daylight : 0;
+}
+
 // Where the panes land: across the desk and up onto the monitor.
 const WINDOW_AIM: [number, number, number] = [0, 0.85, -0.1];
 // The strength functions peak around 0.6 (evening) or 1 (morning); this lifts
@@ -234,13 +286,14 @@ const PATCH_DRIFT_RATE = 1.2;
 const PATCH_ENTRANCE_DISTANCE = 0.5;
 const PATCH_ARRIVE_RATE = 0.9;
 const PATCH_SETTLE_SECONDS = 6;
+const WHITE = new THREE.Color("#ffffff");
 
 function paneTexture(side: WindowSide) {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext("2d")!;
-  ctx.filter = "blur(4px)";
+  ctx.filter = `blur(${side.blur}px)`;
   ctx.fillStyle = "#ffffff";
   // A window of four by three small panes with clear bars between them,
   // upright with a slight lean, so several bars cross the desk, the keyboard
@@ -291,15 +344,13 @@ function WindowPatch({ side, solar, tint, enabled }: { side: WindowSide; solar: 
     if (!light) return;
     const step = Math.min(delta, MAX_FRAME_DELTA);
     const horizon = solar?.horizonMix ?? 0;
-    const nightMix = solar?.backgroundNightMix ?? 0;
-    const on = enabled && !!solar && side.active(solar.morning) && windowLit(solar);
-    const strength = on ? side.strength(horizon, nightMix) : 0;
+    const strength = enabled && solar ? side.strength(solar) : 0;
     const low = THREE.MathUtils.smoothstep(horizon, 0.35, 1);
     drift.current = drift.current === null ? low : THREE.MathUtils.lerp(drift.current, low, 1 - Math.exp(-step * PATCH_DRIFT_RATE));
     const d = drift.current;
     const fade = 1 - Math.exp(-step * PATCH_FADE_RATE);
     light.intensity = THREE.MathUtils.lerp(light.intensity, Math.min(1, strength * WINDOW_LIGHT_BOOST) * WINDOW_SPOT_INTENSITY, fade);
-    light.color.lerp(tint, fade);
+    light.color.lerp(side.tinted ? tint : WHITE, fade);
     // The pattern only shows with the light's shadow on. Off while it's dark,
     // though: the floor draws every casting light's shadow at full strength,
     // however dim the light, so a dark window would still print one.
@@ -338,7 +389,7 @@ function WindowPatch({ side, solar, tint, enabled }: { side: WindowSide; solar: 
         map={map}
         intensity={0}
         angle={0.34}
-        penumbra={0.15}
+        penumbra={side.penumbra}
         decay={0}
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0004}
@@ -355,6 +406,7 @@ export function WindowLight({ solar, glow, enabled }: { solar: ReturnType<typeof
     <>
       <WindowPatch side={EVENING} solar={solar} tint={tint} enabled={enabled} />
       <WindowPatch side={MORNING} solar={solar} tint={tint} enabled={enabled} />
+      <WindowPatch side={DAYTIME} solar={solar} tint={tint} enabled={enabled} />
     </>
   );
 }

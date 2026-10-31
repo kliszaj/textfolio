@@ -14,9 +14,9 @@ test("opens on the portrait beside the bio, with the ways to get in touch under 
   expect(screen.getAllByRole("img", { name: "Portrait of Adrian" })).toHaveLength(1);
   expect(profile.getByRole("img", { name: "Portrait of Adrian" })).toBeInTheDocument();
   // The whole bio, once, a paragraph at a time.
-  expect(profile.getAllByText(/I'm Adrian, a Staff Designer currently working at Spotify/)).toHaveLength(1);
-  expect(profile.getByText(/^I care about setting a high bar for craft/)).toBeInTheDocument();
-  expect(screen.getAllByText(/I'm Adrian, a Staff Designer/)).toHaveLength(1);
+  expect(profile.getAllByText(/^I'm Adrian, designer from Toronto/)).toHaveLength(1);
+  expect(profile.getByText(/^Whatever I do, I approach it with an innate curiosity/)).toBeInTheDocument();
+  expect(screen.getAllByText(/I'm Adrian, designer from Toronto/)).toHaveLength(1);
   expect(profile.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
   expect(profile.getByRole("link", { name: /LinkedIn/ })).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
   expect(profile.getByRole("link", { name: /CV/ })).toHaveAttribute("href", "/adrian-klisz-cv.pdf");

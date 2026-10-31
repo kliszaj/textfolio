@@ -222,11 +222,14 @@ body {
   /* The coloured header's height, at rest. Everything that meets it reads
      this: the settle from the home page's full-screen sheet, the desk
      monitor's copy, and the dots rail centred below it. */
-  --case-study-header-height: 20vh;
+  --case-study-header-height: 24vh;
+  /* The header's bottom corners: a step rounder than the Up next card's
+     (1.5rem), as the header is the biggest block on the page. */
+  --case-study-header-radius: 2rem;
   /* The standfirst, and the title as a multiple of it, so the hierarchy holds
      if either changes. */
   --case-study-standfirst-size: clamp(1.875rem, 3.2vw, 2.75rem);
-  --case-study-title-ratio: 2.5;
+  --case-study-title-ratio: 1.8;
   /* Bounds on the title, and the room the header keeps around it: on phones
      Home sits above the title, so it needs more. */
   --case-study-title-min: 2.75rem;
@@ -291,6 +294,10 @@ body {
   --case-study-control-drop: calc(var(--case-study-title-size) * 0.11);
   height: var(--case-study-header-height);
   background-color: var(--case-study-color, transparent);
+  /* Rounded along its foot like the page's other coloured blocks: a sheet
+     in the study's colour. */
+  border-bottom-left-radius: var(--case-study-header-radius);
+  border-bottom-right-radius: var(--case-study-header-radius);
   padding-inline: var(--case-study-gutter);
   animation: case-study-header-settle 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -309,11 +316,18 @@ body {
 .case-study-header[data-settled="true"] {
   animation: none;
   height: var(--case-study-header-height);
-  transition: height 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 18px 32px -20px rgb(28 28 28 / 0);
+  transition:
+    height 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Scrolled, the page passes under the header: a soft shadow (in ink, not
+   black) lifts it off the page as it shrinks. At the top there's nothing
+   under it, so no shadow. */
 .case-study-header[data-settled="true"][data-shrunk="true"] {
   height: var(--case-study-header-shrunk-height);
+  box-shadow: 0 18px 32px -20px rgb(28 28 28 / 0.35);
 }
 
 /* Collapsed, the header is shorter than the controls it holds. Bottom-aligning
@@ -795,7 +809,7 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: scale(var(--shelf-fit, 1));
+  transform: translateY(var(--shelf-shift, 0)) scale(var(--shelf-fit, 1));
   transform-style: preserve-3d;
 }
 

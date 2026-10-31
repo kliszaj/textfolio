@@ -913,11 +913,12 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 the text column, so both end on the same edge, and the facts
                 stand beside them from the standfirst's top line. */}
             {/* About: the portrait beside the whole bio, with the ways to get
-                in touch under it. */}
+                in touch under it. Side by side (md), the portrait is as tall
+                as the bio and its buttons; stacked, it keeps its shape. */}
             {profile && (
-              <div data-testid="case-study-profile" className="grid items-start gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-12 lg:col-span-12 lg:gap-24">
-                <div className="relative aspect-[4/5] w-full max-w-md overflow-hidden rounded-2xl bg-ink/10 md:max-w-none">
-                  <Image src={profile.portrait.src} alt={profile.portrait.alt} fill sizes="(min-width: 768px) 40vw, 100vw" className="object-cover" />
+              <div data-testid="case-study-profile" className="grid gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-12 lg:col-span-12 lg:gap-24">
+                <div className="relative aspect-[4/5] w-full max-w-md overflow-hidden rounded-2xl bg-ink/10 md:aspect-auto md:h-full md:max-w-none">
+                  <Image src={profile.portrait.src} alt={profile.portrait.alt} fill sizes="(min-width: 768px) 40vw, 100vw" className="object-cover object-[50%_30%]" />
                 </div>
                 <div className="font-body font-medium">
                   {overview?.split(/\n\s*\n/).map((paragraph) => (
