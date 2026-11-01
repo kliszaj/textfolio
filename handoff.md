@@ -620,6 +620,10 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Header look.** 24vh with the title at 1.8x the standfirst; bottom
   corners rounded (`--case-study-header-radius`, 2rem); a soft ink shadow
   fades in once scrolled (data-shrunk), none at the top.
+  Home and next centre on the title's capitals (`--case-study-control-drop`,
+  0.012x the title size), full and collapsed alike; collapsed, the house
+  scales with the title (`--case-study-home-size`) so its drawing is the cap
+  height and sits on the baseline.
 - **Daytime light.** Between the morning panes and the sunset, the window
   lets in the day's skylight (`DAYTIME` in DeskLighting.tsx,
   `daylightWindowStrength`): soft, faintly blue, no shadows of its own; the

@@ -288,10 +288,15 @@ body {
     ),
     var(--case-study-title-max)
   );
-  /* Home and next sit level with the middle of the title's lowercase, where
-     the eye reads its centre (titles are mostly lowercase), not the middle
-     of its line box, which reads high: in Frama that's this far down. */
-  --case-study-control-drop: calc(var(--case-study-title-size) * 0.11);
+  /* Home and next sit level with the middle of the title's capitals: in
+     Frama that's just below the middle of its line box. The same in the full
+     header and the collapsed bar, so they hold one line as it shrinks. */
+  --case-study-control-drop: calc(var(--case-study-title-size) * 0.012);
+  /* The house's drawing fills 76% of its 40px image. In the collapsed bar
+     it's sized so that drawing is the title's cap height (PP Frama's caps
+     are 0.78em): at 40px it was taller than the small title's caps and hung
+     below its baseline. */
+  --case-study-home-size: 40px;
   height: var(--case-study-header-height);
   background-color: var(--case-study-color, transparent);
   /* Rounded along its foot like the page's other coloured blocks: a sheet
@@ -685,6 +690,15 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
 
 .case-study-header[data-shrunk="true"] {
   --case-study-title-size: clamp(1.5rem, 3vw, 2.25rem);
+  --case-study-home-size: calc(var(--case-study-title-size) * 1.02);
+}
+
+.case-study-home-icon {
+  width: var(--case-study-home-size);
+  height: var(--case-study-home-size);
+  transition:
+    width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .case-study-body {
@@ -736,7 +750,8 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   .case-study-next-label,
   .case-study-next,
   .case-study-next-arrow,
-  .case-study-home {
+  .case-study-home,
+  .case-study-home-icon {
     transition: none;
   }
 
