@@ -222,7 +222,7 @@ body {
   /* The coloured header's height, at rest. Everything that meets it reads
      this: the settle from the home page's full-screen sheet, the desk
      monitor's copy, and the dots rail centred below it. */
-  --case-study-header-height: 24vh;
+  --case-study-header-height: 20vh;
   /* The header's bottom corners: a step rounder than the Up next card's
      (1.5rem), as the header is the biggest block on the page. */
   --case-study-header-radius: 2rem;
@@ -457,9 +457,16 @@ body {
 }
 
 /* The footer: the next case study's card beside the index and contact. */
-/* Holds still on hover: the dot field is its hover. */
+/* Holds still on hover: the dot field is its hover, and like the case
+   studies' clips its edge extends outward in its own colour. */
 .case-study-footer-next {
   color: var(--color-ink);
+  transition: box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.case-study-footer-next:hover,
+.case-study-footer-next:focus-visible {
+  box-shadow: 0 0 0 0.5rem var(--card-color);
 }
 
 .case-study-footer-title {
@@ -617,19 +624,66 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   line-height: 1.35;
 }
 
-/* Under each clip in a sequence, numbered in page order. */
-.case-study-caption {
-  display: flex;
-  gap: 1rem;
-  align-items: baseline;
-  padding-top: 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.4;
+/* Text selected on a case study is highlighted in the next study's colour,
+   the page's complement: pink on Jam, which leads to Seamless. */
+.case-study-view ::selection {
+  background-color: var(--selection-color, rgb(28 28 28 / 0.15));
+  color: var(--color-ink);
 }
 
-.case-study-caption-number {
-  opacity: 0.6;
-  font-variant-numeric: tabular-nums;
+/* The Up next card is already that colour, so it selects in ink. */
+.case-study-view .case-study-footer-next ::selection {
+  background-color: var(--color-ink);
+  color: var(--card-color);
+}
+
+/* Under the pointer a clip's frame extends outward in its own background
+   colour, as if the backdrop grew (in a shared row, that's also when the
+   clip plays). The launch film above the grid doesn't. */
+.case-study-tile-frame {
+  transition: box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* A tinted clip's frame is its own colour underneath, not the default grey:
+   where the video's rounded, anti-aliased edge (or a sub-pixel shortfall)
+   lets the frame show, it matches the band and leaves no hairline. */
+.case-study-tile[style*="--tile-tint"] .case-study-tile-frame {
+  background-color: var(--tile-tint);
+}
+
+.case-study-tile[data-hovered] .case-study-tile-frame {
+  box-shadow: 0 0 0 0.5rem var(--tile-tint, transparent);
+}
+
+/* A clip's name, on the clip itself: small cream capitals over a soft shade
+   along its foot, faded in while the pointer is over the clip (which is when
+   a clip in a shared row plays). Without hover, always shown. */
+.case-study-caption {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 2rem 1rem 0.875rem;
+  border-radius: 0 0 1rem 1rem;
+  background: linear-gradient(rgb(0 0 0 / 0), rgb(0 0 0 / 0.45));
+  color: rgb(245 237 230 / 0.95);
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.case-study-captioned:hover .case-study-caption,
+.case-study-tile:hover .case-study-caption {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .case-study-caption {
+    opacity: 1;
+  }
 }
 
 /* A phone clip keeps its 9:16 frame but never outgrows the screen, so a pair

@@ -32,8 +32,8 @@ test("orders the Spotify Jam media as one full-width flow, two portrait choices,
 
   expect(spotifyJam?.mediaLayout).toBe("sequence");
   expect(spotifyJam?.media).toEqual([
-    expect.objectContaining({ src: "/assets/jam-main-flow.mp4", span: "third", aspect: "portrait" }),
     expect.objectContaining({ src: "/assets/jam-host.mp4", span: "third", aspect: "portrait" }),
+    expect.objectContaining({ src: "/assets/jam-main-flow.mp4", span: "third", aspect: "portrait" }),
     expect.objectContaining({ src: "/assets/jam-two-choice.mp4", span: "third", aspect: "portrait" }),
     expect.objectContaining({ src: "/assets/jam-desktop.mp4", kind: "video", span: "full", aspect: "landscape" }),
     expect.objectContaining({ src: "/assets/jam-tv.mp4", kind: "video", span: "full", aspect: "landscape" }),

@@ -52,6 +52,15 @@ function subscribeWideMargin(onChange: () => void) {
 const getWideMargin = () => window.matchMedia(WIDE_MARGIN_QUERY).matches;
 const getWideMarginOnServer = () => false;
 
+const CAN_HOVER_QUERY = "(hover: hover)";
+function subscribeCanHover(onChange: () => void) {
+  const mql = window.matchMedia(CAN_HOVER_QUERY);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+const getCanHover = () => window.matchMedia(CAN_HOVER_QUERY).matches;
+const getCanHoverOnServer = () => true;
+
 const EXIT_ANIMATION_MS = 420;
 // The first screen always shows some of the work: the long read is cut short,
 // behind Read more, wherever it would push the first video lower than this
@@ -121,29 +130,6 @@ export function isPairedVideoTile(
   return media.some((other, otherIndex) =>
     otherIndex !== index && other.kind === "video" && mediaRows[otherIndex] === row
   );
-}
-
-// Which of a paired row's videos plays, going purely off where the cursor
-// sits across the row's full width -- not just whether it's directly over
-// one of the tiles. The margin on either side of the row (and the gap
-// between the two tiles) still belongs to whichever tile is on that side,
-// so the row is never silent just because the cursor hasn't landed exactly
-// on a video, and it plays the one the cursor is actually closest to rather
-// than always defaulting to the first. xRatio is the cursor's position
-// across the row as a 0-1 fraction (0 = left edge, 1 = right edge).
-export function pairedVideoIndexForPointer(
-  media: CaseStudyMedia[],
-  mediaRows: number[],
-  row: number,
-  xRatio: number
-): number {
-  const indices = media
-    .map((_, index) => index)
-    .filter((index) => media[index].kind === "video" && mediaRows[index] === row);
-  if (indices.length === 0) return -1;
-  const clamped = Math.min(1, Math.max(0, xRatio));
-  const slot = Math.min(indices.length - 1, Math.floor(clamped * indices.length));
-  return indices[slot];
 }
 
 type PlaybackRowBounds = {
@@ -296,13 +282,10 @@ function MaybeFrame({ className, aspect, children }: { className?: string; aspec
   return <div className={className} data-aspect={aspect}>{children}</div>;
 }
 
-function MediaCaption({ number, children }: { number?: string; children: ReactNode }) {
-  return (
-    <figcaption className="case-study-caption font-body font-medium">
-      {number && <span className="case-study-caption-number">{number}</span>}
-      {children}
-    </figcaption>
-  );
+// A clip's name, on the clip: hidden until the pointer is over it, then
+// faded in over a soft shade along its foot; always shown without hover.
+function MediaCaption({ children }: { children: ReactNode }) {
+  return <figcaption className="case-study-caption font-body font-medium">{children}</figcaption>;
 }
 
 function FooterArrow({ size }: { size: number }) {
@@ -358,11 +341,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     videoSrc,
     videoCaption,
   } = caseStudy;
-  // Captions are numbered in page order, the film's first.
-  const captionNumbers = new Map<string | number, string>();
-  for (const key of [...(videoSrc && videoCaption ? ["video"] : []), ...media.flatMap((item, index) => (item.caption ? [index] : []))]) {
-    captionNumbers.set(key, String(captionNumbers.size + 1).padStart(2, "0"));
-  }
   const hasMedia = Boolean(videoSrc) || media.length > 0;
   const hasFacts = facts.length > 0;
   const hasBodyContent = hasFacts || Boolean(overview) || Boolean(introImage) || sections.length > 0 || hasMedia || !children;
@@ -379,20 +357,17 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   const [exiting, setExiting] = useState(false);
   const [isLongReadExpanded, setIsLongReadExpanded] = useState(false);
   const [activePlaybackRow, setActivePlaybackRow] = useState<string | null>(null);
-  // Scroll can only pick one active row, not one tile within it -- a row
-  // holding two videos side by side needs its own signal, or both play
-  // together the instant the row scrolls into view. Tracked as the
-  // pointer's fractional x position across the whole grid (not which tile
-  // it's directly over), so a margin or the gap between the two tiles still
-  // belongs to whichever side it's on, the same as the render below reads
-  // it via pairedVideoIndexForPointer.
-  const [mediaPointerXRatio, setMediaPointerXRatio] = useState<number | null>(null);
+  // Scroll picks one active row, not one tile within it: in a row of
+  // several videos only the one under the pointer plays, and none at rest,
+  // so a row never runs all its clips at once. Without hover (touch) the
+  // row's first video plays instead.
+  const [hoveredTile, setHoveredTile] = useState<number | null>(null);
+  const canHover = useSyncExternalStore(subscribeCanHover, getCanHover, getCanHoverOnServer);
   const titleContainerRef = useRef<HTMLHeadingElement>(null);
   const titleButtonRef = useRef<HTMLButtonElement>(null);
   const mediaSectionRef = useRef<HTMLElement>(null);
   const mediaGridRef = useRef<HTMLDivElement>(null);
   const mediaRows = caseStudyMediaRows(media);
-  const hasPairedVideoRow = media.some((_, index) => isPairedVideoTile(media, mediaRows, index));
   const hasPlayableMedia = Boolean(videoSrc) || media.some((item) => item.kind === "video");
   const longReadRef = useRef<HTMLDivElement>(null);
   const readMoreRef = useRef<HTMLButtonElement>(null);
@@ -472,27 +447,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
       resizeObserver?.disconnect();
     };
   }, [hasPlayableMedia]);
-
-  // Tracked at the window rather than the grid: the grid's own box ends
-  // where the tiles do, so a listener scoped to it never sees the margins
-  // on either side of the row -- exactly the space this is meant to cover.
-  // Reading which side of the row the cursor is on only matters once a
-  // paired row is actually active, so this stays a plain position tracker
-  // and leaves that decision to pairedVideoIndexForPointer in the render.
-  useEffect(() => {
-    if (!hasPairedVideoRow) return;
-
-    const onPointerMove = (event: PointerEvent) => {
-      const grid = mediaGridRef.current;
-      if (!grid) return;
-      const rect = grid.getBoundingClientRect();
-      if (!rect.width) return;
-      setMediaPointerXRatio((event.clientX - rect.left) / rect.width);
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    return () => window.removeEventListener("pointermove", onPointerMove);
-  }, [hasPairedVideoRow]);
 
   useLayoutEffect(() => {
     const container = titleContainerRef.current;
@@ -753,13 +707,15 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
         // Not min-h-screen: a short page (About, with no media) doesn't need
         // padding out to a full viewport, and the fixed cream layer above
         // already covers the screen regardless of this element's real height.
-        className="bg-cream text-ink"
+        className="case-study-view bg-cream text-ink"
         style={{
           transform: exiting ? "translateY(100vh)" : undefined,
           transition: exiting
             ? `transform ${EXIT_ANIMATION_MS}ms cubic-bezier(0.4, 0, 1, 1)`
             : undefined,
-        }}
+          // Selected text is highlighted in the next study's colour.
+          "--selection-color": next?.thumbnailColor,
+        } as React.CSSProperties}
       >
         {/* Starts full-bleed and settles to header height, so the colour the
             sheet lift left filling the screen contracts into the header rather
@@ -831,15 +787,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   href={caseStudyRoute(next)}
                   // The control wears the colour of the project it leads to, and
                   // opens into a pill naming it, so the next sheet announces
-                  // itself before you commit to it.
-                  // Steps aside while the footer's own next link is on screen.
-                  style={{
-                    backgroundColor: next.thumbnailColor,
-                    opacity: footerInView ? 0 : undefined,
-                    pointerEvents: footerInView ? "none" : undefined,
-                  }}
-                  aria-hidden={footerInView || undefined}
-                  tabIndex={footerInView ? -1 : undefined}
+                  // itself before you commit to it. It stays put the whole way
+                  // down, footer included.
+                  style={{ backgroundColor: next.thumbnailColor }}
                   className="case-study-next group shrink-0 inline-flex items-center rounded-full h-12"
                 >
                   <span className="sr-only">Next project:</span>
@@ -1031,7 +981,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
               className="mx-auto mt-16 w-full max-w-[100rem] md:mt-24"
             >
               {videoSrc && (
-                <figure>
+                <figure className="case-study-captioned relative">
                 <LazyVideo
                   data-testid="case-study-video"
                   className="w-full mx-auto rounded-2xl"
@@ -1045,7 +995,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   playsInline
                   controls
                 />
-                {videoCaption && <MediaCaption number={captionNumbers.get("video")}>{videoCaption}</MediaCaption>}
+                {videoCaption && <MediaCaption>{videoCaption}</MediaCaption>}
                 </figure>
               )}
               {media.length > 0 && (
@@ -1056,7 +1006,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   className={`grid ${
                     mediaLayout === "mosaic"
                       ? "grid-cols-2 mt-8 gap-4 md:gap-6 auto-rows-[11rem] md:auto-rows-[16rem]"
-                      : "grid-cols-6 mt-8 gap-x-4 gap-y-8 md:mt-12 md:gap-x-6 md:gap-y-12"
+                      : "grid-cols-6 mt-4 gap-4 md:mt-6 md:gap-6"
                   }`}
                 >
                   {media.map((item, index) => {
@@ -1065,20 +1015,14 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     // In a sequence the tile is a figure holding its frame and
                     // caption; a mosaic's fixed rows leave no room for one.
                     const tileLayout = sequence ? SEQUENCE_SPAN_CLASS[span] : `${SPAN_CLASS[span]} overflow-hidden rounded-2xl bg-ink/20`;
-                    const frameLayout = `case-study-tile-frame overflow-hidden rounded-2xl bg-ink/20 ${item.aspect ? ASPECT_CLASS[item.aspect] : ""}`;
+                    const frameLayout = `case-study-tile-frame case-study-captioned relative overflow-hidden rounded-2xl bg-ink/20 ${item.aspect ? ASPECT_CLASS[item.aspect] : ""}`;
                     const row = mediaRows[index];
                     const paired = isPairedVideoTile(media, mediaRows, index);
-                    // The pointer's x position across the whole row decides
-                    // which of the paired videos plays -- the margin on
-                    // either side, and the gap between the tiles, belong to
-                    // whichever side they're on. No pointer at all (touch,
-                    // or the cursor is elsewhere on the page) still plays
-                    // the earlier one rather than leaving the row silent.
-                    const pairedPlayingIndex = paired
-                      ? mediaPointerXRatio === null
-                        ? pairedVideoIndexForPointer(media, mediaRows, row, 0)
-                        : pairedVideoIndexForPointer(media, mediaRows, row, mediaPointerXRatio)
-                      : -1;
+                    // Alone in its row, a video plays when its row is the
+                    // active one. Sharing a row, only while it's hovered --
+                    // or, without hover, if it's the row's first video.
+                    const firstInRow = media.findIndex((other, otherIndex) => other.kind === "video" && mediaRows[otherIndex] === row) === index;
+                    const pairedPlays = canHover ? hoveredTile === index : firstInRow;
                     return (
                       <figure
                         key={item.src ?? `${item.alt}-${index}`}
@@ -1086,6 +1030,12 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         data-span={span}
                         data-aspect={item.aspect}
                         className={`case-study-tile ${tileLayout}`}
+                        // Under the pointer, its frame grows a band of the
+                        // clip's own colour (globals.css).
+                        data-hovered={(canHover && hoveredTile === index) || undefined}
+                        style={item.tint ? ({ "--tile-tint": item.tint } as React.CSSProperties) : undefined}
+                        onPointerEnter={(event) => event.pointerType !== "touch" && setHoveredTile(index)}
+                        onPointerLeave={() => setHoveredTile((current) => (current === index ? null : current))}
                       >
                         <MaybeFrame className={sequence ? frameLayout : undefined} aspect={item.aspect}>
                         {item.src ? (
@@ -1095,8 +1045,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                               src={item.src}
                               data-playback-row={`media-${row}`}
                               loadImmediately
-                              playing={activePlaybackRow === `media-${row}`
-                                && (!paired || index === pairedPlayingIndex)}
+                              playing={activePlaybackRow === `media-${row}` && (!paired || pairedPlays)}
                               muted
                               loop
                               playsInline
@@ -1116,10 +1065,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                           // broken image, so the gallery rhythm is still visible.
                           <span className="sr-only">{item.alt}</span>
                         )}
+                        {sequence && item.caption && <MediaCaption>{item.caption}</MediaCaption>}
                         </MaybeFrame>
-                        {sequence && item.caption && (
-                          <MediaCaption number={captionNumbers.get(index)}>{item.caption}</MediaCaption>
-                        )}
                       </figure>
                     );
                   })}
@@ -1139,13 +1086,11 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             <div className="mx-auto w-full max-w-[100rem] pt-12 pb-10 md:pt-16">
               <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:gap-12">
                 {next && (
-                  // Takes over from the header's next button, which steps
-                  // aside while the footer is on screen.
                   <Link
                     data-testid="case-study-footer-next"
                     href={caseStudyRoute(next)}
                     className="case-study-footer-next group relative grid min-h-56 content-between gap-12 overflow-hidden rounded-3xl p-7 md:min-h-72 md:p-8"
-                    style={{ backgroundColor: next.thumbnailColor }}
+                    style={{ backgroundColor: next.thumbnailColor, "--card-color": next.thumbnailColor } as React.CSSProperties}
                   >
                     <CardDotField colors={nextCardDotColors} />
                     <span className="relative font-body font-medium text-xs uppercase tracking-[0.08em] opacity-70">

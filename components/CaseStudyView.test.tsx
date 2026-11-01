@@ -14,7 +14,6 @@ import {
   CaseStudyView,
   activePlaybackRowForViewport,
   caseStudyMediaRows,
-  pairedVideoIndexForPointer,
   isPairedVideoTile,
   caseStudyTitleScale,
 } from "./CaseStudyView";
@@ -139,37 +138,6 @@ test("flags only the videos that actually share a row with another video", () =>
     false, // a photo, not a video
     false, // shares row 2 with a photo, not a second video
   ]);
-});
-
-describe("choosing which of a paired row's videos plays", () => {
-  const media = [
-    { src: "/wide.mp4", alt: "Wide", kind: "video" as const, span: "full" as const },
-    { src: "/left.mp4", alt: "Left", kind: "video" as const, span: "half" as const },
-    { src: "/right.mp4", alt: "Right", kind: "video" as const, span: "half" as const },
-  ];
-  const rows = caseStudyMediaRows(media);
-
-  test("picks the left tile for the left half of the row, margin included", () => {
-    expect(pairedVideoIndexForPointer(media, rows, 1, 0)).toBe(1);
-    expect(pairedVideoIndexForPointer(media, rows, 1, 0.2)).toBe(1);
-  });
-
-  test("picks the right tile for the right half of the row, margin included", () => {
-    // Exactly matters here: this is the bug report -- the right margin (a
-    // pointer ratio near 1) was defaulting to the left tile regardless.
-    expect(pairedVideoIndexForPointer(media, rows, 1, 0.99)).toBe(2);
-    expect(pairedVideoIndexForPointer(media, rows, 1, 1)).toBe(2);
-    expect(pairedVideoIndexForPointer(media, rows, 1, 0.6)).toBe(2);
-  });
-
-  test("clamps out-of-range ratios instead of picking neither tile", () => {
-    expect(pairedVideoIndexForPointer(media, rows, 1, -0.4)).toBe(1);
-    expect(pairedVideoIndexForPointer(media, rows, 1, 1.4)).toBe(2);
-  });
-
-  test("returns -1 for a row with no video in it", () => {
-    expect(pairedVideoIndexForPointer(media, rows, 99, 0.5)).toBe(-1);
-  });
 });
 
 test("activates the row nearest the viewport centre during ordinary scrolling", () => {
@@ -912,7 +880,7 @@ test("leaves modified clicks to the browser", () => {
   expect(screen.getByTestId("case-study-view")).toHaveAttribute("data-exiting", "false");
 });
 
-test("numbers a sequence's captions in page order, the film first", () => {
+test("names clips with plain captions, on the clip, without numbers", () => {
   const captioned = {
     ...caseStudy,
     videoSrc: "/film.mp4",
@@ -925,8 +893,10 @@ test("numbers a sequence's captions in page order, the film first", () => {
     ],
   };
   const { container } = render(<CaseStudyView caseStudy={captioned} />);
-  const captions = [...container.querySelectorAll("figcaption")].map((caption) => caption.textContent);
-  expect(captions).toEqual(["01The film", "02First clip", "03Second clip"]);
+  const captions = [...container.querySelectorAll("figcaption")];
+  expect(captions.map((caption) => caption.textContent)).toEqual(["The film", "First clip", "Second clip"]);
+  // Inside each clip's frame, where they fade in over it on hover.
+  expect(captions[1].closest(".case-study-tile-frame")).not.toBeNull();
 });
 
 test("ends on a footer that leads to the next case study", () => {
@@ -954,12 +924,13 @@ test("the footer has no next block when there's no next case study", () => {
   expect(screen.queryByTestId("case-study-footer-next")).not.toBeInTheDocument();
 });
 
-test("the header's next button steps aside while the footer's is on screen", () => {
+test("the header's next button stays visible with the footer on screen", () => {
   const spy = placeFooterAt(200);
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
   spy.mockRestore();
-  expect(screen.getByTestId("case-study-next")).toHaveAttribute("aria-hidden", "true");
-  expect(screen.getByTestId("case-study-next")).toHaveAttribute("tabindex", "-1");
+  expect(screen.getByTestId("case-study-next")).not.toHaveAttribute("aria-hidden");
+  expect(screen.getByTestId("case-study-next")).not.toHaveAttribute("tabindex");
+  expect(screen.getByTestId("case-study-next").style.opacity).toBe("");
   expect(screen.getByTestId("case-study-footer-next")).toHaveAccessibleName(/Next project: Next Case/i);
 });
 
@@ -972,4 +943,40 @@ test("on a short screen the long read still shows its first few lines", () => {
   // jsdom has no line height, so lines fall back to 28px: four of them.
   expect(screen.getByTestId("case-study-long-read").style.maxHeight).toBe("112px");
   expect(screen.getByTestId("case-study-read-more")).toHaveTextContent("Read more");
+});
+
+test("with hover, only the hovered clip gets its colour frame, a wide clip included", () => {
+  const realMatchMedia = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    ...realMatchMedia(query),
+    matches: query === "(hover: hover)",
+  })) as typeof window.matchMedia;
+  const phones = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: [
+      ...["a", "b", "c"].map((name) => ({
+        src: `/${name}.mp4`, alt: name, kind: "video" as const, span: "third" as const, aspect: "portrait" as const, tint: "#e25aba",
+      })),
+      { src: "/wide.mp4", alt: "Wide", kind: "video" as const, span: "full" as const, aspect: "landscape" as const, tint: "#edc91c" },
+    ],
+  };
+  render(<CaseStudyView caseStudy={phones} next={nextStudy} />);
+  const tiles = screen.getAllByTestId("case-study-tile");
+  expect(tiles[1]).toHaveStyle({ "--tile-tint": "#e25aba" });
+  fireEvent.pointerOver(tiles[1], { pointerType: "mouse" });
+  expect(tiles[1]).toHaveAttribute("data-hovered", "true");
+  expect(tiles[0]).not.toHaveAttribute("data-hovered");
+  fireEvent.pointerOut(tiles[1], { pointerType: "mouse" });
+  expect(tiles[1]).not.toHaveAttribute("data-hovered");
+  // A clip alone in its row gets it too.
+  fireEvent.pointerOver(tiles[3], { pointerType: "mouse" });
+  expect(tiles[3]).toHaveAttribute("data-hovered", "true");
+  expect(tiles[3]).toHaveStyle({ "--tile-tint": "#edc91c" });
+  window.matchMedia = realMatchMedia;
+});
+
+test("highlights selected text in the next case study's colour", () => {
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  expect(screen.getByTestId("case-study-view").style.getPropertyValue("--selection-color")).toBe(nextStudy.thumbnailColor);
 });

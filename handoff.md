@@ -556,7 +556,7 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
 - **Phone clips and captions.** The width cap is on the whole figure
   (`.case-study-tile`), so a caption starts under its clip's own edge.
 - **Header and title knobs.** The top of `:root` in `globals.css` holds the
-  case-study header's settings: `--case-study-header-height` (24vh),
+  case-study header's settings: `--case-study-header-height` (20vh),
   `--case-study-standfirst-size`, `--case-study-title-ratio` (the title is
   1.8x the standfirst), `--case-study-title-min`/`-max` (2.75rem/7.5rem), and
   `--case-study-header-clearance` (room kept around the title: 7.5rem on
@@ -592,9 +592,16 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   less (`FIT_WIDTH_STRENGTH` 0.45), so the monitor fills the width, and under
   768px wide the desk is centred in the frame (`NO_RAIL_X_SHIFT`).
   Case studies have no dot row on a phone either: the footer lists the pages.
-- **Jam media.** Main flow, hosting and joining are one row of phones: a
-  `third` span on a six-column sequence grid. The main flow is cropped from
-  16:9; a 1080x1920 export would be sharper.
+- **Jam media.** Hosting, main flow and joining are one row of phones: a
+  `third` span on a six-column sequence grid. The main flow is a 1080x1920
+  export, trimmed of its still first 2 seconds. No captions (the component
+  still supports them, drawn on the clip on hover). In a row of several
+  videos only the hovered one plays, none at rest; without hover the row's
+  first plays. Every clip below the film, and the Up next card, grows an 8px
+  band of its own colour on hover (`tint` in the data, sampled from the
+  video; the frame is painted that colour too, so no hairline shows).
+- **Selection.** Text selected on a case study highlights in the next
+  study's colour (`--selection-color`); inside the Up next card, in ink.
 - **Footer.** An "Up next" card in the next study's colour, with a dot field
   on hover (`CardDotField`: dots in the other pages' colours grow around the
   cursor only). The card holds still. Over its arrow button
@@ -620,7 +627,7 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   hit-testing 3D faces (Safari gets that wrong), and nothing holding faces
   may take a filter or opacity, which would flatten it. The board is the
   desk's birch, drawn by `lib/workspace/grain.ts`, shared with the desk.
-- **Header look.** 24vh with the title at 1.8x the standfirst; bottom
+- **Header look.** 20vh with the title at 1.8x the standfirst; bottom
   corners rounded (`--case-study-header-radius`, 2rem); a soft ink shadow
   fades in once scrolled (data-shrunk), none at the top.
   Home and next centre on the title's capitals (`--case-study-control-drop`,

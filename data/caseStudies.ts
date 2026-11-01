@@ -29,8 +29,11 @@ export type CaseStudyMedia = {
   kind?: "image" | "video";
   span?: "full" | "tall" | "half" | "third";
   aspect?: "landscape" | "portrait" | "wide";
-  // Shown under the tile, numbered in order with the page's other captions.
+  // The clip's name, shown on it while it's hovered (always, without hover).
   caption?: string;
+  // The clip's background colour, sampled from the video. A clip that plays
+  // on hover grows a band of it around its frame while it plays.
+  tint?: string;
 };
 
 // An editorial portrait that belongs beside the introduction rather than in
@@ -57,7 +60,7 @@ export type CaseStudy = {
   blurb: string;
   // Optional showreel for the case study, played on its own page.
   videoSrc?: string;
-  // Caption for videoSrc; it counts as the first numbered caption.
+  // Caption for videoSrc, shown the same way as the media's.
   videoCaption?: string;
   // A short, hand-trimmed restatement of the overview's opening thought,
   // set above it in the condensed display face -- authored rather than
@@ -121,11 +124,11 @@ export const caseStudies: CaseStudy[] = [
     sections: [
       {
         body:
-          "30% of all listening happens in the presence of others. Many media platforms tried to build synchronous experiences during the COVID pandemic, but they all failed. Interaction friction is one challenge, but the real challenge is social friction: making others feel welcome to join, and having the experience feel spontaneous rather than requiring a lot of coordination. Once people have joined, it's helping them feel comfortable contributing to the session and overcoming the anxieties of being in the presence of others, such as \"Will my friend be offended if I change the song?\"",
+          "30% of all listening happens in the presence of others. Plenty of platforms have tried to build synchronous listening and viewing experiences, but none of them really took off. Interaction friction is an obvious challenge, but helping users overcome social friction is the real hurdle. People need to feel welcome to join, and it has to feel spontaneous rather than something that takes coordinating. Once they’re in, they need to feel comfortable contributing, and to get past the small anxieties of listening with others, like “Will my friend be offended if I change the song?”",
       },
       {
         body:
-          "I was responsible for overcoming all of these challenges with Jam. I designed a safe and seamless proactive nudging system (which was key to scaling and finding product-market-fit), and worked with other designers to adapt and scale the feature to platforms like car, desktop, and TV. I designed a way to encourage remote Jams (i.e. when two people listen together from different locations) through Listening Activity and Messages.",
+          "I was responsible for solving these challenges with Jam. I designed a safe, seamless proactive nudging system, which was key to scaling Jam and finding product-market fit. I worked with other designers to adapt it for car, desktop and TV. I also designed ways to encourage remote Jams, where people listen together from different places, through Listening Activity and Messages.",
         bodyLinks: [
           {
             label: "proactive nudging",
@@ -148,49 +151,48 @@ export const caseStudies: CaseStudy[] = [
       },
     ],
     videoSrc: "/assets/jam.mp4",
-    videoCaption: "Jam, in the launch film",
     mediaLayout: "sequence",
     mediaPadded: true,
     media: [
       {
-        src: "/assets/jam-main-flow.mp4",
-        alt: "Spotify Jam main flow",
-        caption: "The main flow: starting a Jam",
-        kind: "video",
-        span: "third",
-        aspect: "portrait",
-      },
-      {
         src: "/assets/jam-host.mp4",
         alt: "Hosting a Spotify Jam",
-        caption: "Hosting a Jam",
         kind: "video",
         span: "third",
         aspect: "portrait",
+        tint: "#efa648",
+      },
+      {
+        src: "/assets/jam-main-flow.mp4",
+        alt: "Spotify Jam main flow",
+        kind: "video",
+        span: "third",
+        aspect: "portrait",
+        tint: "#e25aba",
       },
       {
         src: "/assets/jam-two-choice.mp4",
         alt: "Choosing how to join a Spotify Jam",
-        caption: "Choosing how to join",
         kind: "video",
         span: "third",
         aspect: "portrait",
+        tint: "#1f9af7",
       },
       {
         src: "/assets/jam-desktop.mp4",
         alt: "Spotify Jam desktop experience",
-        caption: "On desktop",
         kind: "video",
         span: "full",
         aspect: "landscape",
+        tint: "#edc91c",
       },
       {
         src: "/assets/jam-tv.mp4",
         alt: "Spotify Jam TV experience",
-        caption: "On TV",
         kind: "video",
         span: "full",
         aspect: "landscape",
+        tint: "#13fb73",
       },
     ],
   },
