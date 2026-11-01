@@ -307,8 +307,9 @@ function UnreleasedLabel({ title, detail }: { title: string; detail: string }) {
 }
 
 // About's calls to action, in the rail: two matching rows, the title and a
-// detail on the left and a round button on the right. The email (ink) copies
-// its address; anything else (sand, the CV) downloads. Each row's link
+// detail on the left and a round button (or, for the CV, a tilted picture of
+// its first page) on the right. The email (ink) copies its address; anything
+// else (sand, the CV) downloads. Each row's link
 // stretches over the whole row.
 function ActionCard({ action }: { action: CaseStudyAction }) {
   const email = action.href.startsWith("mailto:") ? action.href.slice("mailto:".length) : null;
@@ -326,12 +327,17 @@ function ActionCard({ action }: { action: CaseStudyAction }) {
           </a>
         )}
       </span>
-      <span
-        aria-hidden="true"
-        className={`grid size-12 shrink-0 place-items-center rounded-full ${email ? "bg-cream text-ink" : "bg-ink text-cream"}`}
-      >
-        {email ? <Envelope size={24} /> : <DownArrow size={24} />}
-      </span>
+      {action.preview ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={action.preview} alt="" className="case-study-action-preview" />
+      ) : (
+        <span
+          aria-hidden="true"
+          className={`grid size-12 shrink-0 place-items-center rounded-full ${email ? "bg-cream text-ink" : "bg-ink text-cream"}`}
+        >
+          {email ? <Envelope size={24} /> : <DownArrow size={24} />}
+        </span>
+      )}
     </div>
   );
 }

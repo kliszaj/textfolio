@@ -31,7 +31,11 @@ export const ABOUT_PAGE: CaseStudy = {
   // likely came for. The footer still lists every link.
   actions: [
     { title: "Email me", href: `mailto:${CONTACT.email}`, detail: CONTACT.email },
-    ...(CONTACT.cv ? [{ title: "My CV", href: CONTACT.cv, detail: "One page, PDF" }] : []),
+    // The preview is the CV's first page; render it again whenever the PDF
+    // changes (sips -s format jpeg -Z 240 on the PDF).
+    ...(CONTACT.cv
+      ? [{ title: "My CV", href: CONTACT.cv, detail: "One page, PDF", preview: "/assets/adrian-klisz-cv-preview.jpg" }]
+      : []),
   ],
   mediaPadded: true,
 };

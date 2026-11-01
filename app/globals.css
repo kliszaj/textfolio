@@ -1035,6 +1035,26 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   line-height: 1;
 }
 
+/* The CV's first page, as tall as the row allows, tilted; under the pointer
+   it straightens and lifts. Its right edge lines up with the email's button. */
+.case-study-action-preview {
+  flex: none;
+  height: 4.25rem;
+  margin-block: -0.25rem;
+  border-radius: 0.1875rem;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18);
+  transform: rotate(4deg);
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.case-study-action-row:hover .case-study-action-preview {
+  transform: translateY(-0.25rem) scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-study-action-preview { transition: none; }
+}
+
 /* A page's opening line set a size up (About). */
 .case-study-lead {
   font-size: clamp(1.5rem, 2.4vw, 2.125rem);

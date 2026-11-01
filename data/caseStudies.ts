@@ -14,6 +14,9 @@ export type CaseStudyAction = {
   href: string;
   // Under the title: the address itself, or what you get.
   detail: string;
+  // A picture of what downloads (the CV's first page), in place of the
+  // round button.
+  preview?: string;
 };
 
 // One beat of the long read. Headings are optional so a continuous narrative

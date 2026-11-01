@@ -165,11 +165,11 @@ function ReadingTile({ reading }: { reading: AboutBentoData["reading"] }) {
       </div>
       {/* Each change of book comes in afresh, out of a blur, like the desk's
           name and clock. */}
-      <div aria-live="polite" key={picked ?? "none"} className="about-books-caption flex min-h-[6.5rem] flex-col justify-end">
+      <div aria-live="polite" key={picked ?? "none"} className="about-books-caption flex min-h-[5.5rem] flex-col justify-end">
         {book ? (
           <>
-            <span className="block font-body text-3xl font-bold leading-none tracking-[-0.015em]">{book.title}</span>
-            <span className="mt-1.5 block font-medium text-ink/60">{book.author}</span>
+            <span className="block font-body text-xl font-bold leading-tight">{book.title}</span>
+            <span className="mt-0.5 block font-medium text-ink/60">{book.author}</span>
             <span className="mt-2 block font-medium leading-snug">
               {book.note}{" "}
               <a href={book.href} target="_blank" rel="noopener" className="whitespace-nowrap underline underline-offset-2 hover:opacity-70">
@@ -178,7 +178,8 @@ function ReadingTile({ reading }: { reading: AboutBentoData["reading"] }) {
             </span>
           </>
         ) : (
-          <span className="block font-body text-3xl font-bold leading-none tracking-[-0.015em] lg:text-4xl">{reading.title}</span>
+          // Quiet at rest: the site's small grey label, like the facts'.
+          <span className="block text-xs uppercase tracking-[0.08em] text-ink/60">{reading.title}</span>
         )}
       </div>
     </div>

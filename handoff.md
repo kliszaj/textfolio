@@ -3831,3 +3831,8 @@ no longer repeats the title; e-ink displays has its own description (the
 eink-weather-quotes frame). The Focals Loop clip is on green. Projects no
 longer ends with "more coming soon...". The full-width film placeholder on
 Seamless ships as a grey box until that video is recorded. CV stays "CV".
+
+The CV row shows its first page (public/assets/adrian-klisz-cv-preview.jpg)
+in place of the download button; regenerate it with
+`sips -s format jpeg -Z 240` on the PDF whenever the CV changes. "Currently
+reading" rests as a small grey label; a picked book's title is 20px.
