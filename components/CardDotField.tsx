@@ -24,8 +24,7 @@ function hash(column: number, row: number) {
 // The page dots, scattered into a field inside a card, that only shows
 // around the pointer: dots in the page colours grow out of the card as it
 // comes near and shrink away behind it. Over the card's button they pour into
-// it instead, and the card is marked data-absorbing (with one of the dots'
-// colours as --pour-color) for the button to fill.
+// it instead, and the card is marked data-absorbing for the button to fill.
 // Hover only, so touch leaves the card plain; with reduced motion the patch
 // follows without easing.
 export function CardDotField({ colors }: { colors: string[] }) {
@@ -44,8 +43,6 @@ export function CardDotField({ colors }: { colors: string[] }) {
     let pointer: { x: number; y: number } | null = null;
     // Where the dots pour to while the pointer is on the button, else null.
     let sink: { x: number; y: number } | null = null;
-    // The colour the button last filled with.
-    let pouredColor: string | null = null;
     // Each dot's current size, 0 to 1, eased toward its target frame by frame;
     // how far it has been pulled into the button, 0 to 1; and whether it has
     // gone in, so it stays gone until the pointer leaves the button.
@@ -122,13 +119,6 @@ export function CardDotField({ colors }: { colors: string[] }) {
         if (Math.hypot(pointer.x - centre.x, pointer.y - centre.y) <= button.width / 2) next = centre;
       }
       if (!next && sink) poured.fill(0);
-      // A fresh colour each time the dots start pouring in, picked from the
-      // field's own and never the last one; kept while the fill drains away.
-      if (next && !sink) {
-        const choices = colors.length > 1 ? colors.filter((color) => color !== pouredColor) : colors;
-        pouredColor = choices[Math.floor(Math.random() * choices.length)];
-        card.style.setProperty("--pour-color", pouredColor);
-      }
       sink = next;
       card.dataset.absorbing = String(sink !== null);
     };

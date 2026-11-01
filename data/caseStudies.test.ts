@@ -22,8 +22,8 @@ test("all slugs are unique", () => {
 test("keeps each case study date beside the role label, not in the large role value", () => {
   expect(caseStudies.slice(0, 3).map((caseStudy) => caseStudy.facts?.[0])).toEqual([
     { label: "Role • 2023-Present", value: "Design Lead" },
-    { label: "Role • 2021-2022", value: "Co-Creator, Design Lead" },
-    { label: "Role • 2018-2019", value: "Interaction Design Lead" },
+    { label: "Role • 2023-Present", value: "Co-Creator, Design Lead" },
+    { label: "Role • 2016-2020", value: "Senior UX Designer" },
   ]);
 });
 
@@ -40,12 +40,35 @@ test("orders the Spotify Jam media as one full-width flow, two portrait choices,
   ]);
 });
 
-test("links Matter from the Seamless Strategy overview", () => {
-  expect(getCaseStudyBySlug("seamless-strategy")?.overviewLink).toEqual({
-    label: "Matter",
-    href: "https://en.wikipedia.org/wiki/Matter_(standard)",
-  });
+test("the Seamless Strategy overview leads with Ubiquity, with no link", () => {
+  const seamless = getCaseStudyBySlug("seamless-strategy");
+  expect(seamless?.overview).toMatch(/^Spotify has held a competitive advantage by being available on any device/);
+  expect(seamless?.overviewLink).toBeUndefined();
 });
+
+test("the Seamless Strategy holds a full-width film, shows the device sheet and Connect as one row of phones, then steps through its roadmap", () => {
+  const seamless = getCaseStudyBySlug("seamless-strategy");
+  expect(seamless?.mediaLayout).toBe("sequence");
+  expect(seamless?.media).toEqual([
+    expect.objectContaining({ alt: expect.stringMatching(/coming soon/), span: "full", aspect: "landscape" }),
+    expect.objectContaining({ src: "/assets/seamless-device-sheet-phone.jpg", span: "third", aspect: "portrait" }),
+    expect.objectContaining({ src: "/assets/seamless-device-sheet-speaker.jpg", span: "third", aspect: "portrait" }),
+    expect.objectContaining({ src: "/assets/seamless-connect.mp4", kind: "video", span: "third", aspect: "portrait", unreleased: expect.any(Object) }),
+    expect.objectContaining({
+      src: "/assets/seamless-roadmap.jpg",
+      span: "full",
+      aspect: "landscape",
+      steps: expect.objectContaining({
+        bands: [
+          expect.objectContaining({ label: "Enable Devices" }),
+          expect.objectContaining({ label: "Enable Moments" }),
+          expect.objectContaining({ label: "Enable People" }),
+        ],
+      }),
+    }),
+  ]);
+});
+
 
 test("work overview body copy avoids em dashes", () => {
   for (const caseStudy of caseStudies) {
@@ -92,4 +115,10 @@ describe("caseStudyRoute", () => {
   test("routes About to /about, not /work/about", () => {
     expect(caseStudyRoute(ABOUT_PAGE)).toBe("/about");
   });
+});
+
+test("every case study opens on a one-liner", () => {
+  for (const slug of ["spotify-jam", "seamless-strategy", "focals-by-north"]) {
+    expect(getCaseStudyBySlug(slug)?.oneLiner).toBeTruthy();
+  }
 });

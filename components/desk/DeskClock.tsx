@@ -145,7 +145,7 @@ export function DeskClock({ clock, touch = false, hint = false }: { clock: Retur
           className="grid size-[1.2em] cursor-pointer place-items-center rounded-full transition-[opacity,transform] duration-200 hover:scale-110 active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-4"
           style={{ opacity: clock.previewing ? 1 : 0, pointerEvents: clock.previewing ? undefined : "none" }}
         >
-          <svg ref={adaptiveRef} viewBox="0 0 24 24" className="size-[0.85em] transition-colors duration-300" aria-hidden="true">
+          <svg ref={adaptiveRef} viewBox="0 0 24 24" className="boil-icon size-[0.85em] transition-colors duration-300" aria-hidden="true">
             <path d="M12 7a6 6 0 1 1-6 6" fill="none" stroke="currentColor" strokeWidth="2.6" />
             <path d="M12.5 2.5 7 7l5.5 4.5z" fill="currentColor" />
           </svg>

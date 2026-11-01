@@ -107,3 +107,8 @@ test("on touch, shows a swipe hint and the day's stops instead of arrows", () =>
   rerender(<TouchClock hint={false} />);
   expect(screen.getByText("Swipe up to move the day on")).toHaveStyle({ opacity: "0" });
 });
+
+test("draws the reset icon with the gentle line boil", () => {
+  render(<ClockPreview />);
+  expect(screen.getByRole("button", { name: "Back to the current time" }).querySelector("svg")).toHaveClass("boil-icon");
+});

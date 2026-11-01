@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { EmailLink } from "./EmailLink";
 
 afterEach(() => jest.useRealTimers());
@@ -28,4 +28,11 @@ test("a modified click is left to the browser", () => {
   render(<EmailLink email="hello@adrianklisz.com" />);
   fireEvent.click(screen.getByRole("link"), { metaKey: true });
   expect(writeText).not.toHaveBeenCalled();
+});
+
+test("can say something else once it's copied", async () => {
+  Object.assign(navigator, { clipboard: { writeText: jest.fn().mockResolvedValue(undefined) } });
+  render(<EmailLink email="hello@example.com" copiedLabel="Copied to clipboard." />);
+  fireEvent.click(screen.getByRole("link"));
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Copied to clipboard."));
 });

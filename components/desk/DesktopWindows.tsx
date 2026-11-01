@@ -185,7 +185,7 @@ function Figma() {
         <span className="absolute top-7 left-8 text-[10px] text-[#9a9a9a]">Desktop — Case study</span>
         <div className="absolute top-12 right-8 bottom-16 left-8 flex flex-col bg-[#1c1c1c] shadow-sm outline-[1.5px] outline-[#0d99ff]">
           <div className="flex h-20 items-end justify-between px-5 pb-3" style={{ backgroundColor: "#5e2a55" }}>
-            <span className="text-[22px] leading-none font-black text-[#f5ede6]">Seamless Strategy</span>
+            <span className="h-3.5 w-2/5 rounded-full bg-[#f5ede6]" />
             <span className="size-6 rounded-full bg-[#ffd400]" />
           </div>
           <div className="flex flex-1 gap-4 p-5">
@@ -232,7 +232,7 @@ function Prototype() {
     [0, "<main class=\"home\">"],
     [1, "<header class=\"nav\">…</header>"],
     [1, "<section class=\"hero\">"],
-    [2, "<h1>Made for people.</h1>"],
+    [2, "<h1>…</h1>"],
     [2, "<a class=\"cta\">Explore work</a>"],
     [1, "</section>"],
     [1, "<ul class=\"cards\">…</ul>"],
@@ -261,7 +261,11 @@ function Prototype() {
               <div className="relative flex h-full flex-col overflow-hidden rounded-[24px] bg-[#1c1c1c] px-3.5 pt-3 text-[#f5ede6]">
                 <span className="mx-auto h-4 w-14 rounded-full bg-black" />
                 <div className="mt-3 flex items-center justify-between text-[9px] font-black tracking-wide"><span>ADRIAN</span><span className="flex flex-col gap-[3px]"><span className="h-[2px] w-3.5 bg-[#f5ede6]" /><span className="h-[2px] w-3.5 bg-[#f5ede6]" /></span></div>
-                <div className="mt-5 text-[22px] leading-[0.95] font-black">Made for people.</div>
+                {/* A headline, as wireframe lines. */}
+                <div className="mt-5 flex flex-col gap-1.5">
+                  <span className="h-3.5 w-[85%] rounded-full bg-[#f5ede6]" />
+                  <span className="h-3.5 w-3/5 rounded-full bg-[#f5ede6]" />
+                </div>
                 <span className="mt-3 w-fit rounded-full bg-[#f5ede6] px-2.5 py-1 text-[8px] font-semibold text-[#1c1c1c]">Explore work ↗</span>
                 <div className="mt-4 flex flex-col gap-2">
                   {[["#1ed760", "Spotify Jam"], ["#ff4fd8", "Seamless Strategy"], ["#ff9f1c", "Focals by North"]].map(([color, title]) => (

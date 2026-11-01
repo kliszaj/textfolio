@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { HomeIconAnimation } from "@/components/HomeIconAnimation";
 import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
+import { SteppedImage } from "@/components/SteppedImage";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import { ABOUT_PAGE, CONTACT } from "@/data/about";
 import { MADE_WITH } from "@/data/madeWith";
@@ -24,7 +25,7 @@ import {
   peekArrivingFromDesk,
   prepareDeskReturn,
 } from "@/lib/deskSession";
-import type { CaseStudy, CaseStudyFact, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
+import type { CaseStudy, CaseStudyAction, CaseStudyFact, CaseStudyMedia, CaseStudyOverviewLink } from "@/data/caseStudies";
 import type { ReactNode } from "react";
 
 type CaseStudyViewProps = {
@@ -188,6 +189,7 @@ const ASPECT_CLASS: Record<NonNullable<CaseStudyMedia["aspect"]>, string> = {
   landscape: "aspect-video",
   portrait: "aspect-[9/16]",
   wide: "aspect-[3/1]",
+  upright: "aspect-[4/5]",
 };
 
 // Wraps every occurrence of each phrase in <strong>, for the odd stat that
@@ -288,10 +290,73 @@ function MediaCaption({ children }: { children: ReactNode }) {
   return <figcaption className="case-study-caption font-body font-medium">{children}</figcaption>;
 }
 
+// Over blurred, unlaunched work: a lock, and why it's hidden.
+function UnreleasedLabel({ title, detail }: { title: string; detail: string }) {
+  return (
+    <figcaption className="case-study-unreleased font-body">
+      <span className="case-study-unreleased-lock" aria-hidden="true">
+        <svg className="boil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="5" y="11" width="14" height="10" rx="2" />
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+        </svg>
+      </span>
+      <span className="font-bold">{title}</span>
+      <span className="case-study-unreleased-detail font-medium">{detail}</span>
+    </figcaption>
+  );
+}
+
+// About's calls to action, in the rail: two matching rows, the title and a
+// detail on the left and a round button on the right. The email (ink) copies
+// its address; anything else (sand, the CV) downloads. Each row's link
+// stretches over the whole row.
+function ActionCard({ action }: { action: CaseStudyAction }) {
+  const email = action.href.startsWith("mailto:") ? action.href.slice("mailto:".length) : null;
+  return (
+    <div className={`case-study-action-row ${email ? "bg-ink text-cream" : "bg-ink/[0.06] text-ink"}`}>
+      <span className="min-w-0">
+        <span className="case-study-action-title block font-display">{action.title}</span>
+        {email ? (
+          <EmailLink email={email} copiedLabel="Copied to clipboard." className="case-study-action-link mt-1.5 font-medium opacity-75">
+            {action.detail}
+          </EmailLink>
+        ) : (
+          <a href={action.href} download aria-label={`Download ${action.title}`} className="case-study-action-link mt-1.5 block font-medium opacity-60">
+            {action.detail}
+          </a>
+        )}
+      </span>
+      <span
+        aria-hidden="true"
+        className={`grid size-12 shrink-0 place-items-center rounded-full ${email ? "bg-cream text-ink" : "bg-ink text-cream"}`}
+      >
+        {email ? <Envelope size={24} /> : <DownArrow size={24} />}
+      </span>
+    </div>
+  );
+}
+
+function DownArrow({ size }: { size: number }) {
+  return (
+    <svg className="boil-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 4v15m0 0-6-6m6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function Envelope({ size }: { size: number }) {
+  return (
+    <svg className="boil-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="5.5" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="2.2" />
+      <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function FooterArrow({ size }: { size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 12h15m0 0-6-6m6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="boil-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 12h15m0 0-6-6m6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -331,8 +396,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
     overview,
     overviewLink,
     overviewContactLinks,
-    profile,
+    overviewStyle,
     facts = [],
+    actions = [],
     introImage,
     sections = [],
     media = [],
@@ -343,7 +409,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   } = caseStudy;
   const hasMedia = Boolean(videoSrc) || media.length > 0;
   const hasFacts = facts.length > 0;
-  const hasBodyContent = hasFacts || Boolean(overview) || Boolean(introImage) || sections.length > 0 || hasMedia || !children;
+  // The rail holds the facts, or (About) big calls to action instead.
+  const hasRail = hasFacts || actions.length > 0;
+  const hasBodyContent = hasRail || Boolean(overview) || Boolean(introImage) || sections.length > 0 || hasMedia || !children;
   const router = useRouter();
 
   const [shrunk, setShrunk] = useState(false);
@@ -795,16 +863,17 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   <span className="sr-only">Next project:</span>
                   <span
                     data-testid="case-study-next-label"
-                    className="case-study-next-label font-body font-medium whitespace-nowrap overflow-hidden"
+                    className="case-study-next-label font-body font-bold whitespace-nowrap overflow-hidden"
                   >
                     {next.title}
                   </span>
                   <span className="case-study-next-arrow grid place-items-center size-12 shrink-0">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    {/* boil-icon: hand-drawn, like Home opposite. */}
+                    <svg className="boil-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path
                         d="M4 12h15m0 0-6-6m6 6-6 6"
                         stroke="currentColor"
-                        strokeWidth="2"
+                        strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
@@ -826,38 +895,12 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             ref={columnsRef}
             data-testid="case-study-columns"
             className={`mx-auto grid w-full max-w-[100rem] gap-x-6 gap-y-8${
-              hasFacts ? " lg:grid-cols-12" : ""
+              hasRail ? " lg:grid-cols-12" : ""
             }`}
           >
             {/* Two columns on one grid: the standfirst and the long read share
                 the text column, so both end on the same edge, and the facts
                 stand beside them from the standfirst's top line. */}
-            {/* About: the portrait beside the whole bio, with the ways to get
-                in touch under it. Side by side (md), the portrait is as tall
-                as the bio and its buttons; stacked, it keeps its shape. */}
-            {profile && (
-              <div data-testid="case-study-profile" className="grid gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-12 lg:col-span-12 lg:gap-24">
-                <div className="relative aspect-[4/5] w-full max-w-md overflow-hidden rounded-2xl bg-ink/10 md:aspect-auto md:h-full md:max-w-none">
-                  <Image src={profile.portrait.src} alt={profile.portrait.alt} fill sizes="(min-width: 768px) 40vw, 100vw" className="object-cover object-[50%_30%]" />
-                </div>
-                <div className="font-body font-medium">
-                  {overview?.split(/\n\s*\n/).map((paragraph) => (
-                    <p key={paragraph} className="case-study-copy mb-6 last:mb-0">{paragraph}</p>
-                  ))}
-                  <div className="mt-10 flex flex-wrap gap-3">
-                    <EmailLink email={CONTACT.email} className="h-12 rounded-full bg-ink px-6 text-cream transition-colors hover:bg-black" />
-                    <a href={CONTACT.linkedin} className="inline-flex h-12 items-center gap-2 rounded-full border-[1.5px] border-ink px-6 transition-colors hover:bg-ink hover:text-cream">
-                      LinkedIn <span aria-hidden="true">↗</span>
-                    </a>
-                    {CONTACT.cv && (
-                      <a href={CONTACT.cv} target="_blank" rel="noopener" className="inline-flex h-12 items-center gap-2 rounded-full border-[1.5px] border-ink px-6 transition-colors hover:bg-ink hover:text-cream">
-                        CV <span aria-hidden="true">↗</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
             {oneLiner && (
               <p className="case-study-one-liner font-body font-medium lg:col-span-7">
                 {oneLiner}
@@ -865,7 +908,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             )}
             <div
               data-testid="case-study-detail"
-              className={`font-body font-medium${hasFacts ? " lg:col-span-7" : ""}`}
+              className={`font-body font-medium${hasRail ? " lg:col-span-7" : ""}`}
             >
               <div
                 ref={longReadRef}
@@ -889,9 +932,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   />
                 </figure>
               )}
-              {/* A profile page sets its bio beside the portrait instead. */}
-              {overview && !profile && (
-                <p className="case-study-copy case-study-intro-copy mb-8">
+              {overview && (
+                <p className={`case-study-copy case-study-intro-copy mb-8${overviewStyle === "lead" ? " case-study-lead" : ""}`}>
                   {renderLinkedCopy(overview, overviewLink, next?.thumbnailColor)}
                 </p>
               )}
@@ -968,6 +1010,16 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 </dl>
               </aside>
             )}
+            {!hasFacts && actions.length > 0 && (
+              <aside
+                data-testid="case-study-actions"
+                className="font-body grid content-start gap-4 lg:col-start-9 lg:col-span-4 lg:row-start-1"
+              >
+                {actions.map((action) => (
+                  <ActionCard key={action.href} action={action} />
+                ))}
+              </aside>
+            )}
           </div>
 
           {/* Evidence follows the reading columns on the same left and right
@@ -1030,16 +1082,25 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         data-span={span}
                         data-aspect={item.aspect}
                         className={`case-study-tile ${tileLayout}`}
-                        // Under the pointer, its frame grows a band of the
-                        // clip's own colour (globals.css).
-                        data-hovered={(canHover && hoveredTile === index) || undefined}
+                        // Under the pointer, a clip's frame grows a band of its
+                        // own colour (globals.css). Stills and locked clips,
+                        // which hovering doesn't change, stay as they are.
+                        data-hovered={(canHover && hoveredTile === index && ((item.kind === "video" && !item.unreleased) || item.steps)) || undefined}
                         style={item.tint ? ({ "--tile-tint": item.tint } as React.CSSProperties) : undefined}
                         onPointerEnter={(event) => event.pointerType !== "touch" && setHoveredTile(index)}
                         onPointerLeave={() => setHoveredTile((current) => (current === index ? null : current))}
                       >
                         <MaybeFrame className={sequence ? frameLayout : undefined} aspect={item.aspect}>
                         {item.src ? (
-                          item.kind === "video" ? (
+                          item.steps ? (
+                            <SteppedImage
+                              src={item.src}
+                              alt={item.alt}
+                              steps={item.steps}
+                              playbackRow={`media-${row}`}
+                              playing={canHover ? hoveredTile === index : activePlaybackRow === `media-${row}`}
+                            />
+                          ) : item.kind === "video" ? (
                             <LazyVideo
                               className="size-full object-cover"
                               src={item.src}
@@ -1066,6 +1127,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                           <span className="sr-only">{item.alt}</span>
                         )}
                         {sequence && item.caption && <MediaCaption>{item.caption}</MediaCaption>}
+                        {item.unreleased && <UnreleasedLabel {...item.unreleased} />}
                         </MaybeFrame>
                       </figure>
                     );
@@ -1101,15 +1163,15 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                       <span className="case-study-footer-title font-display">{next.title}</span>
                       {/* The header's next button, in ink. Under the pointer the
                           card's dots pour into it (CardDotField) and it fills
-                          with one of their colours. */}
+                          with the page's cream. */}
                       <span
                         aria-hidden="true"
                         data-dot-target
                         className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[var(--next-color)] transition-colors duration-300 group-focus-visible:text-ink group-data-[absorbing=true]:text-ink group-data-[absorbing=true]:delay-150"
                         style={{ "--next-color": next.thumbnailColor } as React.CSSProperties}
                       >
-                        <span className="absolute inset-0 scale-0 rounded-full bg-[var(--pour-color,var(--next-color))] transition-transform duration-300 ease-out group-focus-visible:scale-100 group-data-[absorbing=true]:scale-100 group-data-[absorbing=true]:delay-150" />
-                        <span className="relative"><FooterArrow size={22} /></span>
+                        <span className="absolute inset-0 scale-0 rounded-full bg-cream transition-transform duration-300 ease-out group-focus-visible:scale-100 group-data-[absorbing=true]:scale-100 group-data-[absorbing=true]:delay-150" />
+                        <span className="relative"><FooterArrow size={26} /></span>
                       </span>
                     </span>
                   </Link>
@@ -1146,7 +1208,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                       <ul className="mt-3 grid gap-3">
                         <li>
                           <EmailLink email={CONTACT.email} className="hover:underline underline-offset-4">
-                            {CONTACT.email} →
+                            {CONTACT.email}
                           </EmailLink>
                         </li>
                         <li><a href={CONTACT.linkedin} className="hover:underline underline-offset-4">LinkedIn</a></li>

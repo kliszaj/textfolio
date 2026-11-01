@@ -637,6 +637,58 @@ test("preserves authored media proportions in a sequential gallery", () => {
   expect(videos[2]).toHaveAttribute("data-playback-row", "media-1");
 });
 
+test("shows a stepped image one band at a time in its landscape tile, as part of its playback row", () => {
+  const stepped = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: [
+      {
+        src: "/tall.jpg", alt: "Tall", span: "full" as const, aspect: "landscape" as const,
+        steps: { width: 100, height: 300, bands: [
+          { label: "One", color: "#111111", top: 0, height: 100 },
+          { label: "Two", color: "#222222", top: 100, height: 100 },
+        ] },
+      },
+    ],
+  };
+
+  render(<CaseStudyView caseStudy={stepped} next={nextStudy} />);
+
+  const tile = screen.getByTestId("case-study-tile");
+  expect(tile.querySelector(".case-study-tile-frame")).toHaveClass("aspect-video");
+  expect(tile.querySelector(".case-study-steps")).toHaveAttribute("data-playback-row", "media-0");
+  expect(screen.getByRole("img", { name: "Tall" })).toHaveClass("case-study-steps-image");
+  expect(screen.getByRole("button", { name: "One" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("labels unreleased media with why it's hidden", () => {
+  const hidden = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: [
+      { src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, unreleased: { title: "Under wraps until launch", detail: "Launching 2027" } },
+    ],
+  };
+
+  render(<CaseStudyView caseStudy={hidden} next={nextStudy} />);
+
+  const tile = screen.getByTestId("case-study-tile");
+  expect(tile.querySelector(".case-study-unreleased")).toHaveTextContent("Under wraps until launchLaunching 2027");
+  expect(tile.querySelector(".case-study-unreleased-lock svg")).toHaveClass("boil-icon");
+});
+
+test("frames an upright tile at 4:5", () => {
+  const upright = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: [{ src: "/a.mp4", alt: "A", kind: "video" as const, span: "tall" as const, aspect: "upright" as const }],
+  };
+
+  render(<CaseStudyView caseStudy={upright} next={nextStudy} />);
+
+  expect(screen.getByTestId("case-study-tile").querySelector(".case-study-tile-frame")).toHaveClass("aspect-[4/5]");
+});
+
 test("stacks third-width phone clips on small screens and makes them three-up from md", () => {
   const phones = {
     ...caseStudy,
@@ -680,10 +732,15 @@ test("names the next project in the pill that opens out of the arrow", () => {
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
   const label = screen.getByTestId("case-study-next-label");
   expect(label).toHaveTextContent("Next Case");
-  // Collapsed at rest; CSS opens it on hover and keyboard focus. One weight
-  // lighter than the case-study title next to it, so the two don't compete.
-  expect(label).toHaveClass("case-study-next-label", "font-medium", "overflow-hidden");
+  // Collapsed at rest; CSS opens it on hover and keyboard focus.
+  expect(label).toHaveClass("case-study-next-label", "font-bold", "overflow-hidden");
   expect(screen.getByTestId("case-study-next")).toHaveClass("case-study-next");
+});
+
+test("draws both next arrows with the line boil, header and footer", () => {
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  expect(screen.getByTestId("case-study-next").querySelector("svg")).toHaveClass("boil-icon");
+  expect(screen.getByTestId("case-study-footer-next").querySelector("svg")).toHaveClass("boil-icon");
 });
 
 test("keeps the preview framing headline out of the detailed case-study page", () => {
@@ -973,6 +1030,32 @@ test("with hover, only the hovered clip gets its colour frame, a wide clip inclu
   fireEvent.pointerOver(tiles[3], { pointerType: "mouse" });
   expect(tiles[3]).toHaveAttribute("data-hovered", "true");
   expect(tiles[3]).toHaveStyle({ "--tile-tint": "#edc91c" });
+  window.matchMedia = realMatchMedia;
+});
+
+test("stills and locked clips keep a plain frame under the pointer", () => {
+  const realMatchMedia = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    ...realMatchMedia(query),
+    matches: query === "(hover: hover)",
+  })) as typeof window.matchMedia;
+  const row = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: [
+      { src: "/still.jpg", alt: "Still", span: "third" as const, aspect: "portrait" as const, tint: "#f1a942" },
+      {
+        src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, tint: "#68f976",
+        unreleased: { title: "Under wraps until launch", detail: "Launching 2027" },
+      },
+    ],
+  };
+  render(<CaseStudyView caseStudy={row} next={nextStudy} />);
+  const [still, secret] = screen.getAllByTestId("case-study-tile");
+  fireEvent.pointerOver(still, { pointerType: "mouse" });
+  expect(still).not.toHaveAttribute("data-hovered");
+  fireEvent.pointerOver(secret, { pointerType: "mouse" });
+  expect(secret).not.toHaveAttribute("data-hovered");
   window.matchMedia = realMatchMedia;
 });
 

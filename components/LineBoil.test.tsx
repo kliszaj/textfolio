@@ -35,6 +35,15 @@ describe("LineBoil", () => {
     }
   });
 
+  test("defines a gentler set of frames for small icons", () => {
+    const { container } = render(<LineBoil />);
+    for (let frame = 1; frame <= LINE_BOIL_FRAMES; frame++) {
+      const icon = container.querySelector(`#line-boil-icon-${frame} feDisplacementMap`);
+      const line = container.querySelector(`#line-boil-${frame} feDisplacementMap`);
+      expect(Number(icon?.getAttribute("scale"))).toBeLessThan(Number(line?.getAttribute("scale")));
+    }
+  });
+
   test("each frame uses a different noise seed so the wobble actually changes", () => {
     const { container } = render(<LineBoil />);
     const seeds = Array.from(container.querySelectorAll("feTurbulence")).map((node) =>

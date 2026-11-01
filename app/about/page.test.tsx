@@ -1,25 +1,60 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import AboutPage from "./page";
 import { caseStudies } from "@/data/caseStudies";
-import { ABOUT_PAGE, ABOUT_SHELF } from "@/data/about";
+import { ABOUT_BENTO, ABOUT_PAGE } from "@/data/about";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 
-test("opens on the portrait beside the bio, with the ways to get in touch under it", () => {
+test("reads like a case study: a big opening line, then emailing and the CV beside the bio", () => {
   render(<AboutPage />);
   expect(screen.getByTestId("case-study-header")).toHaveTextContent(ABOUT_PAGE.title);
-  const profile = within(screen.getByTestId("case-study-profile"));
+  const detail = within(screen.getByTestId("case-study-detail"));
+  expect(detail.getByText(/^I’m Adrian, a designer from Canada/)).toHaveClass("case-study-lead");
+  expect(detail.getByText(/^Whatever I do, I approach it with an innate curiosity/)).toBeInTheDocument();
+  const actions = within(screen.getByTestId("case-study-actions"));
+  expect(actions.getByText("Email me")).toBeInTheDocument();
+  expect(actions.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
+  const cv = actions.getByRole("link", { name: "Download My CV" });
+  expect(cv).toHaveAttribute("href", "/adrian-klisz-cv.pdf");
+  expect(cv).toHaveAttribute("download");
+});
+
+test("shows the portrait, Spotify's player for the playlist and the books as one row of tiles", () => {
+  render(<AboutPage />);
   expect(screen.getAllByRole("img", { name: "Portrait of Adrian" })).toHaveLength(1);
-  expect(profile.getByRole("img", { name: "Portrait of Adrian" })).toBeInTheDocument();
-  // The whole bio, once, a paragraph at a time.
-  expect(profile.getAllByText(/^I'm Adrian, designer from Toronto/)).toHaveLength(1);
-  expect(profile.getByText(/^Whatever I do, I approach it with an innate curiosity/)).toBeInTheDocument();
-  expect(screen.getAllByText(/I'm Adrian, designer from Toronto/)).toHaveLength(1);
-  expect(profile.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
-  expect(profile.getByRole("link", { name: /LinkedIn/ })).toHaveAttribute("href", "https://www.linkedin.com/in/adrianklisz/");
-  expect(profile.getByRole("link", { name: /CV/ })).toHaveAttribute("href", "/adrian-klisz-cv.pdf");
+  expect(screen.getByTitle("On Rotation on Spotify")).toHaveAttribute("src", ABOUT_BENTO.playlist.embedSrc);
+  expect(within(screen.getByTestId("about-bento-reading")).getByText("Currently reading")).toBeInTheDocument();
+});
+
+test("with a book out, a click anywhere on the books puts it back rather than picking another", () => {
+  render(<AboutPage />);
+  const reading = within(screen.getByTestId("about-bento-reading"));
+  const [first, second] = ABOUT_BENTO.reading.books;
+  const book = reading.getByRole("button", { name: `${first.title} by ${first.author}` });
+  fireEvent.click(book);
+  expect(book).toHaveAttribute("aria-pressed", "true");
+  // A pointer click (detail 1) on the scene, wherever it lands.
+  fireEvent.click(reading.getByRole("button", { name: `${second.title} by ${second.author}` }), { detail: 1 });
+  expect(book).toHaveAttribute("aria-pressed", "false");
+  expect(reading.getByRole("button", { name: `${second.title} by ${second.author}` })).toHaveAttribute("aria-pressed", "false");
+  expect(reading.getByText("Currently reading")).toBeInTheDocument();
+});
+
+test("picking a book lifts it and says what it is, and picking it again puts it back", () => {
+  render(<AboutPage />);
+  const reading = within(screen.getByTestId("about-bento-reading"));
+  const [first] = ABOUT_BENTO.reading.books;
+  const book = reading.getByRole("button", { name: `${first.title} by ${first.author}` });
+  fireEvent.click(book);
+  expect(book).toHaveAttribute("aria-pressed", "true");
+  expect(reading.getByText(first.note, { exact: false })).toBeInTheDocument();
+  expect(reading.getByRole("link", { name: /More/ })).toHaveAttribute("href", first.href);
+  expect(reading.queryByText("Currently reading")).not.toBeInTheDocument();
+  fireEvent.click(book);
+  expect(book).toHaveAttribute("aria-pressed", "false");
+  expect(reading.getByText("Currently reading")).toBeInTheDocument();
 });
 
 test("the footer's links include GitHub", () => {
@@ -30,10 +65,10 @@ test("the footer's links include GitHub", () => {
 });
 
 test("uses Adrian's supplied book-cover art", () => {
-  expect(ABOUT_SHELF.books[0].coverSrc).toBe(
+  expect(ABOUT_BENTO.reading.books[0].coverSrc).toBe(
     "https://m.media-amazon.com/images/I/71aYLQxV4tL._SL1500_.jpg"
   );
-  expect(ABOUT_SHELF.books[1].coverSrc).toBe(
+  expect(ABOUT_BENTO.reading.books[1].coverSrc).toBe(
     "https://www.studentapan.se/images/format:webp/size:640:0/quality:100/asset/book-cover/mina-vanner-9789113143804"
   );
 });
@@ -45,10 +80,7 @@ test("closes the loop: About's next arrow leads back to the first case study", (
   expect(nextLink).toHaveStyle({ backgroundColor: caseStudies[0].thumbnailColor });
 });
 
-test("keeps the shelf inside the animated page surface", () => {
+test("keeps the tiles inside the animated page surface", () => {
   render(<AboutPage />);
-
-  expect(screen.getByTestId("case-study-view")).toContainElement(
-    screen.getByRole("heading", { name: "On my shelf" })
-  );
+  expect(screen.getByTestId("case-study-view")).toContainElement(screen.getByTestId("about-bento-playlist"));
 });

@@ -98,9 +98,10 @@ export function ProjectsCollection({
               : isLedger
                 ? "mb-5 grid gap-2 md:mb-7 md:grid-cols-[minmax(12rem,0.7fr)_minmax(0,1.3fr)] md:gap-8"
                 : "mb-8 grid gap-3 md:mb-10 md:grid-cols-2 md:gap-6";
+            // Neue Montreal, not Frama: Frama is kept for page titles.
             const titleClass = isLedger || isSplit
-              ? "font-display text-3xl leading-none md:text-4xl"
-              : "font-display text-4xl leading-none md:text-5xl";
+              ? "font-body font-bold text-3xl leading-[1.05] tracking-[-0.015em] md:text-4xl"
+              : "font-body font-bold text-4xl leading-[1.05] tracking-[-0.015em] md:text-5xl";
             const descriptionClass = isLedger
               ? "case-study-copy max-w-2xl font-body font-medium"
               : isSplit
@@ -163,7 +164,7 @@ export function ProjectsCollection({
         </div>
 
         {showOutro && <footer className="py-8 md:py-10">
-          <h3 className="font-display text-3xl leading-none md:text-4xl">
+          <h3 className="font-body font-bold text-3xl leading-[1.05] tracking-[-0.015em] md:text-4xl">
             more coming soon...
           </h3>
           <p className="case-study-copy mt-4 font-body font-medium">

@@ -10,7 +10,7 @@ const COPIED_MS = 2600;
 // it eases back. Both labels share one grid cell, so the link doesn't change
 // size as they swap. A modified click (new tab, etc.) is left alone, and if
 // the clipboard refuses, the link opens the mail app as usual.
-export function EmailLink({ email, className = "", children }: { email: string; className?: string; children?: ReactNode }) {
+export function EmailLink({ email, className = "", children, copiedLabel = "Email copied to clipboard" }: { email: string; className?: string; children?: ReactNode; copiedLabel?: string }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | null>(null);
   useEffect(() => () => {
@@ -38,8 +38,8 @@ export function EmailLink({ email, className = "", children }: { email: string; 
       }}
     >
       <span className="email-link-label">{children ?? email}</span>
-      <span className="email-link-copied" aria-hidden="true">Email copied to clipboard</span>
-      <span role="status" aria-live="polite" className="sr-only">{copied ? "Email copied to clipboard" : ""}</span>
+      <span className="email-link-copied" aria-hidden="true">{copiedLabel}</span>
+      <span role="status" aria-live="polite" className="sr-only">{copied ? copiedLabel : ""}</span>
     </a>
   );
 }

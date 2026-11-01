@@ -8,6 +8,14 @@ export type CaseStudyFactLink = { label: string; href: string };
 // or a list of links when the values are things a reader would want to open.
 export type CaseStudyFact = { label: string; value: string | string[] | CaseStudyFactLink[] };
 
+export type CaseStudyAction = {
+  title: string;
+  // A mailto: emails (the address copies itself); anything else downloads.
+  href: string;
+  // Under the title: the address itself, or what you get.
+  detail: string;
+};
+
 // One beat of the long read. Headings are optional so a continuous narrative
 // can still use the progressive Read more treatment without visual breaks.
 export type CaseStudySection = {
@@ -28,12 +36,25 @@ export type CaseStudyMedia = {
   alt: string;
   kind?: "image" | "video";
   span?: "full" | "tall" | "half" | "third";
-  aspect?: "landscape" | "portrait" | "wide";
+  aspect?: "landscape" | "portrait" | "wide" | "upright";
   // The clip's name, shown on it while it's hovered (always, without hover).
   caption?: string;
   // The clip's background colour, sampled from the video. A clip that plays
   // on hover grows a band of it around its frame while it plays.
   tint?: string;
+  // A tall image shown one band at a time in a landscape frame, moving on to
+  // the next while hovered (without hover, while its row is in view).
+  steps?: CaseStudyMediaSteps;
+  // Work that hasn't launched: the media itself is blurred, and this says
+  // why, over a lock, in the middle of the tile.
+  unreleased?: { title: string; detail: string };
+};
+
+// The image's own size, and its bands in its pixels, top to bottom.
+export type CaseStudyMediaSteps = {
+  width: number;
+  height: number;
+  bands: { label: string; color: string; top: number; height: number }[];
 };
 
 // An editorial portrait that belongs beside the introduction rather than in
@@ -75,12 +96,12 @@ export type CaseStudy = {
   // at-a-glance rail -- for a page with nothing else worth a dedicated
   // rail (About), contact details still need a tappable home.
   overviewContactLinks?: CaseStudyFactLink[];
-  // A person rather than a project (About): a round portrait, the name, a
-  // one-line role, and buttons to get in touch, in place of a standfirst.
-  profile?: {
-    portrait: { src: string; alt: string };
-  };
+  // "lead" sets the overview a size up, as a page's opening line (About).
+  overviewStyle?: "lead";
   facts?: CaseStudyFact[];
+  // Big calls to action in the rail's place (About), each a card that emails
+  // (a mailto: href copies the address) or opens something.
+  actions?: CaseStudyAction[];
   // "rail" keeps facts in the sticky sidebar beside the long read (the
   // default). "columns" lifts them out into an even row above the text --
   // reads better when there are few enough facts that a column each doesn't
@@ -201,35 +222,77 @@ export const caseStudies: CaseStudy[] = [
     title: "Seamless Strategy",
     thumbnailColor: "#F850C0",
     blurb: "Taking Spotify beyond Ubiquity",
+    oneLiner: "One Spotify across every device, every moment, and everyone you listen with.",
     overview:
-      "Spotify has held a competitive advantage through it's Ubiquity strategy - being available on any device you may want to listen on, from TVs, to Cars, and even some Fridges. Recently, the Ubiquity advantage is being challenged through new technologies and new connectivity standards such as Matter. As a Senior Product Designer, I co-created Spotify’s Seamless strategy: a shift from simply being available on every device to delivering coherent, seamless experiences, that multiply the value a user experiences with Spotify.",
-    overviewLink: {
-      label: "Matter",
-      href: "https://en.wikipedia.org/wiki/Matter_(standard)",
-    },
+      "Spotify has held a competitive advantage by being available on any device you may want to listen on. In 2023 I co-created Spotify’s Seamless strategy to build on that advantage. It was a shift from simply being available on every device to delivering coherent, seamless experiences that multiply value through onboarding and activation, proactive recommendations and contextual nudges, and social listening.",
     facts: [
-      { label: "Role • 2021-2022", value: "Co-Creator, Design Lead" },
+      { label: "Role • 2023-Present", value: "Co-Creator, Design Lead" },
       { label: "Scope", value: "Design Strategy, Product Strategy, Research" },
-      { label: "Impact", value: "Co-created core business strategy that impacts over 500 million users" },
+      { label: "Impact", value: "Co-created business strategy impacting over 500 million users" },
     ],
     factsLayout: "columns",
     sections: [
       {
         body:
-          "During this project I was responsible for facilitating cross-organizational opportunity mapping workshops, co-authoring a data-and-insights-informed bet list, defining the key pillars of the strategy, align and socializing the strategy and design principles within the organization, and helped define a multi-year roadmap that then turned into a new Product Area.",
+          "I facilitated cross-organizational opportunity mapping workshops, co-authored a bet list informed by data and insights, defined the strategy’s pillars and helped shape the multi-year roadmap that became a new Product Area.",
       },
-     {
+      {
         body:
-          "The Seamless Strategy remains a core focus for the business and the Product Area now employs over 60 people."
-      },  
+          "Since then, as a Staff Designer in the product area, I’ve co-designed experiences that put the strategy into practice. These include ML-driven device recommendations that help people listen on the best device available in the moment. I rewrote the Spotify Connect value proposition to make it clearer: one place for all your devices, start here and control anywhere, and built for listening together. I redesigned the Connect device sheet to make it simpler and ready for what’s next. I also designed new reasons to use Connect, launching in 2027.",
+      },
+      {
+        body:
+          "The Seamless Strategy remains a core focus for the business and the Product Area now employs over 60 people.",
+      },
     ],
     mediaPadded: true,
+    mediaLayout: "sequence",
     media: [
-      { alt: "Seamless strategy overview deck", span: "full" },
-      { alt: "Cross-device opportunity mapping workshop", span: "half" },
-      { alt: "DIBBs confidence-rated hypotheses", span: "half" },
-      { alt: "Three pillars: Enable Devices, Moments, People", span: "half" },
-      { alt: "Cross-Platform WAU metrics framework", span: "half" },
+      // A full-width film is still to come.
+      { alt: "Seamless: a film, coming soon", span: "full", aspect: "landscape" },
+      {
+        src: "/assets/seamless-device-sheet-phone.jpg",
+        alt: "The redesigned Connect device sheet, listening on this iPhone",
+        span: "third",
+        aspect: "portrait",
+        tint: "#f1a942",
+      },
+      {
+        src: "/assets/seamless-device-sheet-speaker.jpg",
+        alt: "The redesigned Connect device sheet, playing on a Bose speaker",
+        span: "third",
+        aspect: "portrait",
+        tint: "#559ef6",
+      },
+      {
+        // Not shipped yet: the whole frame is blurred in the video itself.
+        src: "/assets/seamless-connect.mp4",
+        alt: "Upcoming Connect features, obscured until launch",
+        kind: "video",
+        span: "third",
+        aspect: "portrait",
+        tint: "#68f976",
+        unreleased: { title: "Under wraps until launch", detail: "Launching 2027" },
+      },
+      {
+        // The bets are blurred in the file itself: the strategy is still in
+        // motion, so only the pillars and the timeline are readable. It shows
+        // one pillar at a time.
+        src: "/assets/seamless-roadmap.jpg",
+        alt: "The Seamless roadmap: Enable Devices, Enable Moments and Enable People, each with its bets from now to later",
+        span: "full",
+        aspect: "landscape",
+        tint: "#1c1c1c",
+        steps: {
+          width: 2400,
+          height: 3110,
+          bands: [
+            { label: "Enable Devices", color: "#f1a942", top: 50, height: 1004 },
+            { label: "Enable Moments", color: "#559ef6", top: 1064, height: 1120 },
+            { label: "Enable People", color: "#f5d745", top: 2195, height: 867 },
+          ],
+        },
+      },
     ],
   },
   {
@@ -237,14 +300,15 @@ export const caseStudies: CaseStudy[] = [
     title: "Focals by North",
     thumbnailColor: "#FFA52E",
     blurb: "Designing an operating system that you're barely meant to use.",
+    oneLiner: "Smartglasses with a display only you can see.",
     overview:
-      "Before Meta made smartglasses creepy again, I was a Senior UX Designer at a stealth startup in Canada called North. We had the mission of creating the next mode of computing: a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
+      "Before Meta made headlines with smartglasses again, I was a Senior UX Designer at a stealth startup in Canada called North. We had the mission of creating the next mode of computing: a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
     overviewLink: {
-      label: "Meta made smartglasses creepy again",
+      label: "Meta made headlines with smartglasses again",
       href: "https://www.wired.com/story/zuckoff-app-sees-meta-glasses-before-they-see-you/",
     },
     facts: [
-      { label: "Role • 2018-2019", value: "Interaction Design Lead" },
+      { label: "Role • 2016-2020", value: "Senior UX Designer" },
       { label: "Scope", value: "0→1 interaction model, hardware-software co-design, information architecture" },
       { label: "Impact", value: "Alexa on Focals certified by Amazon, late 2018" },
     ],
@@ -253,7 +317,7 @@ export const caseStudies: CaseStudy[] = [
     sections: [
       {
         body:
-          "I joined the company early on and as Interaction Design Lead and, as at any startup, the jobs I did varied.  I did foundational research, usability testing, service design in our physical stores in New York and Toronto, defined the device's input method, helped define the hero feature-set, created an intuitive interface for users that was discreet embodied the principles of humane tech, created a new product design process that allowed us to ideate, build, and ship in one week to quickly search for product-market-fit, and I designed the mobile sizing app so users could scan their heads to size the glasses at home instead of visiting a store.",
+          "I joined the company early on as a Senior UX Designer and, as at any startup, the jobs I did varied. I did foundational research, usability testing, service design in our physical stores in New York and Toronto, defined the device's input method, helped define the hero feature-set, created an intuitive interface for users that was discreet embodied the principles of humane tech, created a new product design process that allowed us to ideate, build, and ship in one week to quickly search for product-market-fit, and I designed the mobile sizing app so users could scan their heads to size the glasses at home instead of visiting a store.",
         bodyLink: {
           label: "created a new product design process",
           href: "/archive/2019/pmf.html",
@@ -292,14 +356,18 @@ export const caseStudies: CaseStudy[] = [
         alt: "Live head scan during the mobile sizing flow",
         kind: "video",
         span: "tall",
-        aspect: "portrait",
+        aspect: "upright",
+        // Framed in an iPhone on a colour card, like the other phones.
+        tint: "#f64fbe",
       },
       {
         src: "/assets/focals-loop-sizing.mp4",
         alt: "Loop home-sizing flow in the mobile app",
         kind: "video",
         span: "tall",
-        aspect: "portrait",
+        aspect: "upright",
+        // Framed in an iPhone on a colour card, like the other phones.
+        tint: "#fad61e",
       },
       {
         src: "/assets/focals-frame-styles.jpeg",

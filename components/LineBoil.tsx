@@ -11,6 +11,12 @@ export const LINE_BOIL_FPS = 6;
 
 const BASE_FREQUENCY = 0.036;
 const INTENSITY_PX = 4;
+// Small icons (boil-icon) shiver less, or a 24px arrow just looks bent.
+const ICON_INTENSITY_PX = 1.5;
+const FILTERS = [
+  { id: "line-boil", scale: INTENSITY_PX },
+  { id: "line-boil-icon", scale: ICON_INTENSITY_PX },
+];
 // Nudging the frequency per frame stops the four displacements from looking
 // like the same texture simply shifted around.
 const FRAME_FREQUENCY_OFFSETS = [-0.006, 0.003, -0.003, 0.006];
@@ -53,14 +59,14 @@ export function LineBoil() {
   return (
     <svg aria-hidden="true" className="pointer-events-none absolute h-0 w-0">
       <defs>
-        {FRAME_FREQUENCY_OFFSETS.map((frequencyOffset, index) => {
+        {FILTERS.flatMap(({ id, scale }) => FRAME_FREQUENCY_OFFSETS.map((frequencyOffset, index) => {
           const frame = index + 1;
           const frequency = Math.max(0.001, BASE_FREQUENCY + frequencyOffset);
 
           return (
             <filter
-              key={frame}
-              id={`line-boil-${frame}`}
+              key={`${id}-${frame}`}
+              id={`${id}-${frame}`}
               x="-30%"
               y="-30%"
               width="160%"
@@ -74,18 +80,18 @@ export function LineBoil() {
                 baseFrequency={frequency}
                 numOctaves="2"
                 seed={frame}
-                result={`line-boil-noise-${frame}`}
+                result={`${id}-noise-${frame}`}
               />
               <feDisplacementMap
                 in="SourceGraphic"
-                in2={`line-boil-noise-${frame}`}
-                scale={INTENSITY_PX}
+                in2={`${id}-noise-${frame}`}
+                scale={scale}
                 xChannelSelector="R"
                 yChannelSelector="G"
               />
             </filter>
           );
-        })}
+        }))}
       </defs>
     </svg>
   );

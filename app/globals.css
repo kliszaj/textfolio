@@ -55,6 +55,27 @@
   filter: url("#line-boil-4");
 }
 
+/* Small icons boil too, more gently (LineBoil's icon filters). */
+[data-line-boil="on"] .boil-icon {
+  will-change: filter;
+}
+
+[data-line-boil="on"][data-line-boil-frame="1"] .boil-icon {
+  filter: url("#line-boil-icon-1");
+}
+
+[data-line-boil="on"][data-line-boil-frame="2"] .boil-icon {
+  filter: url("#line-boil-icon-2");
+}
+
+[data-line-boil="on"][data-line-boil-frame="3"] .boil-icon {
+  filter: url("#line-boil-icon-3");
+}
+
+[data-line-boil="on"][data-line-boil-frame="4"] .boil-icon {
+  filter: url("#line-boil-icon-4");
+}
+
 /* The home asset is a black raster icon. Map it to the same softened ink as
    the case-study title, while preserving its hand-drawn line boil. */
 .case-study-home-icon {
@@ -414,8 +435,6 @@ body {
   }
 }
 
-/* About's profile: the name in lowercase Frama, the role like the desk's
-   clock line. */
 /* An email that copies itself (EmailLink): its label and "Email copied to
    clipboard" share one grid cell, so the link keeps its size while one
    slides out and the other in, and back again a few seconds later. */
@@ -652,7 +671,133 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
 }
 
 .case-study-tile[data-hovered] .case-study-tile-frame {
-  box-shadow: 0 0 0 0.5rem var(--tile-tint, transparent);
+  box-shadow: 0 0 0 0.5rem var(--tile-ring, var(--tile-tint, transparent));
+}
+
+/* A tall image shown one band at a time (SteppedImage): the image slides
+   to the band and its clip follows, while chips in the corner name the
+   bands and a line under the current one runs as its timer. */
+.case-study-steps {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+}
+
+.case-study-steps-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  transition:
+    transform 900ms cubic-bezier(0.65, 0, 0.35, 1),
+    clip-path 900ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.case-study-steps-chips {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.case-study-steps-chip {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  background: rgb(8 14 18 / 0.55);
+  backdrop-filter: blur(10px);
+  color: rgb(245 237 230 / 0.8);
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 300ms ease;
+}
+
+.case-study-steps-chip[aria-pressed="true"] {
+  color: var(--step-color);
+}
+
+.case-study-steps-chip::before,
+.case-study-steps-timer {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: var(--step-color);
+  transform-origin: left;
+}
+
+.case-study-steps-chip::before {
+  content: "";
+  transform: scaleX(0);
+  opacity: 0.5;
+}
+
+.case-study-steps-chip[data-done]::before {
+  transform: scaleX(1);
+}
+
+.case-study-steps-timer {
+  animation: case-study-steps-timer var(--step-dwell) linear forwards;
+}
+
+@keyframes case-study-steps-timer {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-study-steps-image {
+    transition: none;
+  }
+
+  .case-study-steps-timer {
+    display: none;
+  }
+}
+
+/* Over blurred, unlaunched work (the blur is in the media itself): a cream
+   lock and a short line saying why, centred on the tile. */
+.case-study-unreleased {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.875rem;
+  padding: 0 18%;
+  color: var(--color-cream);
+  text-align: center;
+  font-size: 1.125rem;
+  line-height: 1.25;
+  pointer-events: none;
+}
+
+.case-study-unreleased-lock {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+
+.case-study-unreleased-lock svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.case-study-unreleased-detail {
+  margin-top: -0.375rem;
+  font-size: 0.875rem;
+  opacity: 0.7;
 }
 
 /* A clip's name, on the clip itself: small cream capitals over a soft shade
@@ -856,56 +1001,86 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   }
 }
 
-/* About's shelf (AboutShelf): CSS 3D boxes in a scene that leans with the
-   cursor. --shelf-rx/--shelf-ry are set from script. */
-/* On the page's own side margins, like the bio above it. */
-.about-shelf {
+/* About's calls to action, in the rail (ActionCard): two matching compact
+   rows, each link stretched over its row. */
+.case-study-action-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.25rem 1.25rem 1.625rem;
+}
+
+.case-study-action-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.case-study-action-link:focus-visible {
+  outline: none;
+}
+
+/* Keyboard focus outlines the whole row instead. */
+.case-study-action-row:has(.case-study-action-link:focus-visible) {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 4px;
+}
+
+.case-study-action-title {
+  font-size: 1.875rem;
+  line-height: 1;
+}
+
+/* A page's opening line set a size up (About). */
+.case-study-lead {
+  font-size: clamp(1.5rem, 2.4vw, 2.125rem);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+/* About's bento under the bio, on the page's margins like the media grid. */
+.about-bento {
   padding-inline: var(--case-study-gutter);
 }
 
-.shelf-viewport {
+/* The books as CSS 3D boxes (ReadingTile), in a scene scaled to the tile
+   (--books-fit) and leaning with the cursor (--books-ry). */
+.about-books {
   position: relative;
-  /* The shelf's ends may run off the sides on a narrow screen. clip, unlike
-     hidden, leaves the vertical axis free for a thing lifted off the shelf. */
-  overflow-x: clip;
-  perspective: 1500px;
+  min-height: 0;
+  perspective: 1200px;
   perspective-origin: 50% 35%;
-  touch-action: pan-y;
 }
 
-.shelf-fit {
+.about-books-fit {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translateY(var(--shelf-shift, 0)) scale(var(--shelf-fit, 1));
+  transform: scale(var(--books-fit, 1));
   transform-style: preserve-3d;
 }
 
-.shelf-stage {
+.about-books-stage {
   position: absolute;
   inset: 0;
-  /* Pointing is worked out by the viewport (AboutShelf's thingAt), not by
-     hit-testing the 3D faces, which Safari gets wrong. */
+  /* Pointing is worked out from where the books are drawn (bookAt), not by
+     hit-testing their 3D faces, which Safari gets wrong. */
   pointer-events: none;
   transform-style: preserve-3d;
-  transform: rotateX(var(--shelf-rx, -8deg)) rotateY(var(--shelf-ry, 0deg));
-  transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: rotateX(-8deg) rotateY(var(--books-ry, 0deg));
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.shelf-stage[data-tracking] {
-  transition: transform 250ms linear;
-}
-
-.shelf-at,
 .shelf-3d,
 .shelf-model {
   position: absolute;
   bottom: 0;
-  transform-style: preserve-3d;
-}
-
-.shelf-3d {
   left: 0;
+  transform-style: preserve-3d;
 }
 
 .shelf-face {
@@ -913,54 +1088,40 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   backface-visibility: hidden;
 }
 
-/* The board, in the desk's birch (lib/workspace/grain.ts): the ivory top with
-   its grain, and the layered edge under a thin lip of the top. */
-.shelf-grain {
-  background-image: var(--shelf-grain);
-  /* The grain at the scale it has across the desk's own top, repeated
-     along a board that's wider than one drawing. */
-  background-size: 820px 410px;
-  background-position: center;
-}
-
-.shelf-board-edge {
-  background:
-    linear-gradient(#eee8d7 0 22%, transparent 22%),
-    linear-gradient(transparent 46%, #8b765b 46% 49%, transparent 49% 62%, #8b765b 62% 65%, transparent 65% 78%, #8b765b 78% 81%, transparent 81%),
-    #c7b293 !important;
-}
-
 .shelf-shade-top { filter: brightness(1.06); }
 .shelf-shade-side { filter: brightness(0.86); }
 .shelf-shade-back { filter: brightness(0.75); }
 .shelf-shade-bottom { filter: brightness(0.6); }
 
-/* A thing on the board: it lifts toward you under the pointer, and comes off
-   the shelf (forward, and toward the middle) when picked. */
+/* A book: lifts under the pointer; picked, comes forward and toward the
+   middle. No filter or opacity on it (or anything holding faces): either
+   flattens its 3D. */
 .shelf-thing {
   position: absolute;
-  bottom: 22px;
+  bottom: 24px;
   transform-style: preserve-3d;
-  transform: var(--shelf-home);
-  /* No filter or opacity on a thing (or anything holding faces): either
-     flattens its 3D, and it reads as a cut-out. */
+  transform: translateZ(-22px);
   transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
   cursor: pointer;
 }
 
 .shelf-thing[data-hover],
 .shelf-thing:focus-visible {
-  transform: var(--shelf-home) translate3d(0, -10px, 26px);
+  transform: translate3d(0, -10px, 26px);
   outline: none;
 }
 
 .shelf-thing[data-picked] {
-  transform: var(--shelf-home) translate3d(var(--shelf-reach), -36px, 220px);
+  transform: translate3d(var(--shelf-reach), -20px, 150px);
 }
 
 .shelf-model {
-  left: 0;
   transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Picked, the cover turns to you. */
+.shelf-thing[data-picked] .shelf-model {
+  transform: rotateY(-90deg);
 }
 
 .shelf-shadow {
@@ -971,15 +1132,6 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   background: radial-gradient(rgb(28 28 28 / 0.28), transparent 70%);
   transform-origin: bottom;
   transform: rotateX(90deg) translateZ(1px);
-}
-
-/* Books: spine out; picked, the cover turns to you, then follows the cursor. */
-.shelf-thing[data-kind="book"][data-picked] .shelf-model {
-  transform: rotateY(-90deg);
-}
-
-.shelf-thing[data-turning] .shelf-model {
-  transition: transform 200ms linear;
 }
 
 .shelf-spine {
@@ -1002,128 +1154,26 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   background: repeating-linear-gradient(90deg, #f7f2ea 0 2px, #e6dccd 2px 3px) !important;
 }
 
-/* The record: its sleeve (the playlist's cover) faces out, the vinyl slides
-   out and spins, and the Spotify player opens in the caption. */
-.shelf-sleeve-art {
-  background-size: cover;
-  background-position: center;
-  filter: none;
+/* The line under the books comes in out of a blur, a line at a time, like
+   the desk's name and clock (desk-reveal). */
+.about-books-caption > * {
+  animation: about-books-caption 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.shelf-player {
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--color-ink) 10%, transparent);
-  animation: shelf-caption 450ms cubic-bezier(0.22, 1, 0.36, 1);
-}
+.about-books-caption > :nth-child(2) { animation-delay: 60ms; }
+.about-books-caption > :nth-child(3) { animation-delay: 120ms; }
 
-.shelf-player iframe {
-  opacity: 0;
-  transition: opacity 300ms ease;
-}
-
-.shelf-player[data-loaded] iframe {
-  opacity: 1;
-}
-
-.shelf-vinyl {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  width: 214px;
-  height: 214px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #15ff76 0 17%, #0e0e0e 17.5% 20%, #1b1b1b 20.5% 100%);
-  transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.shelf-vinyl::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    repeating-radial-gradient(circle, transparent 0 3px, rgb(255 255 255 / 0.05) 3px 4px),
-    conic-gradient(from 30deg, transparent 0 40deg, rgb(255 255 255 / 0.12) 55deg, transparent 70deg 220deg, rgb(255 255 255 / 0.1) 235deg, transparent 250deg);
-}
-
-.shelf-thing[data-kind="record"][data-hover] .shelf-vinyl,
-.shelf-thing[data-kind="record"]:focus-visible .shelf-vinyl {
-  transform: translate3d(70px, 0, -2px);
-}
-
-.shelf-thing[data-kind="record"][data-picked] .shelf-vinyl {
-  animation: shelf-spin 2.4s linear infinite;
-}
-
-@keyframes shelf-spin {
-  from { transform: translate3d(118px, 0, -2px) rotate(0deg); }
-  to { transform: translate3d(118px, 0, -2px) rotate(360deg); }
-}
-
-/* The deck: a short stack of cards lying on the board, the commander face up
-   on top. Under the pointer the top card tips up a little; picked, it's
-   lifted off the stack and turned to face you, big enough to read. */
-.shelf-deck-edges {
-  background: repeating-linear-gradient(#0d0d0d 0 2px, #3a3a3a 2px 3px) !important;
-}
-
-.shelf-topcard {
-  position: absolute;
-  left: 0;
-  border-radius: 4px;
-  background-size: cover;
-  background-position: center;
-  transform-origin: 50% 100%;
-  transform: translateZ(var(--deck-half)) rotateX(90deg) rotateZ(-7deg);
-  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 0 0 1px #0d0d0d;
-}
-
-.shelf-thing[data-kind="deck"][data-hover] .shelf-topcard,
-.shelf-thing[data-kind="deck"]:focus-visible .shelf-topcard {
-  transform: translateZ(var(--deck-half)) rotateX(62deg) rotateZ(-4deg);
-}
-
-.shelf-thing[data-kind="deck"][data-picked] .shelf-topcard {
-  transform: translateZ(var(--deck-half)) translateY(-14px) rotateX(0deg) scale(2.1);
-}
-
-/* The stack itself stays near the shelf; only its top card comes up. */
-.shelf-thing[data-kind="deck"][data-picked] {
-  transform: var(--shelf-home) translate3d(var(--shelf-reach), 0, 90px);
-}
-
-.shelf-cards {
-  background: repeating-linear-gradient(90deg, #f2efe8 0 1px, #d9d4ca 1px 2px) !important;
-}
-
-/* The caption's title: Neue Montreal, like the bio beside it. */
-.shelf-caption-title {
-  font-size: clamp(1.75rem, 2.4vw, 2.25rem);
-  line-height: 1.05;
-  letter-spacing: -0.015em;
-}
-
-.shelf-caption-in {
-  animation: shelf-caption 450ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes shelf-caption {
-  from { opacity: 0; transform: translateY(8px); }
+@keyframes about-books-caption {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(12px) scale(0.98);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shelf-stage,
+  .about-books-caption > * { animation: none; }
+  .about-books-stage,
   .shelf-thing,
-  .shelf-model,
-  .shelf-vinyl { transition: none; }
-  .shelf-thing[data-kind="record"][data-picked] .shelf-vinyl { animation: none; transform: translate3d(118px, 0, -2px); }
-  /* The caption's title: Neue Montreal, like the bio beside it. */
-.shelf-caption-title {
-  font-size: clamp(1.75rem, 2.4vw, 2.25rem);
-  line-height: 1.05;
-  letter-spacing: -0.015em;
-}
-
-.shelf-caption-in { animation: none; }
+  .shelf-model { transition: none; }
 }

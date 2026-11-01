@@ -3786,3 +3786,36 @@ Live cold-load sampling after the changes showed clean ~250ms treatment beats,
 an immediate Warp-to-default cut, the subheader starting on the next frame,
 and the LEGO bitmap remaining 1152x216 throughout the sampled load instead of
 expanding to the viewport. Full suite: 646/646; lint and production build pass.
+
+### Seamless media, About rebuild, Focals phones, icon boil
+
+**Seamless Strategy.** New copy (2023 co-creation, the Staff Designer
+follow-up, "over 60 people"), a one-liner, and media: a row of three phones
+(two device-sheet screenshots framed in `iphone 18 frames/black.png` on
+orange/blue cards, and `seamless-connect.mp4`, an unreleased Connect clip
+blurred across the whole frame in the file itself, with an `unreleased`
+lock label over it), then the roadmap. The roadmap is `SteppedImage`: a tall
+image shown one band at a time in a 16:9 tile, with pillar chips whose line
+runs as a 5s timer; hover plays it (or its playback row, without hover). The
+roadmap image is Adrian's own redacted export; don't add blur to it. Bands
+are in the image's pixels in `caseStudies.ts`; re-measure them if the image
+changes.
+
+**About.** Now a plain case study: a `lead` overview, the bio as sections,
+and `actions` in the rail instead of facts -- two matching rows: email (ink,
+envelope, copies the address and says "Copied to clipboard.") and CV (sand,
+download arrow). The 3D shelf is gone; `AboutBento` shows the portrait,
+Spotify's player for "On Rotation", and the four 3D books (spines, covers,
+pages) at one 4:5 height. Picking a book brings its cover forward and blurs
+its title and note in below; with a book out, any click puts it back (a
+picked book is edge-on to the old hit-test). The `profile` layout and
+`AboutShelf` are deleted. The CV PDF is the 2026 version.
+
+**Elsewhere.** Focals' two phone clips are re-encoded into the iPhone frame on
+4:5 pink/yellow cards (half width); role "Senior UX Designer", 2016-2020, a
+one-liner, and a softer Meta line. Tiles only grow a ring where hover does
+something (videos, the roadmap). Small icons boil gently (`boil-icon`, 1.5px):
+the next arrows (bigger, bolder), the lock, the envelope and download arrows,
+and the desk clock's reset icon. The footer's next button fills cream; the
+footer email has no arrow; Projects headings are Neue Montreal Bold; the desk
+screens' mock headlines are wireframe bars.
