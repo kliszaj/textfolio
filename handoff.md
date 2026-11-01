@@ -585,10 +585,13 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   (`CameraRig`'s `orbit`), and the stage takes `touch-action: none`. The
   phone's tilt leans the camera a few degrees (`deviceTilt.ts`; the resting
   angle follows the phone, so only a change of tilt moves it). iOS asks for
-  motion access on the first touch. A row of four stops sits top centre
-  (`clock.look`), with "Swipe up to move the day on" until the first swipe.
-  On a portrait phone the camera backs off much less (`FIT_WIDTH_STRENGTH`
-  0.45), so the monitor fills the width.
+  motion access on the first touch. "Swipe up to move the day on" shows top
+  centre until the first swipe; there are no page dots on touch, and a tap
+  anywhere (`TAP_SLOP_PX`) opens what's on the monitor (the keyboard's
+  typing game is off on touch). On a portrait phone the camera backs off much
+  less (`FIT_WIDTH_STRENGTH` 0.45), so the monitor fills the width, and under
+  768px wide the desk is centred in the frame (`NO_RAIL_X_SHIFT`).
+  Case studies have no dot row on a phone either: the footer lists the pages.
 - **Jam media.** Main flow, hosting and joining are one row of phones: a
   `third` span on a six-column sequence grid. The main flow is cropped from
   16:9; a 1080x1920 export would be sharper.

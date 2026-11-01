@@ -486,8 +486,7 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
 }
 
 /* Not on the desk's monitor, which has its own rail beside the desk. */
-[data-embedded] .case-study-rail,
-[data-embedded] .case-study-rail-row {
+[data-embedded] .case-study-rail {
   display: none;
 }
 

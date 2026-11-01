@@ -35,6 +35,9 @@ const TILT_PITCH = 0.05;
 // Share of the way to the tilted pose covered each frame.
 const TILT_EASE = 0.12;
 
+// Below this width (Tailwind's md) the screen counts as a phone.
+const PHONE_MAX_WIDTH = 768;
+
 // Reused every frame of a tween rather than allocated per frame.
 const scratchOffset = new THREE.Vector3();
 const scratchSpherical = new THREE.Spherical();
@@ -82,7 +85,11 @@ export function CameraRig({
   const aspect = size.width / size.height;
   // Both poses only change with the screen, the framing or the viewport, so
   // they are worked out then rather than on every frame.
-  const idle = useMemo(() => idlePose(screen, framing, aspect), [screen, framing, aspect]);
+  // Without the orbit (touch) the page dots aren't drawn either (DeskStage),
+  // and on a phone the desk is centred in the frame they leave. Not on a
+  // tablet or wider, which keep the usual framing.
+  const centred = !orbit && size.width < PHONE_MAX_WIDTH;
+  const idle = useMemo(() => idlePose(screen, framing, aspect, !centred), [screen, framing, aspect, centred]);
   const zoom = useMemo(
     () => zoomTarget === "typing" && layout
       ? typingPose(screen, camera as THREE.PerspectiveCamera, layout, { w: size.width, h: size.height })

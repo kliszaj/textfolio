@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { deskDaylight, deskLook, nextDeskStage, stockholmPreviewDate, sunsetOn, type DeskStageKind } from "@/lib/deskDaylight";
+import { deskDaylight, deskLook, nextDeskStage, stockholmPreviewDate, sunsetOn } from "@/lib/deskDaylight";
 import { localPreviewTime } from "@/lib/localTools";
 import { AdaptiveText, adaptiveRef } from "./adaptiveText";
 
@@ -101,9 +101,6 @@ export function useDeskTime() {
   };
 }
 
-// The four stops a step moves between, in the order the day reaches them.
-const STOPS: DeskStageKind[] = ["morning", "afternoon", "twilight", "night"];
-
 // The time is changed by scrolling (or the arrow keys, or on touch a swipe),
 // so the clock is just the reading, plus a way back to now while previewing
 // another time.
@@ -115,20 +112,9 @@ export function DeskClock({ clock, touch = false, hint = false }: { clock: Retur
     <>
     {touch && (
       <>
-        {/* Top centre, where the wall is clear at every hour: the four
-            stops, the one showing drawn long, and until the first swipe how
-            to move between them. A row rather than a column, so it isn't
-            read as more of the page dots. */}
-        <div aria-hidden="true" style={{ pointerEvents: "none" }} className="absolute left-1/2 top-6 flex -translate-x-1/2 flex-col items-center gap-3">
-          <div className="flex items-center gap-2">
-            {STOPS.map((stop) => (
-              <span
-                key={stop}
-                className="h-1 rounded-full bg-current transition-[width,opacity] duration-300"
-                style={{ width: clock.look === stop ? 18 : 4, opacity: clock.look === stop ? 1 : 0.35 }}
-              />
-            ))}
-          </div>
+        {/* Top centre, where the wall is clear at every hour: until the
+            first swipe, how to move through the day. */}
+        <div aria-hidden="true" style={{ pointerEvents: "none" }} className="absolute left-1/2 top-6 flex -translate-x-1/2 flex-col items-center">
           <p
             className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-current/8 px-3 py-1.5 font-body text-xs font-medium transition-opacity duration-500"
             style={{ opacity: hint ? 1 : 0 }}

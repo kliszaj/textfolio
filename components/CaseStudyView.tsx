@@ -305,44 +305,6 @@ function MediaCaption({ number, children }: { number?: string; children: ReactNo
   );
 }
 
-// The pages as a row of dots, each naming itself in a chip above on hover
-// or focus: along the foot of a phone screen, and in the footer.
-function PageDots({ current }: { current: string }) {
-  return (
-    <>
-      {RAIL_PAGES.map((page) => (
-        <Link
-          key={page.slug}
-          href={caseStudyRoute(page)}
-          aria-label={page.title}
-          aria-current={page.slug === current ? "page" : undefined}
-          className="group relative grid place-items-center focus-visible:outline-none"
-        >
-          <span
-            aria-hidden="true"
-            className="size-3 rounded-full transition-transform duration-200 group-hover:scale-150 group-focus-visible:scale-150"
-            // The current page as on the margin rail: a bullseye, larger.
-            style={page.slug === current ? {
-              backgroundColor: "var(--color-cream)",
-              boxShadow: `inset 0 0 0 3.5px ${page.thumbnailColor}`,
-              scale: "1.3",
-            } : { backgroundColor: page.thumbnailColor }}
-          />
-          {/* Its name on hover or focus, above the row, as the margin
-              rail's chip opens beside it. Drawn from data-title so the
-              name isn't in the page twice; the link already carries it. */}
-          <span
-            aria-hidden="true"
-            data-title={page.title}
-            className="pointer-events-none absolute bottom-[calc(100%+1.25rem)] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-sm font-body font-bold text-ink opacity-0 transition-opacity duration-150 after:content-[attr(data-title)] group-hover:opacity-100 group-focus-visible:opacity-100"
-            style={{ backgroundColor: page.thumbnailColor }}
-          />
-        </Link>
-      ))}
-    </>
-  );
-}
-
 function FooterArrow({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -771,8 +733,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
       {/* Localhost only: live sliders for the header's size. */}
       <CaseStudyTuning />
       {/* The same pages as the desk's rail, so any of them is a click away
-          from any other: in the right margin from md, a row along the foot of
-          the screen on a phone. Outside <main>, whose exit slide would carry
+          from any other: in the right margin from md. Not on a phone, where
+          the footer lists them. Outside <main>, whose exit slide would carry
           fixed children with it; they fade as it leaves instead. */}
       <PageIndicator
         placement="margin"
@@ -784,17 +746,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
           if (picked.slug !== caseStudy.slug) router.push(caseStudyRoute(picked));
         }}
       />
-      <nav
-        aria-label="Portfolio pages"
-        className="case-study-rail-row fixed bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-3 rounded-full bg-cream/90 px-4 py-2.5 shadow-md ring-1 ring-ink/10 backdrop-blur md:hidden"
-        style={{
-          opacity: exiting || footerInView ? 0 : 1,
-          pointerEvents: exiting || footerInView ? "none" : undefined,
-          transition: "opacity 200ms ease-out",
-        }}
-      >
-        <PageDots current={caseStudy.slug} />
-      </nav>
       <main
         data-testid="case-study-view"
         data-exiting={exiting}

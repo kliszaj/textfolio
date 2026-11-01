@@ -63,6 +63,8 @@ const SCREEN_SWAP_DELAY_MS = 1300;
 const WHEEL_STEP_PX = 40;
 // How far a finger travels up or down before it counts as a swipe.
 const SWIPE_STEP_PX = 40;
+// A touch that moves less than this is a tap.
+const TAP_SLOP_PX = 10;
 const WHEEL_STEP_LOCK_MS = 700;
 const WHEEL_GESTURE_GAP_MS = 250;
 // The UI around the desk waits for the loader to finish fading out, then
@@ -271,8 +273,8 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   };
 
   // On touch a vertical swipe is the scroll: up for later, down for earlier.
-  // Mostly sideways, or too short, and it's left alone (a tap on the monitor
-  // still opens it).
+  // A tap, anywhere but on a control, opens what's on the monitor. Anything
+  // else (mostly sideways, or between a tap and a swipe) is left alone.
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [swiped, setSwiped] = useState(false);
   const onTouchStart = (event: React.TouchEvent) => {
@@ -287,6 +289,11 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
     if (event.target instanceof Element && event.target.closest("[data-desk-settings]")) return;
     const dx = point.clientX - start.x;
     const dy = point.clientY - start.y;
+    if (Math.hypot(dx, dy) < TAP_SLOP_PX) {
+      if (event.target instanceof Element && event.target.closest("button, a")) return;
+      openMonitor();
+      return;
+    }
     if (Math.abs(dy) < SWIPE_STEP_PX || Math.abs(dy) < Math.abs(dx)) return;
     stepTime(dy < 0 ? 1 : -1);
     setSwiped(true);
@@ -444,7 +451,9 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
             onScreen={setScreen}
             hour={clock.sceneHour}
             darkness={solar?.darkness ?? 0}
-            onKeyboardClick={variant === "browser" && active && phase === "idle" ? openTyping : undefined}
+            // Not on touch, where a tap anywhere opens the monitor's page
+            // (and there's no keyboard to type with).
+            onKeyboardClick={variant === "browser" && active && phase === "idle" && !touch ? openTyping : undefined}
           />
         </Suspense>
         {ready && (
@@ -544,7 +553,9 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
       {/* textfolio's own rail, beside the desk. PageIndicator offsets itself
           for Home's overscanned hero sheet, so give it a frame shifted by the
           same overscan. */}
-      {variant === "browser" && ready && (
+      {/* Not on touch: there a tap anywhere opens what's on the monitor, and
+          a swipe moves through the day, so the rail would only be in the way. */}
+      {variant === "browser" && ready && !touch && (
         <div
           className="pointer-events-none absolute inset-0 transition-opacity duration-300"
           style={{
