@@ -64,9 +64,8 @@ test("alternates the split-rail text and media sides by project", () => {
   );
 });
 
-test("closes the collection with an open-ended experiments note", () => {
+test("ends on the last project, with no closing note", () => {
   render(<ProjectsCollection projects={projects} />);
 
-  expect(screen.getByRole("heading", { name: "more coming soon..." })).toBeInTheDocument();
-  expect(screen.getByText("I'm always tinkering")).toBeInTheDocument();
+  expect(screen.queryByText("more coming soon...")).not.toBeInTheDocument();
 });

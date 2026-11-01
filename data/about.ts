@@ -23,7 +23,7 @@ export const ABOUT_PAGE: CaseStudy = {
   overviewStyle: "lead",
   sections: [
     {
-      body: "Outside of work I love to spend time in the outdoors - whether it's gravel biking, camping, or foraging. I tend to collect new hobbies and I'm always tinkering with something I know completely nothing about. Lately I've been really into 3D printing and I've started playing the classic card game Magic: The Gathering.",
+      body: "Outside of work I love to spend time in the outdoors - whether it's gravel biking, camping, or foraging. I tend to collect new hobbies and I'm always tinkering with something I know nothing about. Lately I've been really into 3D printing and I've started playing the classic card game Magic: The Gathering.",
     },
     { body: "Whatever I do, I approach it with an innate curiosity and a high bar for craft." },
   ],

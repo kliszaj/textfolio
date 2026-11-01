@@ -222,7 +222,7 @@ export const caseStudies: CaseStudy[] = [
     title: "Seamless Strategy",
     thumbnailColor: "#F850C0",
     blurb: "Taking Spotify beyond Ubiquity",
-    oneLiner: "One Spotify across every device, every moment, and everyone you listen with.",
+    oneLiner: "Shaping how 500 million people listen, on every device they own.",
     overview:
       "Spotify has held a competitive advantage by being available on any device you may want to listen on. In 2023 I co-created Spotify’s Seamless strategy to build on that advantage. It was a shift from simply being available on every device to delivering coherent, seamless experiences that multiply value through onboarding and activation, proactive recommendations and contextual nudges, and social listening.",
     facts: [
@@ -238,11 +238,11 @@ export const caseStudies: CaseStudy[] = [
       },
       {
         body:
-          "Since then, as a Staff Designer in the product area, I’ve co-designed experiences that put the strategy into practice. These include ML-driven device recommendations that help people listen on the best device available in the moment. I rewrote the Spotify Connect value proposition to make it clearer: one place for all your devices, start here and control anywhere, and built for listening together. I redesigned the Connect device sheet to make it simpler and ready for what’s next. I also designed new reasons to use Connect, launching in 2027.",
+          "Since then, as a Staff Designer in the product area, I’ve co-designed experiences that put the strategy into practice. These include ML-driven device recommendations that help people listen on the best device available in the moment. I rewrote the Spotify Connect value proposition to make it clearer: one place for all your devices, start here and control anywhere, and built for listening together. I redesigned the Connect device sheet to make it simpler and ready for what’s next. I also designed new reasons to use Connect, launching soon.",
       },
       {
         body:
-          "The Seamless Strategy remains a core focus for the business and the Product Area now employs over 60 people.",
+          "The Seamless Strategy remains a core focus for the business and the Product Area has grown to over 60 people.",
       },
     ],
     mediaPadded: true,
@@ -272,7 +272,7 @@ export const caseStudies: CaseStudy[] = [
         span: "third",
         aspect: "portrait",
         tint: "#68f976",
-        unreleased: { title: "Under wraps until launch", detail: "Launching 2027" },
+        unreleased: { title: "Under wraps until launch", detail: "Launching soon" },
       },
       {
         // The bets are blurred in the file itself: the strategy is still in
@@ -300,9 +300,9 @@ export const caseStudies: CaseStudy[] = [
     title: "Focals by North",
     thumbnailColor: "#FFA52E",
     blurb: "Designing an operating system that you're barely meant to use.",
-    oneLiner: "Smartglasses with a display only you can see.",
+    oneLiner: "Glanceable computing, hidden in an ordinary pair of glasses.",
     overview:
-      "Before Meta made headlines with smartglasses again, I was a Senior UX Designer at a stealth startup in Canada called North. We had the mission of creating the next mode of computing: a pair of camera-free smartglasses with a holographic projector that created a display that only the wearer could see.",
+      "Before Meta made headlines with smartglasses again, I was a Senior UX Designer at a stealth startup in Canada called North. We had the mission of creating the next mode of computing: a pair of camera-free smartglasses with a holographic display that only the wearer could see.",
     overviewLink: {
       label: "Meta made headlines with smartglasses again",
       href: "https://www.wired.com/story/zuckoff-app-sees-meta-glasses-before-they-see-you/",
@@ -310,14 +310,14 @@ export const caseStudies: CaseStudy[] = [
     facts: [
       { label: "Role • 2016-2020", value: "Senior UX Designer" },
       { label: "Scope", value: "0→1 interaction model, hardware-software co-design, information architecture" },
-      { label: "Impact", value: "Alexa on Focals certified by Amazon, late 2018" },
+      { label: "Impact", value: "Helped pave the way for computing in glasses, acquired by Google to carry on the work" },
     ],
     factsLayout: "columns",
     videoSrc: "/assets/focals.mp4",
     sections: [
       {
         body:
-          "I joined the company early on as a Senior UX Designer and, as at any startup, the jobs I did varied. I did foundational research, usability testing, service design in our physical stores in New York and Toronto, defined the device's input method, helped define the hero feature-set, created an intuitive interface for users that was discreet embodied the principles of humane tech, created a new product design process that allowed us to ideate, build, and ship in one week to quickly search for product-market-fit, and I designed the mobile sizing app so users could scan their heads to size the glasses at home instead of visiting a store.",
+          "I joined the company early on and, as at any startup, the jobs I did varied. I did foundational research, usability testing, service design in our physical stores in New York and Toronto, defined the device's input method, helped define the hero feature-set, created an intuitive interface for users that was discreet and embodied the principles of humane tech, created a new product design process that allowed us to ideate, build, and ship in one week to quickly search for product-market fit, and I designed the mobile sizing app so users could scan their heads to size the glasses at home instead of visiting a store.",
         bodyLink: {
           label: "created a new product design process",
           href: "/archive/2019/pmf.html",
@@ -325,7 +325,7 @@ export const caseStudies: CaseStudy[] = [
       },
       {
         body:
-          "In the end, Focals were not commercially successful but received strong positive reviews from Wired and TechCrunch. The company was acquired by Google in 2021, and it looks like the spirit of the glasses lives on.",
+          "In the end, Focals were not commercially successful but received strong positive reviews from Wired and TechCrunch. The company was acquired by Google in 2020, and it looks like the spirit of the glasses lives on.",
         bodyLinks: [
           {
             label: "Wired",
@@ -367,7 +367,7 @@ export const caseStudies: CaseStudy[] = [
         span: "tall",
         aspect: "upright",
         // Framed in an iPhone on a colour card, like the other phones.
-        tint: "#fad61e",
+        tint: "#12fe75",
       },
       {
         src: "/assets/focals-frame-styles.jpeg",

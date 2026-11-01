@@ -3819,3 +3819,15 @@ the next arrows (bigger, bolder), the lock, the envelope and download arrows,
 and the desk clock's reset icon. The footer's next button fills cream; the
 footer email has no arrow; Projects headings are Neue Montreal Bold; the desk
 screens' mock headlines are wireframe bars.
+
+### Copy pass before shipping
+
+Seamless one-liner "Shaping how 500 million people listen, on every device
+they own."; Focals "Glanceable computing, hidden in an ordinary pair of
+glasses." and Impact "Helped pave the way for computing in glasses, acquired
+by Google to carry on the work". Unreleased Connect work says "launching
+soon", never a year. Fixes: North was acquired in 2020; the Focals long read
+no longer repeats the title; e-ink displays has its own description (the
+eink-weather-quotes frame). The Focals Loop clip is on green. Projects no
+longer ends with "more coming soon...". The full-width film placeholder on
+Seamless ships as a grey box until that video is recorded. CV stays "CV".

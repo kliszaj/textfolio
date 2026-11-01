@@ -5,7 +5,6 @@ import type { ProjectAsset, ProjectExperiment } from "@/data/projectsExperiments
 type ProjectsCollectionProps = {
   projects: ProjectExperiment[];
   layout?: ProjectsCollectionLayout;
-  showOutro?: boolean;
 };
 
 export type ProjectsCollectionLayout = "gallery" | "split" | "ledger";
@@ -61,7 +60,6 @@ function ProjectMedia({
 export function ProjectsCollection({
   projects,
   layout = "split",
-  showOutro = true,
 }: ProjectsCollectionProps) {
   const isLedger = layout === "ledger";
   const isSplit = layout === "split";
@@ -163,14 +161,6 @@ export function ProjectsCollection({
           })}
         </div>
 
-        {showOutro && <footer className="py-8 md:py-10">
-          <h3 className="font-body font-bold text-3xl leading-[1.05] tracking-[-0.015em] md:text-4xl">
-            more coming soon...
-          </h3>
-          <p className="case-study-copy mt-4 font-body font-medium">
-            I&apos;m always tinkering
-          </p>
-        </footer>}
       </div>
     </section>
   );

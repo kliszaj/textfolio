@@ -22,7 +22,7 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
     id: "word-snap",
     title: "wordsnap.",
     description:
-      "A device for language learners that you use to quickly capture, words, phrases, idioms out in the wild. The wordsnaps are automatically translated and uploaded to Anki so you can practice them",
+      "A device for language learners that you use to quickly capture words, phrases and idioms out in the wild. The wordsnaps are automatically translated and uploaded to Anki so you can practice them.",
     assets: [
       {
         src: "/assets/wordsnap.jpg",
@@ -54,7 +54,7 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
     id: "e-ink-displays",
     title: "e-ink displays",
     description:
-      "A webserver and a python app to manage your Magic: The Gathering decks and help you get tips to build a better deck. Helping me get better at a nerdy hobby I picked up last winter.",
+      "A battery-powered e-ink frame that shows how warm it feels outside and what the weather is doing, paired with a line from classic literature that matches it. There are over 1,400 quotes, each checked word for word against its source.",
     assets: [
       { alt: "e-ink displays asset 1 coming soon" },
       { alt: "e-ink displays asset 2 coming soon" },
@@ -65,7 +65,7 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
     id: "llaminders",
     title: "llaminders",
     description:
-      "A sort of clone of the iOS Notes app that talks to a Vikunja instances that I have running on my home server.",
+      "A sort of clone of the iOS Notes app that talks to a Vikunja instance that I have running on my home server.",
     assets: [
       { alt: "llaminders asset 1 coming soon" },
       { alt: "llaminders asset 2 coming soon" },

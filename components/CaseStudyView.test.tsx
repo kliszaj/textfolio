@@ -666,14 +666,14 @@ test("labels unreleased media with why it's hidden", () => {
     ...caseStudy,
     mediaLayout: "sequence" as const,
     media: [
-      { src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, unreleased: { title: "Under wraps until launch", detail: "Launching 2027" } },
+      { src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, unreleased: { title: "Under wraps until launch", detail: "Launching soon" } },
     ],
   };
 
   render(<CaseStudyView caseStudy={hidden} next={nextStudy} />);
 
   const tile = screen.getByTestId("case-study-tile");
-  expect(tile.querySelector(".case-study-unreleased")).toHaveTextContent("Under wraps until launchLaunching 2027");
+  expect(tile.querySelector(".case-study-unreleased")).toHaveTextContent("Under wraps until launchLaunching soon");
   expect(tile.querySelector(".case-study-unreleased-lock svg")).toHaveClass("boil-icon");
 });
 
@@ -1046,7 +1046,7 @@ test("stills and locked clips keep a plain frame under the pointer", () => {
       { src: "/still.jpg", alt: "Still", span: "third" as const, aspect: "portrait" as const, tint: "#f1a942" },
       {
         src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, tint: "#68f976",
-        unreleased: { title: "Under wraps until launch", detail: "Launching 2027" },
+        unreleased: { title: "Under wraps until launch", detail: "Launching soon" },
       },
     ],
   };
