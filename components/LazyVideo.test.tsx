@@ -47,7 +47,7 @@ test("waits to assign a video source until the player is near the viewport", () 
   expect(video).toHaveAttribute("src", "/assets/showreel.mp4");
 });
 
-test("loads immediately and follows row-controlled playback", () => {
+test("follows row-controlled playback once it has loaded", () => {
   const play = jest
     .spyOn(HTMLMediaElement.prototype, "play")
     .mockResolvedValue(undefined);
@@ -55,34 +55,52 @@ test("loads immediately and follows row-controlled playback", () => {
     .spyOn(HTMLMediaElement.prototype, "pause")
     .mockImplementation(() => undefined);
 
-  render(
-    <LazyVideo
-      data-testid="video"
-      src="/assets/showreel.mp4"
-      loadImmediately
-      playing
-      muted
-    />
-  );
+  render(<LazyVideo data-testid="video" src="/assets/showreel.mp4" playing muted />);
 
   const video = screen.getByTestId("video");
+  expect(video).not.toHaveAttribute("src");
+  expect(play).not.toHaveBeenCalled();
+
+  act(() => {
+    intersectionObservers[0].callback(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver
+    );
+  });
+
   expect(video).toHaveAttribute("src", "/assets/showreel.mp4");
   expect(video).toHaveAttribute("preload", "auto");
   expect(video).not.toHaveAttribute("autoplay");
   expect(play).toHaveBeenCalled();
 
   pause.mockClear();
-  render(
-    <LazyVideo
-      data-testid="paused-video"
-      src="/assets/paused.mp4"
-      loadImmediately
-      playing={false}
-      muted
-    />
-  );
+  render(<LazyVideo data-testid="paused-video" src="/assets/paused.mp4" playing={false} muted />);
 
   expect(pause).toHaveBeenCalled();
   play.mockRestore();
   pause.mockRestore();
+});
+
+test("on the desk's monitor, loads only what shows and never plays", () => {
+  document.documentElement.dataset.embedded = "1";
+  const play = jest
+    .spyOn(HTMLMediaElement.prototype, "play")
+    .mockResolvedValue(undefined);
+
+  render(<LazyVideo data-testid="video" src="/assets/showreel.mp4" playing muted />);
+
+  expect(intersectionObservers[0].options?.rootMargin).toBe("0px");
+  act(() => {
+    intersectionObservers[0].callback(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver
+    );
+  });
+
+  const video = screen.getByTestId("video");
+  expect(video).toHaveAttribute("preload", "metadata");
+  expect(play).not.toHaveBeenCalled();
+
+  play.mockRestore();
+  delete document.documentElement.dataset.embedded;
 });

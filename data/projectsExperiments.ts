@@ -4,6 +4,13 @@ export type ProjectAsset = {
   kind?: "image" | "video";
   width?: number;
   height?: number;
+  // A screenshot of a web app: shown whole, in a browser window at `url`
+  // and matching the app's `theme`, on `background` (one of the portfolio's
+  // page colours, data/caseStudies.ts).
+  browserFrame?: { background: string; url: string; theme: "light" | "dark" };
+  // A square tile, as wide as one of the two columns, for a project alone
+  // with one piece of media.
+  square?: boolean;
 };
 
 export type ProjectExperiment = {
@@ -36,7 +43,13 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
         width: 1448,
         height: 1086,
       },
-      { alt: "wordsnap wide asset coming soon" },
+      {
+        src: "/assets/wordsnap-app.webp",
+        alt: "The wordsnap web app: a list of captured Swedish words, with one word's audio, transcript and Anki card open for editing",
+        width: 1655,
+        height: 1049,
+        browserFrame: { background: "#FFA52E", url: "wordsnap.local", theme: "dark" },
+      },
     ],
   },
   {
@@ -45,9 +58,13 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
     description:
       "A webserver and a python app to manage your Magic: The Gathering decks and help you get tips to build a better deck. Helping me get better at a nerdy hobby I picked up last winter.",
     assets: [
-      { alt: "Spellbook & Tome asset 1 coming soon" },
-      { alt: "Spellbook & Tome asset 2 coming soon" },
-      { alt: "Spellbook & Tome wide asset coming soon" },
+      {
+        src: "/assets/spellbook-app.webp",
+        alt: "The Spellbook web app: a list of Magic: The Gathering decks, one deck's cards in a grid with its build progress above, and a card's details beside it",
+        width: 1874,
+        height: 1123,
+        browserFrame: { background: "#219EFA", url: "spellbook.local/decks", theme: "light" },
+      },
     ],
   },
   {
@@ -56,20 +73,7 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
     description:
       "A battery-powered e-ink frame that shows how warm it feels outside and what the weather is doing, paired with a line from classic literature that matches it. There are over 1,400 quotes, each checked word for word against its source.",
     assets: [
-      { alt: "e-ink displays asset 1 coming soon" },
-      { alt: "e-ink displays asset 2 coming soon" },
-      { alt: "e-ink displays wide asset coming soon" },
-    ],
-  },
-  {
-    id: "llaminders",
-    title: "llaminders",
-    description:
-      "A sort of clone of the iOS Notes app that talks to a Vikunja instance that I have running on my home server.",
-    assets: [
-      { alt: "llaminders asset 1 coming soon" },
-      { alt: "llaminders asset 2 coming soon" },
-      { alt: "llaminders wide asset coming soon" },
+      { alt: "e-ink displays coming soon", square: true },
     ],
   },
 ];

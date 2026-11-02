@@ -15,7 +15,9 @@
   "preview_urls": true,
   "assets": {
     "directory": "./out",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // A bad URL gets the export's 404.html, not an empty response.
+    "not_found_handling": "404-page"
   },
   // The typing leaderboard (worker/api.ts). Schema in migrations/; apply with
   //   npx wrangler d1 migrations apply textfolio-leaderboard --remote

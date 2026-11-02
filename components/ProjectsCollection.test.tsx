@@ -37,7 +37,7 @@ test("renders project copy, supplied media, and visible placeholders", () => {
     "src",
     "/assets/wordsnap-recording.jpg"
   );
-  expect(screen.getByText("Asset 3 coming soon")).toBeInTheDocument();
+  expect(screen.getAllByText("Coming soon")).toHaveLength(2);
 });
 
 test("uses two primary columns plus an optional full-width third asset", () => {
@@ -68,4 +68,33 @@ test("ends on the last project, with no closing note", () => {
   render(<ProjectsCollection projects={projects} />);
 
   expect(screen.queryByText("more coming soon...")).not.toBeInTheDocument();
+});
+
+test("shows a web app's screenshot whole, in a browser window on its colour", () => {
+  render(
+    <ProjectsCollection
+      projects={[
+        {
+          id: "app",
+          title: "app",
+          description: "An app.",
+          assets: [
+            {
+              src: "/assets/app.webp",
+              alt: "the app",
+              width: 1655,
+              height: 1049,
+              browserFrame: { background: "#EF5350", url: "app.local", theme: "light" },
+            },
+          ],
+        },
+      ]}
+    />
+  );
+
+  const frame = screen.getByTestId("browser-frame");
+  expect(within(frame).getByRole("img", { name: "the app" })).toHaveClass("w-full", "h-auto");
+  expect(within(frame).getByText("app.local")).toBeInTheDocument();
+  expect(frame).toHaveClass("bg-white");
+  expect(frame.parentElement).toHaveStyle({ backgroundColor: "#EF5350" });
 });

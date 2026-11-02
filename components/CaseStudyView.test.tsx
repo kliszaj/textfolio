@@ -102,11 +102,13 @@ test("bottom-aligns the header content to match where the lift left it", () => {
   expect(screen.getByTestId("case-study-header")).toHaveClass("justify-end", "pb-5");
 });
 
-test("loads the case study video immediately but leaves playback row-controlled", () => {
+test("waits to load the case study video and leaves playback row-controlled", () => {
   render(<CaseStudyView caseStudy={withVideo} />);
   const video = screen.getByTestId("case-study-video");
-  expect(video).toHaveAttribute("src", "/assets/jam.mp4");
-  expect(video).toHaveAttribute("preload", "auto");
+  expect(video).not.toHaveAttribute("src");
+  expect(video).toHaveAttribute("preload", "none");
+  expect(video).toHaveClass("aspect-video");
+  expect(video).toHaveAttribute("aria-label");
   expect(video).not.toHaveAttribute("autoplay");
   expect(video).toHaveAttribute("loop");
   expect(video).toHaveAttribute("data-playback-row", "primary");

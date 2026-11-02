@@ -41,17 +41,6 @@ type CaseStudyViewProps = {
 // header rather than filling it.
 
 // The drop back onto the stack. The inverse of the sheet lift that opened it.
-// The page's margin is wide enough to hold the Home icon beside the title
-// (globals.css, from 48rem), so it stays there when the header collapses
-// rather than playing its shrink-away animation.
-const WIDE_MARGIN_QUERY = "(min-width: 48rem)";
-function subscribeWideMargin(onChange: () => void) {
-  const mql = window.matchMedia(WIDE_MARGIN_QUERY);
-  mql.addEventListener("change", onChange);
-  return () => mql.removeEventListener("change", onChange);
-}
-const getWideMargin = () => window.matchMedia(WIDE_MARGIN_QUERY).matches;
-const getWideMarginOnServer = () => false;
 
 const CAN_HOVER_QUERY = "(hover: hover)";
 function subscribeCanHover(onChange: () => void) {
@@ -459,7 +448,6 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
 
   // Read straight from the media query rather than mirrored into state by an
   // effect. False on the server, as before, so hydration is unchanged.
-  const hasWideMargin = useSyncExternalStore(subscribeWideMargin, getWideMargin, getWideMarginOnServer);
 
   useEffect(() => {
     clearArrivingFromDesk();
@@ -840,7 +828,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   turbulence displacement as the rest of the hand-drawn marks,
                   so a plain raster icon still reads as sketched rather than
                   a clean UI glyph. */}
-            <HomeIconAnimation shrunk={shrunk && !hasWideMargin} />
+            <HomeIconAnimation />
             </Link>
 
             <div className="case-study-header-row flex items-center justify-between gap-6">
@@ -1048,11 +1036,13 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 <figure className="case-study-captioned relative">
                 <LazyVideo
                   data-testid="case-study-video"
-                  className="w-full mx-auto rounded-2xl"
+                  // Its size is set before the file loads, so nothing below
+                  // it jumps when it does. Every film here is 16:9.
+                  className="aspect-video w-full mx-auto rounded-2xl"
                   src={videoSrc}
+                  aria-label={videoCaption ?? `${caseStudy.title} film`}
                   data-playback-row="primary"
                   style={{ backgroundColor: caseStudy.thumbnailColor }}
-                  loadImmediately
                   playing={activePlaybackRow === "primary"}
                   muted
                   loop
@@ -1116,8 +1106,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                             <LazyVideo
                               className="size-full object-cover"
                               src={item.src}
+                              aria-label={item.alt}
                               data-playback-row={`media-${row}`}
-                              loadImmediately
                               // Blurred, a locked clip has nothing to reveal on
                               // hover, so it plays with its row.
                               playing={activePlaybackRow === `media-${row}` && (!paired || pairedPlays || Boolean(item.unreleased))}

@@ -1,0 +1,14 @@
+# Next's build files have their contents' hash in the name, so they never
+# change. The rest keep their names when replaced: a day, then refreshed in the
+# background.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/models/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/desk/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

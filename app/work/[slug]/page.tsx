@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { caseStudies, getCaseStudyBySlug, getNextCaseStudy } from "@/data/caseStudies";
 import { ABOUT_PAGE } from "@/data/about";
 import { CaseStudyView } from "@/components/CaseStudyView";
 import { ProjectsCollection } from "@/components/ProjectsCollection";
 import { PROJECTS_EXPERIMENTS } from "@/data/projectsExperiments";
+import { caseStudyMetadata } from "@/lib/pageMetadata";
 
 // The case studies are a fixed list, so every route can be built ahead of
 // time. That keeps the whole site static, which is what lets it deploy to a
@@ -15,6 +17,12 @@ export function generateStaticParams() {
 type CaseStudyPageProps = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateMetadata({ params }: CaseStudyPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const caseStudy = getCaseStudyBySlug(slug);
+  return caseStudy ? caseStudyMetadata(caseStudy) : {};
+}
 
 export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
   const { slug } = await params;

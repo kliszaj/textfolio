@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { LineBoil } from "@/components/LineBoil";
 import { DeskHost } from "@/components/desk/DeskHost";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE } from "@/lib/pageMetadata";
 import "./globals.css";
 
 const displayFont = localFont({
@@ -16,6 +17,8 @@ const lightDisplayFont = localFont({
   weight: "200",
   variable: "--font-pp-frama-extralight",
   display: "swap",
+  // Only the desk's clock uses it, and the clock can wait for it.
+  preload: false,
 });
 
 // Body family for case-study copy: the script is part of the hero voice, but
@@ -59,17 +62,17 @@ export const metadata: Metadata = {
   // Needed to resolve the og:image/twitter:image URLs to an absolute
   // address; without it Next.js defaults to localhost in production.
   metadataBase: new URL("https://adrianklisz.com"),
-  title: "Adrian",
-  description: "Designer, tinkerer, zero-to-one builder",
+  title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
   openGraph: {
-    title: "Adrian",
-    description: "Designer, tinkerer, zero-to-one builder",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Adrian",
-    description: "Designer, tinkerer, zero-to-one builder",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 };
 
@@ -86,8 +89,10 @@ export default function RootLayout({
         {/* Inside a frame (the case study on the desk's monitor), the page
             shows at rest from its first paint: no header settle, no body
             fade-in (globals.css, [data-embedded]). So Home on a case study
-            needn't wait for the monitor's copy to finish animating. */}
-        <script dangerouslySetInnerHTML={{ __html: "if(window.self!==window.top)document.documentElement.dataset.embedded='1'" }} />
+            needn't wait for the monitor's copy to finish animating. data-js
+            tells the landing page its desk is on the way (globals.css,
+            .home-fallback). */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.js='1';if(window.self!==window.top)document.documentElement.dataset.embedded='1'" }} />
       </head>
       <body className={`${displayFont.variable} ${lightDisplayFont.variable} ${scriptFont.variable} ${bodyFont.variable} ${condensedFont.variable}`}>
         <LineBoil />

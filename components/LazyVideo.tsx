@@ -1,33 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ComponentPropsWithoutRef } from "react";
 
 type LazyVideoProps = Omit<ComponentPropsWithoutRef<"video">, "preload" | "src"> & {
   src: string;
   rootMargin?: string;
-  loadImmediately?: boolean;
   playing?: boolean;
 };
+
+const noSubscription = () => () => {};
+const isEmbedded = () => document.documentElement.dataset.embedded === "1";
+const isEmbeddedOnServer = () => false;
 
 // Browsers do not natively lazy-load video. Keep its source out of the DOM
 // until the player is close to view, so long case-study pages do not begin
 // downloading a showreel while the reader is still in the opening copy.
+//
+// The copy on the desk's monitor (an iframe; see app/layout.tsx) is only a
+// picture of the page: it fetches what it needs for a still of the players in
+// its window, and plays nothing.
 export function LazyVideo({
   src,
-  rootMargin = "320px 0px",
-  loadImmediately = false,
+  rootMargin = "600px 0px",
   playing,
   autoPlay,
   ...props
 }: LazyVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
-  const isLoaded = loadImmediately || shouldLoad;
+  const embedded = useSyncExternalStore(noSubscription, isEmbedded, isEmbeddedOnServer);
 
   useEffect(() => {
-    if (loadImmediately) return;
-
     const video = videoRef.current;
     if (!video) return;
 
@@ -42,12 +46,12 @@ export function LazyVideo({
         setShouldLoad(true);
         observer.disconnect();
       },
-      { rootMargin }
+      { rootMargin: embedded ? "0px" : rootMargin }
     );
 
     observer.observe(video);
     return () => observer.disconnect();
-  }, [loadImmediately, rootMargin]);
+  }, [embedded, rootMargin]);
 
   useEffect(() => {
     if (playing === undefined) return;
@@ -56,7 +60,7 @@ export function LazyVideo({
     if (!video) return;
 
     const syncPlayback = () => {
-      if (playing && isLoaded && document.visibilityState !== "hidden") {
+      if (playing && shouldLoad && !embedded && document.visibilityState !== "hidden") {
         const playAttempt = video.play();
         playAttempt?.catch(() => {
           // Muted inline playback is normally permitted. If a browser blocks
@@ -73,15 +77,15 @@ export function LazyVideo({
       document.removeEventListener("visibilitychange", syncPlayback);
       video.pause();
     };
-  }, [isLoaded, playing]);
+  }, [embedded, shouldLoad, playing]);
 
   return (
     <video
       ref={videoRef}
       {...props}
-      src={isLoaded ? src : undefined}
-      preload={loadImmediately ? "auto" : "none"}
-      autoPlay={playing === undefined ? autoPlay : undefined}
+      src={shouldLoad ? src : undefined}
+      preload={!shouldLoad ? "none" : embedded ? "metadata" : "auto"}
+      autoPlay={playing === undefined && !embedded ? autoPlay : undefined}
     />
   );
 }

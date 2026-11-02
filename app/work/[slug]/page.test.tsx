@@ -39,7 +39,7 @@ test("adds the project collection to Projects", async () => {
   render(jsx as React.ReactElement);
 
   expect(screen.getByRole("heading", { name: "wordsnap." })).toBeInTheDocument();
-  expect(screen.getAllByTestId("project-entry")).toHaveLength(4);
+  expect(screen.getAllByTestId("project-entry")).toHaveLength(3);
   expect(screen.getByRole("img", { name: /wordsnap handheld device concept/i })).toHaveAttribute(
     "src",
     "/assets/wordsnap.jpg"

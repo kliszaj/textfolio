@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
 import { CaseStudyView } from "@/components/CaseStudyView";
 import { AboutBento } from "@/components/AboutBento";
 import { caseStudies } from "@/data/caseStudies";
 import { ABOUT_BENTO, ABOUT_PAGE } from "@/data/about";
+import { caseStudyMetadata } from "@/lib/pageMetadata";
+
+export const metadata: Metadata = caseStudyMetadata(ABOUT_PAGE);
 
 // Closes the loop: the last case study's next stop is About (see
 // app/work/[slug]/page.tsx), and About's own next sends it back to the first.

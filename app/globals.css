@@ -393,10 +393,34 @@ body {
   left: max(var(--case-study-gutter), calc((100% - 100rem) / 2));
 }
 
-/* Home has no room in the collapsed bar on narrow viewports. */
-.case-study-header[data-shrunk="true"] .case-study-home {
-  opacity: 0;
-  pointer-events: none;
+/* Collapsed on a phone, the small house moves down beside the title, level
+   with it, and the title steps right to make room. The link reaches past the
+   icon so it's still a comfortable tap. */
+@media (max-width: 47.999rem) {
+  .case-study-home {
+    transition:
+      top 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .case-study-header[data-shrunk="true"] .case-study-home {
+    top: calc(50% + var(--case-study-control-drop));
+    transform: translateY(-50%);
+  }
+
+  .case-study-home::after {
+    content: "";
+    position: absolute;
+    inset: -0.75rem;
+  }
+
+  .case-study-header-row {
+    transition: padding-left 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .case-study-header[data-shrunk="true"] .case-study-header-row {
+    padding-left: calc(var(--case-study-home-size) + 0.5rem);
+  }
 }
 
 /* From 48rem the margin can hold the controls: positioned against the
@@ -976,6 +1000,7 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   .case-study-next,
   .case-study-next-arrow,
   .case-study-home,
+  .case-study-header-row,
   .case-study-home-icon {
     transition: none;
   }
@@ -1241,4 +1266,19 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   .about-books-stage,
   .shelf-thing,
   .shelf-model { transition: none; }
+}
+
+/* The landing page's links, normally for screen readers, as the page itself
+   when there is no desk to cover them (app/page.tsx, components/desk/DeskHost). */
+html:not([data-js]) .home-fallback,
+html[data-desk-unavailable] .home-fallback {
+  position: static;
+  width: auto;
+  height: auto;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 4rem var(--case-study-gutter, 1.5rem);
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
 }
