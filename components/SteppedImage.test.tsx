@@ -41,3 +41,11 @@ test("jumps to a band when its chip is pressed, clipping the image to it", () =>
   expect(current()).toBe("Three");
   expect(screen.getByRole("img", { name: "Tall" }).style.clipPath).toMatch(/^inset\(66\.6+\d*% 0 0% 0\)$/);
 });
+
+test("locked, it is blurred whole with no chips, and still moves through its bands", () => {
+  const { container } = render(<SteppedImage src="/tall.jpg" alt="Tall" steps={steps} playing locked />);
+  expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  expect(container.firstElementChild).toHaveAttribute("data-locked", "true");
+  act(() => jest.advanceTimersByTime(STEP_DWELL_MS));
+  expect(container.firstElementChild).toHaveAttribute("data-step", "1");
+});

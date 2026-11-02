@@ -25,6 +25,8 @@ const scratchCorner = new THREE.Vector3();
 // The screen's corners, clockwise from the top left, as (right, up) halves.
 const CORNERS = [[-1, 1], [1, 1], [1, -1], [-1, -1]] as const;
 // Html places its content at the page's top left; quadTransform does the rest.
+// Its wrapper spans the stage untransformed, so it takes no pointer events
+// (the rail's dots are under it); only the screen itself does.
 const AT_ORIGIN = () => [0, 0];
 
 function CaseStudyCard({ caseStudy }: { caseStudy: CaseStudy }) {
@@ -214,10 +216,10 @@ export function ScreenSurface({
 
   return (
     <group position={screen.center} quaternion={screen.quaternion}>
-      <Html calculatePosition={AT_ORIGIN} position={[0, 0, 0.001]} zIndexRange={[20, 0]}>
+      <Html calculatePosition={AT_ORIGIN} wrapperClass="pointer-events-none" position={[0, 0, 0.001]} zIndexRange={[20, 0]}>
         <div
           ref={surface}
-          className="relative overflow-hidden bg-cream"
+          className="pointer-events-auto relative overflow-hidden bg-cream"
           style={{ width: SCREEN_PX.w, height: SCREEN_PX.h, transformOrigin: "0 0", visibility: "hidden" }}
         >
           {variant === "browser" && layout ? (

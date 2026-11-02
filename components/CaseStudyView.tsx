@@ -1087,7 +1087,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         // Under the pointer, a clip's frame grows a band of its
                         // own colour (globals.css). Stills and locked clips,
                         // which hovering doesn't change, stay as they are.
-                        data-hovered={(canHover && hoveredTile === index && ((item.kind === "video" && !item.unreleased) || item.steps)) || undefined}
+                        data-hovered={(canHover && hoveredTile === index && ((item.kind === "video" || item.steps) && !item.unreleased)) || undefined}
                         style={item.tint ? ({ "--tile-tint": item.tint } as React.CSSProperties) : undefined}
                         onPointerEnter={(event) => event.pointerType !== "touch" && setHoveredTile(index)}
                         onPointerLeave={() => setHoveredTile((current) => (current === index ? null : current))}
@@ -1100,7 +1100,10 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                               alt={item.alt}
                               steps={item.steps}
                               playbackRow={`media-${row}`}
-                              playing={canHover ? hoveredTile === index : activePlaybackRow === `media-${row}`}
+                              locked={Boolean(item.unreleased)}
+                              // Locked, it has no chips to steer by, so it
+                              // moves through its bands with its row.
+                              playing={canHover && !item.unreleased ? hoveredTile === index : activePlaybackRow === `media-${row}`}
                             />
                           ) : item.kind === "video" ? (
                             <LazyVideo

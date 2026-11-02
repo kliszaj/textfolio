@@ -285,17 +285,15 @@ export const caseStudies: CaseStudy[] = [
         unreleased: { title: "Under wraps until launch", detail: "Launching soon" },
       },
       {
-        // The bets are blurred in the file itself: the strategy is still in
-        // motion, so only the pillars and the timeline are readable. It shows
-        // one pillar at a time.
+        // The strategy is still in motion, so it's blurred whole (the bets are
+        // blurred in the file itself too) and moves through its pillars, one
+        // at a time, under its lock.
         src: "/assets/seamless-roadmap.jpg",
         alt: "The Seamless roadmap: Enable Devices, Enable Moments and Enable People, each with its bets from now to later",
         span: "full",
         aspect: "landscape",
         tint: "#1c1c1c",
-        // The boards, right of each pillar's text, at the same place in
-        // every band.
-        unreleased: { title: "Under wraps until launch", detail: "Launching soon", area: { left: 25.5, right: 8.5 } },
+        unreleased: { title: "Under wraps until launch", detail: "Launching soon" },
         steps: {
           width: 2400,
           height: 3110,

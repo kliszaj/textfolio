@@ -15,13 +15,16 @@ type SteppedImageProps = {
   // back on the first.
   playing: boolean;
   playbackRow?: string;
+  // Work that hasn't launched: the whole image blurred, and no chips naming
+  // what's in it -- it just moves through the bands.
+  locked?: boolean;
 };
 
 // A tall image shown one band at a time in a landscape frame. Each band is
 // centred at the frame's width and clipped so its neighbours never peek in;
 // moving on, the image slides and the clip follows. Chips in the corner name
 // the bands, fill a line as a timer, and jump to a band when pressed.
-export function SteppedImage({ src, alt, steps, playing, playbackRow }: SteppedImageProps) {
+export function SteppedImage({ src, alt, steps, playing, playbackRow, locked = false }: SteppedImageProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const [restartedAt, setRestartedAt] = useState(0);
@@ -59,13 +62,14 @@ export function SteppedImage({ src, alt, steps, playing, playbackRow }: SteppedI
     <div
       ref={ref}
       className="case-study-steps"
+      data-locked={locked || undefined}
       data-playback-row={playbackRow}
       data-step={index}
       style={{ "--step-dwell": `${STEP_DWELL_MS}ms` } as CSSProperties}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className="case-study-steps-image" style={imageStyle} loading="lazy" decoding="async" />
-      <div className="case-study-steps-chips">
+      {!locked && <div className="case-study-steps-chips">
         {bands.map((item, bandIndex) => (
           <button
             key={item.label}
@@ -84,7 +88,7 @@ export function SteppedImage({ src, alt, steps, playing, playbackRow }: SteppedI
             <span className="relative">{item.label}</span>
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
