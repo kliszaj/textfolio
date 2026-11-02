@@ -88,24 +88,22 @@ test("a long step runs for longer than a short one", () => {
 });
 
 // On touch the time is swiped (on the stage), so the clock has no arrows: a
-// hint until the first swipe, and a rail showing which of the stops is on.
-function TouchClock({ hint }: { hint: boolean }) {
+// rail showing which of the stops is on, and no hint about swiping.
+function TouchClock() {
   const clock = useDeskTime();
   return (
     <div data-testid="preview" data-look={clock.look ?? ""}>
-      <DeskClock clock={clock} touch hint={hint} />
+      <DeskClock clock={clock} />
     </div>
   );
 }
 
-test("on touch, shows a swipe hint and the day's stops instead of arrows", () => {
-  const { rerender } = render(<TouchClock hint />);
+test("on touch, shows the day's stops, with no arrows or swipe hint", () => {
+  render(<TouchClock />);
   expect(screen.queryByRole("button", { name: /in the day/ })).not.toBeInTheDocument();
-  expect(screen.getByText("Swipe up to move the day on")).toHaveStyle({ opacity: "1" });
+  expect(screen.queryByText(/Swipe up/)).not.toBeInTheDocument();
   // 14:12 in late October is the afternoon stop.
   expect(screen.getByTestId("preview")).toHaveAttribute("data-look", "afternoon");
-  rerender(<TouchClock hint={false} />);
-  expect(screen.getByText("Swipe up to move the day on")).toHaveStyle({ opacity: "0" });
 });
 
 test("draws the reset icon with the gentle line boil", () => {

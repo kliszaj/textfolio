@@ -276,7 +276,6 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   // A tap, anywhere but on a control, opens what's on the monitor. Anything
   // else (mostly sideways, or between a tap and a swipe) is left alone.
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
-  const [swiped, setSwiped] = useState(false);
   const onTouchStart = (event: React.TouchEvent) => {
     const point = event.touches[0];
     swipeStart.current = event.touches.length === 1 && point ? { x: point.clientX, y: point.clientY } : null;
@@ -296,7 +295,6 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
     }
     if (Math.abs(dy) < SWIPE_STEP_PX || Math.abs(dy) < Math.abs(dx)) return;
     stepTime(dy < 0 ? 1 : -1);
-    setSwiped(true);
   };
 
   // The arrow keys step through the day too, for anyone not on a wheel.
@@ -587,7 +585,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
           data-shown={revealed}
           style={{ transitionDelay: revealed ? `${UI_REVEAL_STAGGER_MS}ms` : undefined }}
         >
-          <DeskClock clock={clock} touch={touch} hint={touch && !swiped} />
+          <DeskClock clock={clock} />
         </div>
         {showDeskSettings() && (
           <div

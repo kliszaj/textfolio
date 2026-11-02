@@ -73,10 +73,13 @@ const NARROW_X_FULL_AT_ASPECT = 1;
 // On a phone the page dots aren't drawn down the right edge, so the desk
 // moves back to the middle of the whole width by this much.
 const NO_RAIL_X_SHIFT = 2;
+// And the camera sits this much closer, so what's on the monitor reads: its
+// ends can fall just off the edges.
+const PHONE_ZOOM = 1.25;
 
 export function idlePose(screen: ScreenPose, framing: DeskFraming, aspect: number, railShown = true) {
   const narrow = Math.pow(Math.max(1, FIT_WIDTH_BELOW_ASPECT / aspect), FIT_WIDTH_STRENGTH);
-  const offset = IDLE_OFFSET.clone().divideScalar(framing.zoom).multiplyScalar(narrow);
+  const offset = IDLE_OFFSET.clone().divideScalar(framing.zoom * (railShown ? 1 : PHONE_ZOOM)).multiplyScalar(narrow);
   const right = new THREE.Vector3().crossVectors(offset, new THREE.Vector3(0, 1, 0)).normalize().negate();
   const up = new THREE.Vector3().crossVectors(offset, right).normalize();
   const height = 2 * offset.length() * Math.tan(THREE.MathUtils.degToRad(FOV / 2));

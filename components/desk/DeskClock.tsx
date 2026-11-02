@@ -101,32 +101,14 @@ export function useDeskTime() {
   };
 }
 
-// The time is changed by scrolling (or the arrow keys, or on touch a swipe),
-// so the clock is just the reading, plus a way back to now while previewing
-// another time.
-export function DeskClock({ clock, touch = false, hint = false }: { clock: ReturnType<typeof useDeskTime>; touch?: boolean; hint?: boolean }) {
+// The time is changed by scrolling (or the arrow keys, or on touch an
+// unannounced swipe), so the clock is just the reading, plus a way back to now
+// while previewing another time.
+export function DeskClock({ clock }: { clock: ReturnType<typeof useDeskTime> }) {
   // Inherits the stage's text colour: ink on a light background, cream on a
   // dark one. Letter by letter it can flip where the 3D desk passes behind
   // (AdaptiveText).
   return (
-    <>
-    {touch && (
-      <>
-        {/* Top centre, where the wall is clear at every hour: until the
-            first swipe, how to move through the day. */}
-        <div aria-hidden="true" style={{ pointerEvents: "none" }} className="absolute left-1/2 top-6 flex -translate-x-1/2 flex-col items-center">
-          <p
-            className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-current/8 px-3 py-1.5 font-body text-xs font-medium transition-opacity duration-500"
-            style={{ opacity: hint ? 1 : 0 }}
-          >
-            <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden="true">
-              <path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Swipe up to move the day on
-          </p>
-        </div>
-      </>
-    )}
     <div
       className="absolute bottom-6 flex flex-col items-end text-right md:bottom-10"
       style={{ right: "clamp(1.5rem, 3.5vw, 4rem)" }}
@@ -153,6 +135,5 @@ export function DeskClock({ clock, touch = false, hint = false }: { clock: Retur
         <span className="tabular-nums" aria-label={`${clock.time}, Stockholm`}><span aria-hidden="true"><AdaptiveText text={`${clock.time} · Stockholm`} /></span></span>
       </div>
     </div>
-    </>
   );
 }
