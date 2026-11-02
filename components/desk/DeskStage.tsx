@@ -546,16 +546,20 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         <div className="relative scale-75 md:scale-100">
           <CircularText text="LOADING*LOADING*" spinDuration={8} />
           {/* The home icon at its centre, hand-drawn like the case studies'
-              Home: the icon as a mask, so it takes the loader's ink or cream. */}
-          <span
-            aria-hidden="true"
-            className="boil-line absolute top-1/2 left-1/2 size-14 -translate-x-1/2 -translate-y-1/2"
-            style={{
-              backgroundColor: "var(--circular-text-color)",
-              mask: "url(/assets/home-animation-1.svg) center / contain no-repeat",
-              WebkitMask: "url(/assets/home-animation-1.svg) center / contain no-repeat",
-            }}
-          />
+              Home: the icon as a mask, so it takes the loader's ink or cream.
+              The boil goes on a wrapper: on the masked span itself the filter
+              runs before the mask, so it would wobble the fill and the mask
+              would cut a still house out of it. */}
+          <span aria-hidden="true" className="boil-line absolute top-1/2 left-1/2 size-14 -translate-x-1/2 -translate-y-1/2">
+            <span
+              className="block size-full"
+              style={{
+                backgroundColor: "var(--circular-text-color)",
+                mask: "url(/assets/home-animation-1.svg) center / contain no-repeat",
+                WebkitMask: "url(/assets/home-animation-1.svg) center / contain no-repeat",
+              }}
+            />
+          </span>
         </div>
       </div>
 
