@@ -1023,7 +1023,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
             {!hasFacts && actions.length > 0 && (
               <aside
                 data-testid="case-study-actions"
-                className="font-body grid content-start gap-4 lg:col-start-9 lg:col-span-4 lg:row-start-1"
+                // From lg the rail runs the bio's full height: the email row
+                // keeps its size and the CV row takes the rest.
+                className="case-study-actions font-body grid content-start gap-4 lg:col-start-9 lg:col-span-4 lg:row-start-1 lg:grid-rows-[auto_1fr] lg:content-stretch"
               >
                 {actions.map((action) => (
                   <ActionCard key={action.href} action={action} />

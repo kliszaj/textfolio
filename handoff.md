@@ -3834,5 +3834,5 @@ Seamless opens on its film (seamless-film.mp4, on orange, so the first phone car
 
 The CV row shows its first page (public/assets/adrian-klisz-cv-preview.jpg)
 in place of the download button; regenerate it with
-`sips -s format jpeg -Z 240` on the PDF whenever the CV changes. "Currently
+`sips -s format jpeg -s formatOptions 85 -Z 640` on the PDF whenever the CV changes (it fills the tall CV row beside the bio). "Currently
 reading" rests as a small grey label; a picked book's title is 20px.

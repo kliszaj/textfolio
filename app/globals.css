@@ -1074,6 +1074,24 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Beside the bio the CV row is as tall as the rail leaves it, and the page
+   fills it, top to bottom inside the row's padding. Out of the flow, so the
+   bio alone sets the height. */
+@media (min-width: 1024px) {
+  .case-study-actions > :last-child:has(.case-study-action-preview) {
+    padding-right: 11rem;
+  }
+
+  .case-study-actions > :last-child .case-study-action-preview {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    height: calc(100% - 2.5rem);
+    max-height: 13rem;
+    margin-block: 0;
+  }
+}
+
 .case-study-action-row:hover .case-study-action-preview {
   transform: translateY(-0.25rem) scale(1.06);
 }
