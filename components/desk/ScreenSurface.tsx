@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { caseStudyRoute } from "@/data/caseStudies";
+import { quadTransform, type Point } from "@/lib/quadTransform";
 import type { CaseStudy } from "@/data/caseStudies";
 import type { WorkspaceScene } from "@/lib/workspace/scenes";
 import { BrowserChrome } from "./BrowserChrome";
@@ -18,6 +19,13 @@ const WALLPAPER = "#0b0b0b url(/desk/wallpaper.webp) center / cover no-repeat";
 // How much of the glass's sheen goes when the room is dark.
 const GLARE_NIGHT_DIM = 0.7;
 const scratchFromScreen = new THREE.Vector3();
+const scratchRight = new THREE.Vector3();
+const scratchUp = new THREE.Vector3();
+const scratchCorner = new THREE.Vector3();
+// The screen's corners, clockwise from the top left, as (right, up) halves.
+const CORNERS = [[-1, 1], [1, 1], [1, -1], [-1, -1]] as const;
+// Html places its content at the page's top left; quadTransform does the rest.
+const AT_ORIGIN = () => [0, 0];
 
 function CaseStudyCard({ caseStudy }: { caseStudy: CaseStudy }) {
   return (
@@ -173,27 +181,44 @@ export function ScreenSurface({
   onOpen: () => void;
 }) {
   const surface = useRef<HTMLDivElement>(null);
-  const distanceFactor = (400 * screen.width) / SCREEN_PX.w;
   // Load the real page while the camera travels, reveal it on arrival.
   const mountPage = variant === "screen" && phase !== "idle";
   const showPage = variant === "screen" && phase === "focused";
 
-  // HTML always draws over the canvas, so hide the screen once the orbit
-  // carries the camera behind the monitor.
-  useFrame(({ camera }) => {
+  // The page laid onto where the monitor's glass is on the page this frame:
+  // its four corners projected, the box mapped onto them in one flat
+  // transform. (Html's own transform mode nests perspective and preserve-3d,
+  // which Safari draws in the wrong place, or not at all.) HTML always draws
+  // over the canvas, so the screen is hidden once the orbit carries the
+  // camera behind the monitor.
+  useFrame(({ camera, size }) => {
     const el = surface.current;
     if (!el) return;
-    const facing = scratchFromScreen.copy(camera.position).sub(screen.center).dot(screen.normal) > 0.02;
-    el.style.visibility = facing ? "visible" : "hidden";
+    camera.updateMatrixWorld();
+    let shown = scratchFromScreen.copy(camera.position).sub(screen.center).dot(screen.normal) > 0.02;
+    const corners: Point[] = [];
+    if (shown) {
+      scratchRight.set(1, 0, 0).applyQuaternion(screen.quaternion).multiplyScalar(screen.width / 2);
+      scratchUp.set(0, 1, 0).applyQuaternion(screen.quaternion).multiplyScalar(screen.height / 2);
+      for (const [right, up] of CORNERS) {
+        scratchCorner.copy(screen.center).addScaledVector(scratchRight, right).addScaledVector(scratchUp, up);
+        // A corner behind the camera has no place on the page.
+        if (scratchCorner.clone().applyMatrix4(camera.matrixWorldInverse).z >= 0) shown = false;
+        scratchCorner.project(camera);
+        corners.push({ x: ((scratchCorner.x + 1) / 2) * size.width, y: ((1 - scratchCorner.y) / 2) * size.height });
+      }
+    }
+    el.style.visibility = shown ? "visible" : "hidden";
+    if (shown) el.style.transform = quadTransform(SCREEN_PX.w, SCREEN_PX.h, corners as [Point, Point, Point, Point]);
   });
 
   return (
     <group position={screen.center} quaternion={screen.quaternion}>
-      <Html transform distanceFactor={distanceFactor} position={[0, 0, 0.001]} zIndexRange={[20, 0]}>
+      <Html calculatePosition={AT_ORIGIN} position={[0, 0, 0.001]} zIndexRange={[20, 0]}>
         <div
           ref={surface}
           className="relative overflow-hidden bg-cream"
-          style={{ width: SCREEN_PX.w, height: SCREEN_PX.h }}
+          style={{ width: SCREEN_PX.w, height: SCREEN_PX.h, transformOrigin: "0 0", visibility: "hidden" }}
         >
           {variant === "browser" && layout ? (
             <BrowserWindow

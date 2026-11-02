@@ -19,7 +19,9 @@ const isEmbeddedOnServer = () => false;
 //
 // The copy on the desk's monitor (an iframe; see app/layout.tsx) is only a
 // picture of the page: it fetches what it needs for a still of the players in
-// its window, and plays nothing.
+// its window, and plays nothing. Whether a player is in that window is read
+// from the page itself: the monitor's frame is drawn in perspective, and
+// Safari's IntersectionObserver gets lost in it.
 export function LazyVideo({
   src,
   rootMargin = "600px 0px",
@@ -35,6 +37,13 @@ export function LazyVideo({
     const video = videoRef.current;
     if (!video) return;
 
+    if (embedded) {
+      const bounds = video.getBoundingClientRect();
+      if (bounds.top >= window.innerHeight || bounds.bottom <= 0) return;
+      const show = window.setTimeout(() => setShouldLoad(true), 0);
+      return () => window.clearTimeout(show);
+    }
+
     if (typeof IntersectionObserver === "undefined") {
       const fallback = window.setTimeout(() => setShouldLoad(true), 0);
       return () => window.clearTimeout(fallback);
@@ -46,7 +55,7 @@ export function LazyVideo({
         setShouldLoad(true);
         observer.disconnect();
       },
-      { rootMargin: embedded ? "0px" : rootMargin }
+      { rootMargin }
     );
 
     observer.observe(video);
@@ -83,7 +92,9 @@ export function LazyVideo({
     <video
       ref={videoRef}
       {...props}
-      src={shouldLoad ? src : undefined}
+      // Safari paints no frame for a video it hasn't played unless asked for
+      // a moment of it: the still, just past the start.
+      src={!shouldLoad ? undefined : embedded ? `${src}#t=0.1` : src}
       preload={!shouldLoad ? "none" : embedded ? "metadata" : "auto"}
       autoPlay={playing === undefined && !embedded ? autoPlay : undefined}
     />

@@ -81,26 +81,32 @@ test("follows row-controlled playback once it has loaded", () => {
   pause.mockRestore();
 });
 
-test("on the desk's monitor, loads only what shows and never plays", () => {
+test("on the desk's monitor, loads a still of what shows and never plays", () => {
+  jest.useFakeTimers();
   document.documentElement.dataset.embedded = "1";
   const play = jest
     .spyOn(HTMLMediaElement.prototype, "play")
     .mockResolvedValue(undefined);
+  const bounds = jest
+    .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+    .mockReturnValue({ top: 600, bottom: 1000 } as DOMRect);
 
-  render(<LazyVideo data-testid="video" src="/assets/showreel.mp4" playing muted />);
+  render(<LazyVideo data-testid="shown" src="/assets/showreel.mp4" playing muted />);
+  act(() => jest.runAllTimers());
 
-  expect(intersectionObservers[0].options?.rootMargin).toBe("0px");
-  act(() => {
-    intersectionObservers[0].callback(
-      [{ isIntersecting: true } as IntersectionObserverEntry],
-      {} as IntersectionObserver
-    );
-  });
-
-  const video = screen.getByTestId("video");
+  const video = screen.getByTestId("shown");
+  expect(video).toHaveAttribute("src", "/assets/showreel.mp4#t=0.1");
   expect(video).toHaveAttribute("preload", "metadata");
   expect(play).not.toHaveBeenCalled();
+  expect(intersectionObservers).toHaveLength(0);
 
+  bounds.mockReturnValue({ top: 1400, bottom: 1800 } as DOMRect);
+  render(<LazyVideo data-testid="below" src="/assets/below.mp4" muted />);
+  act(() => jest.runAllTimers());
+  expect(screen.getByTestId("below")).not.toHaveAttribute("src");
+
+  bounds.mockRestore();
   play.mockRestore();
+  jest.useRealTimers();
   delete document.documentElement.dataset.embedded;
 });
