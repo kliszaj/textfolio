@@ -677,6 +677,20 @@ test("labels unreleased media with why it's hidden", () => {
   expect(tile.querySelector(".case-study-unreleased-lock svg")).toHaveClass("boil-icon");
 });
 
+test("centres the unreleased label on the blurred part when given one", () => {
+  const partly = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: [
+      { src: "/board.jpg", alt: "Board", span: "full" as const, aspect: "landscape" as const, unreleased: { title: "Under wraps until launch", detail: "Launching soon", area: { left: 25, right: 10 } } },
+    ],
+  };
+
+  render(<CaseStudyView caseStudy={partly} next={nextStudy} />);
+
+  expect(screen.getByTestId("case-study-tile").querySelector(".case-study-unreleased")).toHaveStyle({ left: "25%", right: "10%" });
+});
+
 test("frames an upright tile at 4:5", () => {
   const upright = {
     ...caseStudy,

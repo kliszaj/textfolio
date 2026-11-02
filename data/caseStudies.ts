@@ -49,8 +49,9 @@ export type CaseStudyMedia = {
   // the next while hovered (without hover, while its row is in view).
   steps?: CaseStudyMediaSteps;
   // Work that hasn't launched: the media itself is blurred, and this says
-  // why, over a lock, in the middle of the tile.
-  unreleased?: { title: string; detail: string };
+  // why, over a lock, in the middle of the tile -- or of `area`, the blurred
+  // part, as percentages of the tile's width in from each side.
+  unreleased?: { title: string; detail: string; area?: { left: number; right: number } };
 };
 
 // The image's own size, and its bands in its pixels, top to bottom.
@@ -286,6 +287,9 @@ export const caseStudies: CaseStudy[] = [
         span: "full",
         aspect: "landscape",
         tint: "#1c1c1c",
+        // The boards, right of each pillar's text, at the same place in
+        // every band.
+        unreleased: { title: "Under wraps until launch", detail: "Launching soon", area: { left: 25.5, right: 8.5 } },
         steps: {
           width: 2400,
           height: 3110,

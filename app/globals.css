@@ -779,6 +779,33 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   pointer-events: none;
 }
 
+.case-study-unreleased[data-area] {
+  padding: 0;
+}
+
+/* On a phone a part-blurred tile is too short for the words and the chips
+   along its foot: just the lock, centred above them. */
+@media (max-width: 767px) {
+  .case-study-unreleased[data-area] {
+    bottom: 4.5rem;
+  }
+
+  /* Hidden from view, still read out. */
+  .case-study-unreleased[data-area] > :not(.case-study-unreleased-lock) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .case-study-unreleased[data-area] .case-study-unreleased-lock {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
 .case-study-unreleased-lock {
   display: grid;
   place-items: center;

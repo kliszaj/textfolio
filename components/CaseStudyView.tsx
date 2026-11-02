@@ -291,9 +291,13 @@ function MediaCaption({ children }: { children: ReactNode }) {
 }
 
 // Over blurred, unlaunched work: a lock, and why it's hidden.
-function UnreleasedLabel({ title, detail }: { title: string; detail: string }) {
+function UnreleasedLabel({ title, detail, area }: NonNullable<CaseStudyMedia["unreleased"]>) {
   return (
-    <figcaption className="case-study-unreleased font-body">
+    <figcaption
+      className="case-study-unreleased font-body"
+      data-area={area ? "" : undefined}
+      style={area ? { left: `${area.left}%`, right: `${area.right}%` } : undefined}
+    >
       <span className="case-study-unreleased-lock" aria-hidden="true">
         <svg className="boil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="5" y="11" width="14" height="10" rx="2" />
@@ -1112,7 +1116,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                               src={item.src}
                               data-playback-row={`media-${row}`}
                               loadImmediately
-                              playing={activePlaybackRow === `media-${row}` && (!paired || pairedPlays)}
+                              // Blurred, a locked clip has nothing to reveal on
+                              // hover, so it plays with its row.
+                              playing={activePlaybackRow === `media-${row}` && (!paired || pairedPlays || Boolean(item.unreleased))}
                               muted
                               loop
                               playsInline
