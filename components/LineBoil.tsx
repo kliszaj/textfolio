@@ -11,15 +11,20 @@ export const LINE_BOIL_FPS = 6;
 
 const BASE_FREQUENCY = 0.036;
 const INTENSITY_PX = 4;
-// Small icons (boil-icon) shiver less, or a 24px arrow just looks bent.
-const ICON_INTENSITY_PX = 1.5;
+// Small icons (boil-icon) shiver less, or a 24px arrow just looks bent. Their
+// noise is finer and centred (fractalNoise, where turbulence leans one way),
+// so each frame bends the line rather than mostly shifting it: Safari moves
+// it in whole pixels, and a near-uniform shift of under a pixel came out the
+// same every frame, so there the icons sat still.
+const ICON_BASE_FREQUENCY = 0.08;
+const ICON_INTENSITY_PX = 2;
 const FILTERS = [
-  { id: "line-boil", scale: INTENSITY_PX },
-  { id: "line-boil-icon", scale: ICON_INTENSITY_PX },
+  { id: "line-boil", type: "turbulence", frequency: BASE_FREQUENCY, scale: INTENSITY_PX },
+  { id: "line-boil-icon", type: "fractalNoise", frequency: ICON_BASE_FREQUENCY, scale: ICON_INTENSITY_PX },
 ];
 // Nudging the frequency per frame stops the four displacements from looking
-// like the same texture simply shifted around.
-const FRAME_FREQUENCY_OFFSETS = [-0.006, 0.003, -0.003, 0.006];
+// like the same texture simply shifted around (as a share of the base).
+const FRAME_FREQUENCY_OFFSETS = [-1 / 6, 1 / 12, -1 / 12, 1 / 6];
 
 export function LineBoil() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -59,9 +64,9 @@ export function LineBoil() {
   return (
     <svg aria-hidden="true" className="pointer-events-none absolute h-0 w-0">
       <defs>
-        {FILTERS.flatMap(({ id, scale }) => FRAME_FREQUENCY_OFFSETS.map((frequencyOffset, index) => {
+        {FILTERS.flatMap(({ id, type, frequency: base, scale }) => FRAME_FREQUENCY_OFFSETS.map((frequencyOffset, index) => {
           const frame = index + 1;
-          const frequency = Math.max(0.001, BASE_FREQUENCY + frequencyOffset);
+          const frequency = base * (1 + frequencyOffset);
 
           return (
             <filter
@@ -76,7 +81,7 @@ export function LineBoil() {
               colorInterpolationFilters="sRGB"
             >
               <feTurbulence
-                type="turbulence"
+                type={type}
                 baseFrequency={frequency}
                 numOctaves="2"
                 seed={frame}

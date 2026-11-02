@@ -131,7 +131,13 @@ export function DeskLighting({ solar, screen, windowEnabled }: { solar: ReturnTy
     }
     if (key.current) {
       const casting = floorOpacity > 0.002;
-      key.current.castShadow = casting;
+      // castShadow itself never changes: how many lights cast shadows is
+      // part of every material's shader, so flipping it recompiles the whole
+      // desk mid-transition (a visible stall, worst in Safari). Its shadow is
+      // switched off by strength instead, and its map isn't redrawn meanwhile.
+      key.current.shadow.intensity = casting ? 1 : 0;
+      // (Each map is drawn once first: a light with none breaks every draw.)
+      key.current.shadow.autoUpdate = casting || !key.current.shadow.map;
       // The shadow map is only redrawn on request: when the sun starts or
       // stops casting, ask, or its shadow stays missing (or stale) until
       // something else does -- like turning the desk.
@@ -355,11 +361,13 @@ function WindowPatch({ side, solar, tint, enabled }: { side: WindowSide; solar: 
     // though: the floor draws every casting light's shadow at full strength,
     // however dim the light, so a dark window would still print one.
     const nowCasting = light.intensity > 0.02;
-    light.castShadow = nowCasting;
+    // castShadow stays on (see the sun's, above): a dark window's shadow is
+    // off by strength, and its map isn't redrawn.
+    light.shadow.autoUpdate = nowCasting || !light.shadow.map;
     // Its shadows go in the first half of a fade out (and come in over the
     // second half of a fade in), leaving the floor to the sun's in between:
     // the pattern doesn't need them to show.
-    light.shadow.intensity = side.castsShadows ? THREE.MathUtils.smoothstep(light.intensity / WINDOW_SPOT_INTENSITY, 0.5, 0.8) : 0;
+    light.shadow.intensity = side.castsShadows && nowCasting ? THREE.MathUtils.smoothstep(light.intensity / WINDOW_SPOT_INTENSITY, 0.5, 0.8) : 0;
     // As for the sun: the shadow map has to be redrawn when this starts or
     // stops casting.
     if (nowCasting !== casting.current) {
@@ -391,6 +399,8 @@ function WindowPatch({ side, solar, tint, enabled }: { side: WindowSide; solar: 
         angle={0.34}
         penumbra={side.penumbra}
         decay={0}
+        castShadow
+        shadow-intensity={0}
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0004}
       />

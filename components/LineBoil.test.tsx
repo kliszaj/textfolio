@@ -44,6 +44,14 @@ describe("LineBoil", () => {
     }
   });
 
+  test("icons bend on a finer, centred noise, so Safari's whole-pixel boil still moves", () => {
+    const { container } = render(<LineBoil />);
+    const icon = container.querySelector("#line-boil-icon-1 feTurbulence");
+    const line = container.querySelector("#line-boil-1 feTurbulence");
+    expect(icon?.getAttribute("type")).toBe("fractalNoise");
+    expect(Number(icon?.getAttribute("baseFrequency"))).toBeGreaterThan(Number(line?.getAttribute("baseFrequency")));
+  });
+
   test("each frame uses a different noise seed so the wobble actually changes", () => {
     const { container } = render(<LineBoil />);
     const seeds = Array.from(container.querySelectorAll("feTurbulence")).map((node) =>
