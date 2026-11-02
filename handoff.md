@@ -3830,7 +3830,7 @@ soon", never a year. Fixes: North was acquired in 2020; the Focals long read
 no longer repeats the title; e-ink displays has its own description (the
 eink-weather-quotes frame). The Focals Loop clip is on green. Projects no
 longer ends with "more coming soon...". The full-width film placeholder on
-Seamless ships as a grey box until that video is recorded. CV stays "CV".
+Seamless opens on its film (seamless-film.mp4, on orange, so the first phone card is yellow). CV stays "CV".
 
 The CV row shows its first page (public/assets/adrian-klisz-cv-preview.jpg)
 in place of the download button; regenerate it with

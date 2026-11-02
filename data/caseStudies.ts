@@ -252,14 +252,20 @@ export const caseStudies: CaseStudy[] = [
     mediaPadded: true,
     mediaLayout: "sequence",
     media: [
-      // A full-width film is still to come.
-      { alt: "Seamless: a film, coming soon", span: "full", aspect: "landscape" },
+      {
+        src: "/assets/seamless-film.mp4",
+        alt: "Spotify on an iPhone: from Home to the Connect device sheet",
+        kind: "video",
+        span: "full",
+        aspect: "landscape",
+        tint: "#f0a842",
+      },
       {
         src: "/assets/seamless-device-sheet-phone.jpg",
         alt: "The redesigned Connect device sheet, listening on this iPhone",
         span: "third",
         aspect: "portrait",
-        tint: "#f1a942",
+        tint: "#f5d745",
       },
       {
         src: "/assets/seamless-device-sheet-speaker.jpg",
