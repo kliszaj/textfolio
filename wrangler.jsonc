@@ -1,7 +1,7 @@
 {
   "name": "textfolio",
-  // The static Next.js export is served as assets; anything that isn't a file
-  // (the typing leaderboard's /api/*) reaches the Worker.
+  // The static Next.js export is served as assets; the typing leaderboard's
+  // /api/* and the videos reach the Worker (run_worker_first, below).
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-30",
   // Served on the portfolio's own domain (Cloudflare adds the DNS records;
@@ -16,9 +16,11 @@
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",
-    // Videos come through the Worker, which answers the Range requests that
-    // seeking needs and static assets ignore (worker/videoRange.ts).
-    "run_worker_first": ["/assets/*.mp4"],
+    // With a list here, only these reach the Worker at all: everything else is
+    // static files, so the leaderboard's API has to be named. Videos come through
+    // it to answer the Range requests that seeking needs and static assets
+    // ignore (worker/videoRange.ts).
+    "run_worker_first": ["/api/*", "/assets/*.mp4"],
     // A bad URL gets the export's 404.html, not an empty response.
     "not_found_handling": "404-page"
   },
