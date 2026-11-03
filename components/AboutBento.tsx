@@ -5,18 +5,21 @@ import type { AboutBentoData } from "@/data/about";
 
 // Under About's bio, in the media grid's columns: the portrait, Spotify's own
 // player for the playlist, and the books fanned out on a tile of their own.
-// Side by side from md, all as tall as the portrait; stacked on a phone.
+// All three side by side from 1200px, as tall as the portrait. Narrower, the
+// books take a row of their own: Spotify's player falls back to a cramped
+// layout in a tile under 352px tall, which a third of the width would be.
+// Stacked on a phone.
 export function AboutBento({ bento }: { bento: AboutBentoData }) {
   const { portrait, playlist, reading } = bento;
   return (
     <section aria-label="What I'm into" className="about-bento bg-cream pb-20 md:pb-28">
       <div className="mx-auto grid w-full max-w-[100rem] grid-cols-6 gap-4 md:gap-6">
-        <div className="relative col-span-6 aspect-[4/5] overflow-hidden rounded-2xl bg-ink/10 md:col-span-2">
+        <div className="relative col-span-6 aspect-[4/5] overflow-hidden rounded-2xl bg-ink/10 md:col-span-3 min-[75rem]:col-span-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={portrait.src} alt={portrait.alt} className="absolute inset-0 size-full object-cover object-[50%_30%]" />
         </div>
 
-        <div data-testid="about-bento-playlist" className="col-span-6 h-[22rem] overflow-hidden rounded-2xl bg-[#121212] md:col-span-2 md:aspect-[4/5] md:h-auto">
+        <div data-testid="about-bento-playlist" className="col-span-6 h-[22rem] overflow-hidden rounded-2xl bg-[#121212] md:col-span-3 md:aspect-[4/5] md:h-auto md:min-h-[22rem] min-[75rem]:col-span-2">
           <iframe
             title={`${playlist.title} on Spotify`}
             src={playlist.embedSrc}
@@ -41,6 +44,10 @@ const BOOK_SIZES: Array<[number, number, number]> = [[40, 256, 176], [34, 232, 1
 const SCENE_W = 360;
 const SCENE_H = 330;
 const GAP = 4;
+// A browser draws a face in a 3D scene at its layout size, then stretches that
+// when the scene scales it up, which blurs a picked book's cover. So the cover
+// is laid out this many times over and scaled back down: the pixels are there.
+const COVER_DETAIL = 3;
 
 function ReadingTile({ reading }: { reading: AboutBentoData["reading"] }) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -103,7 +110,7 @@ function ReadingTile({ reading }: { reading: AboutBentoData["reading"] }) {
   return (
     <div
       data-testid="about-bento-reading"
-      className="col-span-6 grid h-[30rem] grid-rows-[minmax(0,1fr)_auto] gap-5 overflow-hidden rounded-2xl bg-ink/[0.06] p-6 md:col-span-2 md:aspect-[4/5] md:h-auto"
+      className="col-span-6 grid h-[30rem] grid-rows-[minmax(0,1fr)_auto] gap-5 overflow-hidden rounded-2xl bg-ink/[0.06] p-6 min-[75rem]:col-span-2 min-[75rem]:aspect-[4/5] min-[75rem]:h-auto"
     >
       <div
         ref={viewportRef}
@@ -212,7 +219,7 @@ function Box({ w, h, d, all, front, right, top }: {
     <div className="shelf-3d" style={{ width: w, height: h }}>
       <Face w={w} h={h} transform={`translateZ(${d / 2}px)`} className={front?.className} style={{ ...all, ...front?.style }}>{front?.children}</Face>
       <Face w={w} h={h} transform={`rotateY(180deg) translateZ(${d / 2}px)`} className="shelf-shade-back" style={all} />
-      <Face w={d} h={h} transform={`rotateY(90deg) translateZ(${w / 2}px)`} className={`shelf-shade-side ${right?.className ?? ""}`} style={{ ...all, ...right?.style }} />
+      <Face w={d * COVER_DETAIL} h={h * COVER_DETAIL} transform={`rotateY(90deg) translateZ(${w / 2}px) scale(${1 / COVER_DETAIL})`} className={`shelf-shade-side ${right?.className ?? ""}`} style={{ ...all, ...right?.style }} />
       <Face w={d} h={h} transform={`rotateY(-90deg) translateZ(${w / 2}px)`} className="shelf-shade-side" style={all} />
       <Face w={w} h={d} transform={`rotateX(90deg) translateZ(${h / 2}px)`} className={`shelf-shade-top ${top?.className ?? ""}`} style={{ ...all, ...top?.style }} />
       <Face w={w} h={d} transform={`rotateX(-90deg) translateZ(${h / 2}px)`} className="shelf-shade-bottom" style={all} />

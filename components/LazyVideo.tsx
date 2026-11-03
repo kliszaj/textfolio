@@ -7,6 +7,9 @@ type LazyVideoProps = Omit<ComponentPropsWithoutRef<"video">, "preload" | "src">
   src: string;
   rootMargin?: string;
   playing?: boolean;
+  // A thin line along the foot of the parent (which must be positioned),
+  // showing how far through the video is, while it plays.
+  showProgress?: boolean;
 };
 
 const noSubscription = () => () => {};
@@ -26,10 +29,12 @@ export function LazyVideo({
   src,
   rootMargin = "600px 0px",
   playing,
+  showProgress = false,
   autoPlay,
   ...props
 }: LazyVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const progressRef = useRef<HTMLSpanElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
   const embedded = useSyncExternalStore(noSubscription, isEmbedded, isEmbeddedOnServer);
 
@@ -88,15 +93,40 @@ export function LazyVideo({
     };
   }, [embedded, shouldLoad, playing]);
 
+  // Written straight to the line each frame, so a playing video doesn't
+  // re-render the page around it.
+  useEffect(() => {
+    const video = videoRef.current;
+    const line = progressRef.current;
+    if (!video || !line) return;
+    if (!playing || !shouldLoad || embedded) {
+      line.dataset.playing = "false";
+      return;
+    }
+    let frame = 0;
+    const update = () => {
+      line.dataset.playing = String(!video.paused);
+      if (video.duration > 0) line.style.transform = `scaleX(${video.currentTime / video.duration})`;
+      frame = window.requestAnimationFrame(update);
+    };
+    frame = window.requestAnimationFrame(update);
+    return () => window.cancelAnimationFrame(frame);
+  }, [embedded, shouldLoad, playing]);
+
   return (
-    <video
-      ref={videoRef}
-      {...props}
-      // Safari paints no frame for a video it hasn't played unless asked for
-      // a moment of it: the still, just past the start.
-      src={!shouldLoad ? undefined : embedded ? `${src}#t=0.1` : src}
-      preload={!shouldLoad ? "none" : embedded ? "metadata" : "auto"}
-      autoPlay={playing === undefined && !embedded ? autoPlay : undefined}
-    />
+    <>
+      <video
+        ref={videoRef}
+        {...props}
+        // Safari paints no frame for a video it hasn't played unless asked for
+        // a moment of it: the still, just past the start.
+        src={!shouldLoad ? undefined : embedded ? `${src}#t=0.1` : src}
+        preload={!shouldLoad ? "none" : embedded ? "metadata" : "auto"}
+        autoPlay={playing === undefined && !embedded ? autoPlay : undefined}
+      />
+      {showProgress && (
+        <span ref={progressRef} aria-hidden="true" data-testid="video-progress" data-playing="false" className="video-progress" />
+      )}
+    </>
   );
 }

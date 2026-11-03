@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useGLTF, useTexture } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { buildWorkstation, animateWorkstation } from "@/lib/workspace/model";
@@ -17,9 +17,6 @@ export type ScreenPose = {
   height: number;
 };
 
-// Same wallpaper the on-screen desktop uses, and its pixel size.
-const WALLPAPER_URL = "/desk/wallpaper.webp";
-const WALLPAPER_ASPECT = 2560 / 1442;
 // Long enough for the slowest scene change to finish: the notebook is carried
 // over, the pen set aside, the cover swung open and the pen put down.
 const SCENE_SETTLE_SECONDS = 8;
@@ -35,10 +32,11 @@ const onKeyboard = (object: THREE.Object3D | null) => {
 export function DeskModel({ onScreen, hour = 14, darkness = 0, onKeyboardClick }: { onScreen: (pose: ScreenPose) => void; hour?: number; darkness?: number; onKeyboardClick?: () => void }) {
   const getThree = useThree((state) => state.get);
   const setCursor = (cursor: string) => {
-    getThree().gl.domElement.style.cursor = cursor;
+    // Its parent: the canvas itself lets pointers through.
+    const parent = getThree().gl.domElement.parentElement;
+    if (parent) parent.style.cursor = cursor;
   };
   const { scene: mouseAsset } = useGLTF("/models/mx-master-3s.glb");
-  const wallpaper = useTexture(WALLPAPER_URL);
 
   const { workspace, scenes } = useMemo(() => {
     const parent = new THREE.Group();
@@ -49,21 +47,16 @@ export function DeskModel({ onScreen, hour = 14, darkness = 0, onKeyboardClick }
     mouse.userData.noMerge = true;
     const model = buildWorkstation(parent, mouse);
     const scenes = prepareScenes(model, { illustratedScreen: false });
-    // The live desktop is laid over the display; if it ever drops a frame
-    // (a resize), the same wallpaper shows through rather than an old
-    // illustrated screen. Cropped top and bottom to cover, like CSS `cover`.
+    // The live desktop sits behind the canvas (ScreenSurface), seen through a
+    // hole the display cuts in it: fully transparent, but it still writes depth,
+    // and whatever stands in front of the glass, like the mic, draws over it.
     const display = model.getObjectByName("Illustrated editor display") as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
-    const { width, height } = display.geometry.parameters;
-    const map = wallpaper.clone();
-    map.colorSpace = THREE.SRGBColorSpace;
-    map.repeat.set(1, WALLPAPER_ASPECT / (width / height));
-    map.offset.set(0, (1 - map.repeat.y) / 2);
     display.material.map?.dispose();
-    display.material.map = map;
-    display.material.needsUpdate = true;
+    display.material.dispose();
+    display.material = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, blending: THREE.NoBlending });
     batchStatic(model, scenes.roots, { mergeDynamic: true });
     return { workspace: model, scenes };
-  }, [mouseAsset, wallpaper]);
+  }, [mouseAsset]);
 
   // The case study is laid over the illustrated display, so report where that
   // plane sits in the world once the model is built.
@@ -121,4 +114,3 @@ export function DeskModel({ onScreen, hour = 14, darkness = 0, onKeyboardClick }
 }
 
 useGLTF.preload("/models/mx-master-3s.glb");
-useTexture.preload(WALLPAPER_URL);

@@ -45,6 +45,11 @@ test.each(FOCUS_VARIANTS.map((v) => v.id))("applies the %s variant's animation",
   );
 });
 
+test("sets its own ink, rather than inheriting cream from a desk at night", () => {
+  renderFocus();
+  expect(screen.getByTestId("case-study-focus")).toHaveClass("text-ink");
+});
+
 test("passes the click point through for the flood origin", () => {
   renderFocus("flood");
   const overlay = screen.getByTestId("case-study-focus");

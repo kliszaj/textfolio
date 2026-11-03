@@ -110,3 +110,59 @@ test("on the desk's monitor, loads a still of what shows and never plays", () =>
   jest.useRealTimers();
   delete document.documentElement.dataset.embedded;
 });
+
+describe("progress line", () => {
+  function load() {
+    act(() => {
+      intersectionObservers[0].callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver
+      );
+    });
+  }
+
+  let frames: FrameRequestCallback[];
+  const nextFrame = () => act(() => frames.splice(0).forEach((frame) => frame(0)));
+
+  beforeEach(() => {
+    frames = [];
+    jest.spyOn(window, "requestAnimationFrame").mockImplementation((frame) => frames.push(frame));
+    jest.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+    jest.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    jest.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test("isn't there unless asked for", () => {
+    render(<LazyVideo data-testid="video" src="/a.mp4" playing muted />);
+    expect(screen.queryByTestId("video-progress")).not.toBeInTheDocument();
+  });
+
+  test("follows the video while it plays, and shows only then", () => {
+    const { rerender } = render(<LazyVideo data-testid="video" src="/a.mp4" playing showProgress muted />);
+    load();
+    const video = screen.getByTestId("video") as HTMLVideoElement;
+    Object.defineProperty(video, "duration", { configurable: true, value: 20 });
+    Object.defineProperty(video, "currentTime", { configurable: true, value: 5 });
+    Object.defineProperty(video, "paused", { configurable: true, value: false });
+    nextFrame();
+    const line = screen.getByTestId("video-progress");
+    expect(line).toHaveAttribute("aria-hidden", "true");
+    expect(line).toHaveAttribute("data-playing", "true");
+    expect(line.style.transform).toBe("scaleX(0.25)");
+
+    rerender(<LazyVideo data-testid="video" src="/a.mp4" playing={false} showProgress muted />);
+    expect(line).toHaveAttribute("data-playing", "false");
+  });
+
+  test("stays out of sight if the browser refuses to play", () => {
+    render(<LazyVideo data-testid="video" src="/a.mp4" playing showProgress muted />);
+    load();
+    const video = screen.getByTestId("video") as HTMLVideoElement;
+    Object.defineProperty(video, "duration", { configurable: true, value: 20 });
+    Object.defineProperty(video, "paused", { configurable: true, value: true });
+    nextFrame();
+    expect(screen.getByTestId("video-progress")).toHaveAttribute("data-playing", "false");
+  });
+});

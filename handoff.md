@@ -67,8 +67,10 @@ intro somewhere else themselves.
   animation in that case study's colour and pushes its route.
 - Dragging anywhere off the monitor orbits the camera around the whole desk
   (drei `OrbitControls`: no pan, distance 1.6–5.5, never below the floor). The
-  monitor's HTML is hidden when the camera is behind the screen plane, because
-  DOM always draws over the canvas.
+  monitor's HTML is hidden when the camera is behind the screen plane. It sits
+  behind the canvas, seen through a transparent hole the display mesh cuts
+  (`DeskModel`), so things in front of the glass draw over it; the canvas takes
+  no pointer events (`DeskStage`'s `onCreated`).
 
 ### Files
 
@@ -444,6 +446,8 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   `onFramed`, on the frame it first puts the camera in place. (A load in a
   background tab now waits behind the loader until the tab is shown, since
   hidden tabs draw no frames.)
+  The loader then holds for `LOADER_HOLD_MS` (`entered` in `DeskStage`), as an
+  intro, except when returning to a desk that starts zoomed in.
 - **No more "two twilights" stepping back.** Stepping back from the live
   clock went to the stage just behind it, which looks like what's already
   showing (live at 16:40 is already the dark sunset room, so back landed on
@@ -549,8 +553,8 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   Extralight, then email and LinkedIn buttons (`CONTACT` in data/about.ts).
   The portrait moved here from the Now shelf, which now has two columns.
 - **Never two sets of dots.** The side rail and the phone's bottom row fade
-  out from a quarter of a screen before the footer scrolls in
-  (`FOOTER_HIDES_RAILS_AT`), a scroll check rather than an
+  out as the footer's list of pages scrolls in (`footerPagesRef`), a scroll
+  and resize check rather than an
   IntersectionObserver. Note: the desktop app's browser pane pauses animation
   frames, so scroll events never fire there; dispatch one by hand to test.
 - **Phone clips and captions.** The width cap is on the whole figure
@@ -596,10 +600,11 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   `third` span on a six-column sequence grid. The main flow is a 1080x1920
   export, trimmed of its still first 2 seconds. No captions (the component
   still supports them, drawn on the clip on hover). In a row of several
-  videos only the hovered one plays, none at rest; without hover the row's
-  first plays. Every clip below the film, and the Up next card, grows an 8px
-  band of its own colour on hover (`tint` in the data, sampled from the
-  video; the frame is painted that colour too, so no hairline shows).
+  videos only the hovered one plays, none at rest; without hover phone clips
+  play in turn as they come into focus. No hover bands any more: a playing
+  clip shows a thin white progress line along its foot (`showProgress` on
+  `LazyVideo`), but not the film, which has controls, or under wraps clips.
+  `tint` paints the frame the video's colour, so no hairline shows.
 - **Selection.** Text selected on a case study highlights in the next
   study's colour (`--selection-color`); inside the Up next card, in ink.
 - **Footer.** An "Up next" card in the next study's colour, with a dot field

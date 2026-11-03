@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { LineBoil } from "@/components/LineBoil";
+import { MediaGuard } from "@/components/MediaGuard";
 import { DeskHost } from "@/components/desk/DeskHost";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE } from "@/lib/pageMetadata";
 import "./globals.css";
@@ -96,6 +97,7 @@ export default function RootLayout({
       </head>
       <body className={`${displayFont.variable} ${lightDisplayFont.variable} ${scriptFont.variable} ${bodyFont.variable} ${condensedFont.variable}`}>
         <LineBoil />
+        <MediaGuard />
         {children}
         <DeskHost />
       </body>

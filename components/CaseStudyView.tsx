@@ -302,7 +302,7 @@ function UnreleasedLabel({ title, detail, area }: NonNullable<CaseStudyMedia["un
 // About's calls to action, in the rail: two matching rows, the title and a
 // detail on the left and a round button (or, for the CV, a tilted picture of
 // its first page) on the right. The email (ink) copies its address; anything
-// else (sand, the CV) downloads. Each row's link
+// else (sand, the CV) opens in a new tab. Each row's link
 // stretches over the whole row.
 function ActionCard({ action }: { action: CaseStudyAction }) {
   const email = action.href.startsWith("mailto:") ? action.href.slice("mailto:".length) : null;
@@ -315,7 +315,7 @@ function ActionCard({ action }: { action: CaseStudyAction }) {
             {action.detail}
           </EmailLink>
         ) : (
-          <a href={action.href} download aria-label={`Download ${action.title}`} className="case-study-action-link mt-1.5 block font-medium opacity-60">
+          <a href={action.href} target="_blank" rel="noopener" aria-label={`Open ${action.title} in a new tab`} className="case-study-action-link mt-1.5 block font-medium opacity-60">
             {action.detail}
           </a>
         )}
@@ -377,10 +377,6 @@ function FooterMadeWith({ className = "" }: { className?: string }) {
   );
 }
 
-// The footer's top within this many screen heights of the top of the window
-// hides the side rail: a quarter of a screen before it scrolls into view.
-const FOOTER_HIDES_RAILS_AT = 1.25;
-
 // Every page the desk's rail offers, About last.
 const RAIL_PAGES = [...caseStudies, ABOUT_PAGE];
 
@@ -427,7 +423,8 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   // Scroll picks one active row, not one tile within it: in a row of
   // several videos only the one under the pointer plays, and none at rest,
   // so a row never runs all its clips at once. Without hover (touch) the
-  // row's first video plays instead.
+  // row's first video plays instead, unless a phone stacks them: then each
+  // plays as it comes into focus.
   const [hoveredTile, setHoveredTile] = useState<number | null>(null);
   const canHover = useSyncExternalStore(subscribeCanHover, getCanHover, getCanHoverOnServer);
   const titleContainerRef = useRef<HTMLHeadingElement>(null);
@@ -708,25 +705,31 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
   }, [hasMedia, settled]);
 
   // The footer carries its own dots, and two sets of dots are never on screen
-  // at once: the side rail and the phone row step aside from just before the
-  // footer's first pixel scrolls in (a quarter of a screen early), so their
-  // fade is done by the time its dots arrive.
+  // at once: the side rail steps aside as the footer's list of pages scrolls
+  // in. That list, not the footer's top: the next card above it repeats nothing,
+  // and on a short page in a tall window it sits just under the fold at rest.
+  // Rechecked as the page settles and as a resize reflows it, not only on
+  // scroll, so the rail can't sit on a stale answer.
   const footerRef = useRef<HTMLElement>(null);
+  const footerPagesRef = useRef<HTMLElement>(null);
   const [footerInView, setFooterInView] = useState(false);
   useEffect(() => {
     let frame = 0;
     const check = () => {
       frame = 0;
-      const footer = footerRef.current;
-      if (footer) setFooterInView(footer.getBoundingClientRect().top < window.innerHeight * FOOTER_HIDES_RAILS_AT);
+      const pages = footerPagesRef.current;
+      if (pages) setFooterInView(pages.getBoundingClientRect().top < window.innerHeight);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(check);
     };
     check();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
+    if (footerRef.current?.parentElement) observer?.observe(footerRef.current.parentElement);
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     return () => {
+      observer?.disconnect();
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
@@ -1068,15 +1071,21 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     const sequence = mediaLayout === "sequence";
                     // In a sequence the tile is a figure holding its frame and
                     // caption; a mosaic's fixed rows leave no room for one.
-                    const tileLayout = sequence ? SEQUENCE_SPAN_CLASS[span] : `${SPAN_CLASS[span]} overflow-hidden rounded-2xl bg-ink/20`;
+                    const tileLayout = sequence ? SEQUENCE_SPAN_CLASS[span] : `${SPAN_CLASS[span]} relative overflow-hidden rounded-2xl bg-ink/20`;
                     const frameLayout = `case-study-tile-frame case-study-captioned relative overflow-hidden rounded-2xl bg-ink/20 ${item.aspect ? ASPECT_CLASS[item.aspect] : ""}`;
                     const row = mediaRows[index];
                     const paired = isPairedVideoTile(media, mediaRows, index);
                     // Alone in its row, a video plays when its row is the
                     // active one. Sharing a row, only while it's hovered --
-                    // or, without hover, if it's the row's first video.
+                    // or, without hover, if it's the row's first video. Phone
+                    // clips stack on a narrow screen, so without hover each
+                    // takes its turn as a playback row of its own; where they
+                    // sit three-up, the first wins the tie, as it always has.
                     const firstInRow = media.findIndex((other, otherIndex) => other.kind === "video" && mediaRows[otherIndex] === row) === index;
-                    const pairedPlays = canHover ? hoveredTile === index : firstInRow;
+                    const ownTurn = !canHover && paired && sequence && span === "third";
+                    const pairedPlays = canHover ? hoveredTile === index : ownTurn || firstInRow;
+                    const playbackRow = ownTurn ? `media-${row}-${index}` : `media-${row}`;
+                    const videoPlays = item.kind === "video" && activePlaybackRow === playbackRow && (!paired || pairedPlays || Boolean(item.unreleased));
                     return (
                       <figure
                         key={item.src ?? `${item.alt}-${index}`}
@@ -1084,10 +1093,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         data-span={span}
                         data-aspect={item.aspect}
                         className={`case-study-tile ${tileLayout}`}
-                        // Under the pointer, a clip's frame grows a band of its
-                        // own colour (globals.css). Stills and locked clips,
-                        // which hovering doesn't change, stay as they are.
-                        data-hovered={(canHover && hoveredTile === index && ((item.kind === "video" || item.steps) && !item.unreleased)) || undefined}
+                        data-playing={videoPlays || undefined}
                         style={item.tint ? ({ "--tile-tint": item.tint } as React.CSSProperties) : undefined}
                         onPointerEnter={(event) => event.pointerType !== "touch" && setHoveredTile(index)}
                         onPointerLeave={() => setHoveredTile((current) => (current === index ? null : current))}
@@ -1110,10 +1116,11 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                               className="size-full object-cover"
                               src={item.src}
                               aria-label={item.alt}
-                              data-playback-row={`media-${row}`}
+                              data-playback-row={playbackRow}
                               // Blurred, a locked clip has nothing to reveal on
                               // hover, so it plays with its row.
-                              playing={activePlaybackRow === `media-${row}` && (!paired || pairedPlays || Boolean(item.unreleased))}
+                              playing={videoPlays}
+                              showProgress={!item.unreleased}
                               muted
                               loop
                               playsInline
@@ -1186,7 +1193,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                 {/* Beside the card (lg), dropped by the card's own padding so
                     Work and Find me line up with Up next. */}
                 <div className="grid h-full justify-start gap-x-14 gap-y-10 font-body font-medium sm:grid-cols-[auto_auto] lg:grid-rows-[auto_1fr_auto] lg:py-8">
-                    <nav aria-label="Portfolio pages">
+                    <nav ref={footerPagesRef} data-testid="case-study-footer-pages" aria-label="Portfolio pages">
                       <p className="text-xs uppercase tracking-[0.08em] opacity-60">Work</p>
                       <ul className="mt-3 grid gap-3">
                         {RAIL_PAGES.map((page) => (

@@ -190,9 +190,9 @@ export function ScreenSurface({
   // The page laid onto where the monitor's glass is on the page this frame:
   // its four corners projected, the box mapped onto them in one flat
   // transform. (Html's own transform mode nests perspective and preserve-3d,
-  // which Safari draws in the wrong place, or not at all.) HTML always draws
-  // over the canvas, so the screen is hidden once the orbit carries the
-  // camera behind the monitor.
+  // which Safari draws in the wrong place, or not at all.) It sits behind the
+  // canvas, seen through the hole the display cuts (DeskModel), and is hidden
+  // once the orbit carries the camera behind the monitor.
   useFrame(({ camera, size }) => {
     const el = surface.current;
     if (!el) return;
@@ -219,6 +219,7 @@ export function ScreenSurface({
       <Html calculatePosition={AT_ORIGIN} wrapperClass="pointer-events-none" position={[0, 0, 0.001]} zIndexRange={[20, 0]}>
         <div
           ref={surface}
+          data-screen-surface
           className="pointer-events-auto relative overflow-hidden bg-cream"
           style={{ width: SCREEN_PX.w, height: SCREEN_PX.h, transformOrigin: "0 0", visibility: "hidden" }}
         >

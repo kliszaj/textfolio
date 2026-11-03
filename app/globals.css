@@ -498,12 +498,11 @@ body {
    studies' clips its edge extends outward in its own colour. */
 .case-study-footer-next {
   color: var(--color-ink);
-  transition: box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.case-study-footer-next:hover,
 .case-study-footer-next:focus-visible {
-  box-shadow: 0 0 0 0.5rem var(--card-color);
+  outline: 2px solid var(--color-ink);
+  outline-offset: 4px;
 }
 
 .case-study-footer-title {
@@ -674,13 +673,6 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   color: var(--card-color);
 }
 
-/* Under the pointer a clip's frame extends outward in its own background
-   colour, as if the backdrop grew (in a shared row, that's also when the
-   clip plays). The launch film above the grid doesn't. */
-.case-study-tile-frame {
-  transition: box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
 /* A tinted clip's frame is its own colour underneath, not the default grey:
    where the video's rounded, anti-aliased edge (or a sub-pixel shortfall)
    lets the frame show, it matches the band and leaves no hairline. */
@@ -688,8 +680,24 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   background-color: var(--tile-tint);
 }
 
-.case-study-tile[data-hovered] .case-study-tile-frame {
-  box-shadow: 0 0 0 0.5rem var(--tile-ring, var(--tile-tint, transparent));
+/* How far through a playing clip is, along the card's foot. The frame's rounded
+   corners clip its ends. */
+.video-progress {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 0;
+  bottom: 0;
+  height: 0.5rem;
+  background-color: rgb(255 255 255 / 0.4);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+
+.video-progress[data-playing="true"] {
+  opacity: 1;
 }
 
 /* A tall image shown one band at a time (SteppedImage): the image slides
@@ -882,12 +890,29 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   }
 }
 
+/* MediaGuard's other half: iOS long-press and Safari's drag, which no event
+   stops reliably. */
+img,
+video {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
 /* A phone clip keeps its 9:16 frame but never outgrows the screen, so a pair
    of them can be seen whole, side by side. The whole figure narrows, not just
    the frame, so its caption starts under the clip's own edge. */
 [data-layout="sequence"] > .case-study-tile[data-aspect="portrait"] {
   width: min(100%, calc(80svh * 9 / 16));
   justify-self: center;
+}
+
+/* Stacked, one column holds them all: beside phone clips the landscape tiles
+   take the same cap, so every tile in the column is one width. */
+@media (max-width: 47.99rem) {
+  [data-layout="sequence"]:has(> .case-study-tile[data-aspect="portrait"]) > .case-study-tile[data-span="full"] {
+    width: min(100%, calc(80svh * 9 / 16));
+    justify-self: center;
+  }
 }
 
 .case-study-facts-aside .case-study-fact-list {
@@ -1065,6 +1090,11 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   padding: 1.25rem 1.25rem 1.25rem 1.625rem;
 }
 
+/* The CV's words start level with the email's, however tall its page is. */
+.case-study-action-row:has(.case-study-action-preview) {
+  align-items: flex-start;
+}
+
 .case-study-action-link::after {
   content: "";
   position: absolute;
@@ -1091,6 +1121,8 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
    it straightens and lifts. Its right edge lines up with the email's button. */
 .case-study-action-preview {
   flex: none;
+  /* The row's link lies underneath: a click on the page is a click on it. */
+  pointer-events: none;
   height: 4.25rem;
   margin-block: -0.25rem;
   border-radius: 0.1875rem;

@@ -238,7 +238,7 @@ export const caseStudies: CaseStudy[] = [
     sections: [
       {
         body:
-          "I facilitated cross-organizational opportunity mapping workshops, co-authored a bet list informed by data and insights, defined the strategy’s pillars and helped shape the multi-year roadmap that became a new Product Area.",
+          "I facilitated cross-organizational opportunity mapping workshops, co-authored a bet list informed by data and insights, defined the strategy’s pillars, and helped shape the multi-year roadmap that became a new Product Area.",
       },
       {
         body:
@@ -282,7 +282,7 @@ export const caseStudies: CaseStudy[] = [
         span: "third",
         aspect: "portrait",
         tint: "#68f976",
-        unreleased: { title: "Under wraps until launch", detail: "Launching soon" },
+        unreleased: { title: "Under wraps", detail: "Launching soon" },
       },
       {
         // The strategy is still in motion, so it's blurred whole (the bets are
@@ -293,7 +293,7 @@ export const caseStudies: CaseStudy[] = [
         span: "full",
         aspect: "landscape",
         tint: "#1c1c1c",
-        unreleased: { title: "Under wraps until launch", detail: "Launching soon" },
+        unreleased: { title: "Under wraps", detail: "Launching soon" },
         steps: {
           width: 2400,
           height: 3110,
@@ -313,9 +313,9 @@ export const caseStudies: CaseStudy[] = [
     blurb: "Designing an operating system that you're barely meant to use.",
     oneLiner: "Glanceable computing, hidden in an ordinary pair of glasses.",
     overview:
-      "Before Meta made headlines with smartglasses again, I was a Senior UX Designer at a stealth startup in Canada called North. We had the mission of creating the next mode of computing: a pair of camera-free smartglasses with a holographic display that only the wearer could see.",
+      "Before Meta made headlines with smartglasses, I was a Senior UX Designer at a stealth startup in Canada called North. We had the mission of creating the next mode of computing: a pair of camera-free smartglasses with a holographic display that only the wearer could see.",
     overviewLink: {
-      label: "Meta made headlines with smartglasses again",
+      label: "Meta made headlines with smartglasses",
       href: "https://www.wired.com/story/zuckoff-app-sees-meta-glasses-before-they-see-you/",
     },
     facts: [
@@ -328,7 +328,7 @@ export const caseStudies: CaseStudy[] = [
     sections: [
       {
         body:
-          "I joined the company early on and, as at any startup, the jobs I did varied. I did foundational research, usability testing, service design in our physical stores in New York and Toronto, defined the device's input method, helped define the hero feature-set, created an intuitive interface for users that was discreet and embodied the principles of humane tech, created a new product design process that allowed us to ideate, build, and ship in one week to quickly search for product-market fit, and I designed the mobile sizing app so users could scan their heads to size the glasses at home instead of visiting a store.",
+          "I joined the startup early on and the jobs I did varied. This included foundational research, usability testing, service design for our New York and Toronto stores, defined the device’s input method, helped define the hero feature-set, and created an intuitive interface for users that was discreet and embodied the principles of humane tech. In addition, I created a new product design process that allowed us to ideate, build, and ship in one week to quickly search for product-market fit and designed the mobile sizing app to expand our reach, allowing users to scan their faces and find their size at home without needing to visit a store.",
         bodyLink: {
           label: "created a new product design process",
           href: "/archive/2019/pmf.html",

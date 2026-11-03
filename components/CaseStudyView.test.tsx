@@ -516,9 +516,9 @@ test("inks the next control in the colour of the project it leads to", () => {
 
 // Places the footer this far down the page; jsdom otherwise measures
 // everything at 0, which reads as the footer already on screen.
-function placeFooterAt(top: number) {
+function placeFooterAt(top: number, pagesTop = top) {
   return jest.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    const at = this.dataset.testid === "case-study-footer" ? top : 0;
+    const at = this.dataset.testid === "case-study-footer" ? top : this.dataset.testid === "case-study-footer-pages" ? pagesTop : 0;
     return { top: at, bottom: at, left: 0, right: 0, width: 0, height: 0, x: 0, y: at, toJSON() {} } as DOMRect;
   });
 }
@@ -668,14 +668,14 @@ test("labels unreleased media with why it's hidden", () => {
     ...caseStudy,
     mediaLayout: "sequence" as const,
     media: [
-      { src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, unreleased: { title: "Under wraps until launch", detail: "Launching soon" } },
+      { src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, unreleased: { title: "Under wraps", detail: "Launching soon" } },
     ],
   };
 
   render(<CaseStudyView caseStudy={hidden} next={nextStudy} />);
 
   const tile = screen.getByTestId("case-study-tile");
-  expect(tile.querySelector(".case-study-unreleased")).toHaveTextContent("Under wraps until launchLaunching soon");
+  expect(tile.querySelector(".case-study-unreleased")).toHaveTextContent("Under wrapsLaunching soon");
   expect(tile.querySelector(".case-study-unreleased-lock svg")).toHaveClass("boil-icon");
 });
 
@@ -684,7 +684,7 @@ test("centres the unreleased label on the blurred part when given one", () => {
     ...caseStudy,
     mediaLayout: "sequence" as const,
     media: [
-      { src: "/board.jpg", alt: "Board", span: "full" as const, aspect: "landscape" as const, unreleased: { title: "Under wraps until launch", detail: "Launching soon", area: { left: 25, right: 10 } } },
+      { src: "/board.jpg", alt: "Board", span: "full" as const, aspect: "landscape" as const, unreleased: { title: "Under wraps", detail: "Launching soon", area: { left: 25, right: 10 } } },
     ],
   };
 
@@ -719,7 +719,6 @@ test("stacks third-width phone clips on small screens and makes them three-up fr
   const tiles = screen.getAllByTestId("case-study-tile");
   for (const tile of tiles) {
     expect(tile).toHaveClass("col-span-6", "md:col-span-2");
-    expect(tile.querySelector("video")).toHaveAttribute("data-playback-row", "media-0");
   }
 });
 
@@ -997,6 +996,46 @@ test("the footer has no next block when there's no next case study", () => {
   expect(screen.queryByTestId("case-study-footer-next")).not.toBeInTheDocument();
 });
 
+test("the side rail stays until the footer's own dots are on screen, however short the page", () => {
+  window.innerHeight = 800;
+  // The footer's next card can be in view; only its list of pages repeats the rail.
+  const below = placeFooterAt(700, 850);
+  const { unmount } = render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  below.mockRestore();
+  expect(screen.getByTestId("page-indicator")).toHaveStyle({ opacity: "1" });
+  unmount();
+
+  const arriving = placeFooterAt(700, 750);
+  render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+  arriving.mockRestore();
+  expect(screen.getByTestId("page-indicator")).toHaveStyle({ opacity: "0" });
+});
+
+test("the side rail follows the footer when the page settles, without waiting for a scroll", () => {
+  window.innerHeight = 800;
+  const realResizeObserver = globalThis.ResizeObserver;
+  const callbacks: Array<() => void> = [];
+  globalThis.ResizeObserver = class {
+    constructor(callback: () => void) { callbacks.push(callback); }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  try {
+    const before = placeFooterAt(5000);
+    render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
+    before.mockRestore();
+    expect(screen.getByTestId("page-indicator")).toHaveStyle({ opacity: "1" });
+
+    const settled = placeFooterAt(400);
+    act(() => callbacks.forEach((callback) => callback()));
+    settled.mockRestore();
+    expect(screen.getByTestId("page-indicator")).toHaveStyle({ opacity: "0" });
+  } finally {
+    globalThis.ResizeObserver = realResizeObserver;
+  }
+});
+
 test("the header's next button stays visible with the footer on screen", () => {
   const spy = placeFooterAt(200);
   render(<CaseStudyView caseStudy={caseStudy} next={nextStudy} />);
@@ -1018,61 +1057,139 @@ test("on a short screen the long read still shows its first few lines", () => {
   expect(screen.getByTestId("case-study-read-more")).toHaveTextContent("Read more");
 });
 
-test("with hover, only the hovered clip gets its colour frame, a wide clip included", () => {
+test("without hover, clips sharing a row each come into focus on their own, as a phone stacks them", () => {
+  const clips = {
+    ...caseStudy,
+    mediaLayout: "sequence" as const,
+    media: ["a", "b", "c"].map((name) => ({
+      src: `/${name}.mp4`, alt: name, kind: "video" as const, span: "third" as const, aspect: "portrait" as const,
+    })),
+  };
+  render(<CaseStudyView caseStudy={clips} next={nextStudy} />);
+  const rows = screen.getAllByLabelText(/^[abc]$/).map((video) => video.getAttribute("data-playback-row"));
+  expect(new Set(rows).size).toBe(3);
+});
+
+test("with hover, clips sharing a row stay one playback row", () => {
   const realMatchMedia = window.matchMedia;
   window.matchMedia = ((query: string) => ({
     ...realMatchMedia(query),
     matches: query === "(hover: hover)",
   })) as typeof window.matchMedia;
-  const phones = {
+  const clips = {
     ...caseStudy,
     mediaLayout: "sequence" as const,
-    media: [
-      ...["a", "b", "c"].map((name) => ({
-        src: `/${name}.mp4`, alt: name, kind: "video" as const, span: "third" as const, aspect: "portrait" as const, tint: "#e25aba",
-      })),
-      { src: "/wide.mp4", alt: "Wide", kind: "video" as const, span: "full" as const, aspect: "landscape" as const, tint: "#edc91c" },
-    ],
+    media: ["a", "b", "c"].map((name) => ({
+      src: `/${name}.mp4`, alt: name, kind: "video" as const, span: "third" as const, aspect: "portrait" as const,
+    })),
   };
-  render(<CaseStudyView caseStudy={phones} next={nextStudy} />);
-  const tiles = screen.getAllByTestId("case-study-tile");
-  expect(tiles[1]).toHaveStyle({ "--tile-tint": "#e25aba" });
-  fireEvent.pointerOver(tiles[1], { pointerType: "mouse" });
-  expect(tiles[1]).toHaveAttribute("data-hovered", "true");
-  expect(tiles[0]).not.toHaveAttribute("data-hovered");
-  fireEvent.pointerOut(tiles[1], { pointerType: "mouse" });
-  expect(tiles[1]).not.toHaveAttribute("data-hovered");
-  // A clip alone in its row gets it too.
-  fireEvent.pointerOver(tiles[3], { pointerType: "mouse" });
-  expect(tiles[3]).toHaveAttribute("data-hovered", "true");
-  expect(tiles[3]).toHaveStyle({ "--tile-tint": "#edc91c" });
+  render(<CaseStudyView caseStudy={clips} next={nextStudy} />);
+  for (const video of screen.getAllByLabelText(/^[abc]$/)) {
+    expect(video).toHaveAttribute("data-playback-row", "media-0");
+  }
   window.matchMedia = realMatchMedia;
 });
 
-test("stills and locked clips keep a plain frame under the pointer", () => {
+// Puts one playback row in the middle of the window and the rest far below it.
+function makeRowActive(row: string) {
+  window.innerHeight = 800;
+  return jest.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const playbackRow = this.dataset.playbackRow;
+    const top = playbackRow === row ? 300 : playbackRow ? 2000 : 0;
+    const bottom = playbackRow ? top + 200 : 0;
+    return { top, bottom, left: 0, right: 0, width: 0, height: bottom - top, x: 0, y: top, toJSON() {} } as DOMRect;
+  });
+}
+
+function withHover(run: () => void) {
   const realMatchMedia = window.matchMedia;
   window.matchMedia = ((query: string) => ({
     ...realMatchMedia(query),
     matches: query === "(hover: hover)",
   })) as typeof window.matchMedia;
-  const row = {
-    ...caseStudy,
-    mediaLayout: "sequence" as const,
-    media: [
-      { src: "/still.jpg", alt: "Still", span: "third" as const, aspect: "portrait" as const, tint: "#f1a942" },
-      {
-        src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, tint: "#68f976",
-        unreleased: { title: "Under wraps until launch", detail: "Launching soon" },
-      },
-    ],
-  };
-  render(<CaseStudyView caseStudy={row} next={nextStudy} />);
-  const [still, secret] = screen.getAllByTestId("case-study-tile");
-  fireEvent.pointerOver(still, { pointerType: "mouse" });
-  expect(still).not.toHaveAttribute("data-hovered");
-  fireEvent.pointerOver(secret, { pointerType: "mouse" });
-  expect(secret).not.toHaveAttribute("data-hovered");
-  window.matchMedia = realMatchMedia;
+  try {
+    run();
+  } finally {
+    window.matchMedia = realMatchMedia;
+  }
+}
+
+const threeClipsAndAWideOne = {
+  ...caseStudy,
+  mediaLayout: "sequence" as const,
+  media: [
+    ...["a", "b", "c"].map((name) => ({
+      src: `/${name}.mp4`, alt: name, kind: "video" as const, span: "third" as const, aspect: "portrait" as const, tint: "#e25aba",
+    })),
+    { src: "/wide.mp4", alt: "Wide", kind: "video" as const, span: "full" as const, aspect: "landscape" as const, tint: "#edc91c" },
+  ],
+};
+
+test("with hover, a clip in a shared row plays only under the pointer", () => {
+  withHover(() => {
+    const spy = makeRowActive("media-0");
+    render(<CaseStudyView caseStudy={threeClipsAndAWideOne} next={nextStudy} />);
+    spy.mockRestore();
+    const tiles = screen.getAllByTestId("case-study-tile");
+    expect(tiles[1]).toHaveStyle({ "--tile-tint": "#e25aba" });
+    expect(tiles[1]).not.toHaveAttribute("data-playing");
+    fireEvent.pointerOver(tiles[1], { pointerType: "mouse" });
+    expect(tiles[1]).toHaveAttribute("data-playing", "true");
+    expect(tiles[0]).not.toHaveAttribute("data-playing");
+    fireEvent.pointerOut(tiles[1], { pointerType: "mouse" });
+    expect(tiles[1]).not.toHaveAttribute("data-playing");
+    // A clip in a row that isn't the active one doesn't start.
+    fireEvent.pointerOver(tiles[3], { pointerType: "mouse" });
+    expect(tiles[3]).not.toHaveAttribute("data-playing");
+  });
+});
+
+test("a clip alone in its row plays when its row is the active one, without hover", () => {
+  withHover(() => {
+    const spy = makeRowActive("media-1");
+    render(<CaseStudyView caseStudy={threeClipsAndAWideOne} next={nextStudy} />);
+    spy.mockRestore();
+    const tiles = screen.getAllByTestId("case-study-tile");
+    expect(tiles[3]).toHaveAttribute("data-playing", "true");
+    expect(tiles[0]).not.toHaveAttribute("data-playing");
+  });
+});
+
+test("on touch the clip in focus plays", () => {
+  const spy = makeRowActive("media-0-1");
+  render(<CaseStudyView caseStudy={threeClipsAndAWideOne} next={nextStudy} />);
+  spy.mockRestore();
+  const tiles = screen.getAllByTestId("case-study-tile");
+  expect(tiles[1]).toHaveAttribute("data-playing", "true");
+  expect(tiles[0]).not.toHaveAttribute("data-playing");
+});
+
+test("only open videos get a progress line, and stills never play", () => {
+  withHover(() => {
+    const row = {
+      ...caseStudy,
+      mediaLayout: "sequence" as const,
+      media: [
+        { src: "/still.jpg", alt: "Still", span: "third" as const, aspect: "portrait" as const, tint: "#f1a942" },
+        {
+          src: "/secret.mp4", alt: "Secret", kind: "video" as const, span: "third" as const, aspect: "portrait" as const, tint: "#68f976",
+          unreleased: { title: "Under wraps", detail: "Launching soon" },
+        },
+        { src: "/open.mp4", alt: "Open", kind: "video" as const, span: "full" as const, aspect: "landscape" as const },
+      ],
+    };
+    const spy = makeRowActive("media-0");
+    render(<CaseStudyView caseStudy={row} next={nextStudy} />);
+    spy.mockRestore();
+    const [still, secret, open] = screen.getAllByTestId("case-study-tile");
+    fireEvent.pointerOver(still, { pointerType: "mouse" });
+    expect(still).not.toHaveAttribute("data-playing");
+    fireEvent.pointerOver(secret, { pointerType: "mouse" });
+    expect(secret).toHaveAttribute("data-playing", "true");
+    expect(secret.querySelector("video")).toBeInTheDocument();
+    expect(secret.querySelector('[data-testid="video-progress"]')).not.toBeInTheDocument();
+    expect(open.querySelector('[data-testid="video-progress"]')).toBeInTheDocument();
+  });
 });
 
 test("highlights selected text in the next case study's colour", () => {

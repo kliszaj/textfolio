@@ -19,7 +19,7 @@ export const ABOUT_PAGE: CaseStudy = {
   title: "About Me",
   thumbnailColor: "#FDD721",
   blurb: "",
-  overview: "I’m Adrian, a designer from Canada and currently living in Stockholm, Sweden. I work at Spotify as a Staff Designer.",
+  overview: "I’m Adrian, a designer from Canada currently living in Stockholm, Sweden. I work at Spotify as a Staff Designer.",
   overviewStyle: "lead",
   sections: [
     {
@@ -34,7 +34,7 @@ export const ABOUT_PAGE: CaseStudy = {
     // The preview is the CV's first page; render it again whenever the PDF
     // changes (sips -s format jpeg -Z 240 on the PDF).
     ...(CONTACT.cv
-      ? [{ title: "My CV", href: CONTACT.cv, detail: "One page, PDF", preview: "/assets/adrian-klisz-cv-preview.jpg" }]
+      ? [{ title: "My CV", href: CONTACT.cv, detail: "View PDF", preview: "/assets/adrian-klisz-cv-preview.jpg" }]
       : []),
   ],
   mediaPadded: true,

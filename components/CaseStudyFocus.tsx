@@ -70,7 +70,7 @@ export function CaseStudyFocus({
       role="dialog"
       aria-modal="true"
       aria-label={caseStudy.title}
-      className={`focus-overlay ${variant.className}`}
+      className={`focus-overlay text-ink ${variant.className}`}
       onAnimationEnd={handleAnimationEnd}
       style={
         {

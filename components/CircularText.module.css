@@ -8,8 +8,14 @@
   font-family: var(--circular-text-font-family, var(--font-pp-frama)), sans-serif;
   font-weight: var(--circular-text-font-weight, 900);
   text-align: center;
-  cursor: pointer;
   transform-origin: 50% 50%;
+  animation: circular-text-spin var(--circular-text-spin, 20s) linear infinite;
+}
+
+@keyframes circular-text-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .circularText span {
@@ -17,5 +23,7 @@
   inset: 0;
   display: inline-block;
   font-size: 24px;
-  transition: all 0.5s cubic-bezier(0, 0, 0, 1);
+  /* Not `all`: colour would lag behind whatever else takes the same ink, like
+     the home icon at the loader's centre. */
+  transition: transform 0.5s cubic-bezier(0, 0, 0, 1);
 }

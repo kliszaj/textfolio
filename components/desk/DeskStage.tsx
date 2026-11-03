@@ -67,9 +67,14 @@ const SWIPE_STEP_PX = 40;
 const TAP_SLOP_PX = 10;
 const WHEEL_STEP_LOCK_MS = 700;
 const WHEEL_GESTURE_GAP_MS = 250;
+// Once the desk is ready the loader stays a moment, as an intro: the frames
+// and page loads straight after the first are the heaviest, and they happen
+// behind it rather than through the fade.
+const LOADER_HOLD_MS = 1400;
+const LOADER_FADE_MS = 700;
 // The UI around the desk waits for the loader to finish fading out, then
 // comes in one piece after another.
-const UI_REVEAL_DELAY_MS = 500;
+const UI_REVEAL_DELAY_MS = LOADER_FADE_MS;
 const UI_REVEAL_STAGGER_MS = 140;
 // The settings panel is a tuning tool (lib/localTools). DeskStage only runs
 // in the browser (DeskHost loads it with ssr: false), so the address is
@@ -336,14 +341,24 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
   const [framed, setFramed] = useState(false);
   const onFramed = useCallback(() => setFramed(true), []);
   const shown = ready && framed;
+  // Not when returning to a desk that starts zoomed in: the pull back out is
+  // already under way, and holding would hide it.
+  const holdLoader = variant === "browser" && !startZoomed;
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    if (!shown || held || !holdLoader) return;
+    const timer = window.setTimeout(() => setHeld(true), LOADER_HOLD_MS);
+    return () => window.clearTimeout(timer);
+  }, [shown, held, holdLoader]);
+  const entered = shown && (held || !holdLoader);
   const touch = usePointerType() === "coarse";
   // Once only: coming back from a case study, the UI is simply there.
   const [revealed, setRevealed] = useState(false);
   useEffect(() => {
-    if (!shown || revealed) return;
+    if (!entered || revealed) return;
     const timer = window.setTimeout(() => setRevealed(true), UI_REVEAL_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [shown, revealed]);
+  }, [entered, revealed]);
   const layout = useMemo(() => (viewport && variant === "browser" ? browserLayout(viewport) : null), [viewport, variant]);
   const openMonitor = useCallback(() => zoomTo({ kind: "monitor" }), [zoomTo]);
 
@@ -427,17 +442,24 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         onCreated={({ gl }) => {
           gl.shadowMap.autoUpdate = false;
           gl.shadowMap.needsUpdate = true;
+          // Over the monitor's HTML (ScreenSurface), which shows through the
+          // hole the display cuts, so what's in front of the glass stays in
+          // front. Pointers pass through to that HTML, or to the Canvas's own
+          // element, which is where R3F and the orbit listen.
+          gl.domElement.style.position = "relative";
+          gl.domElement.style.zIndex = "30";
+          gl.domElement.style.pointerEvents = "none";
         }}
         camera={{ fov: FOV, near: 0.05, far: 50, position: [2.2, 1.9, 3.6] }}
         // The on-screen HTML lives inside the canvas container, so its clicks
-        // bubble here too. Only a click on the canvas itself means "outside".
+        // bubble here too. Only a click away from it means "outside".
         onPointerMissed={(event) => {
-          if (!(event.target instanceof HTMLCanvasElement)) return;
+          if (event.target instanceof Element && event.target.closest("[data-screen-surface]")) return;
           if (variant === "screen" && phase === "focused") leave();
         }}
         style={{
-          opacity: shown ? 1 : 0,
-          transition: "opacity 600ms ease",
+          opacity: entered ? 1 : 0,
+          transition: `opacity ${LOADER_FADE_MS}ms ease`,
           cursor: phase === "idle" ? "grab" : undefined,
         }}
       >
@@ -531,10 +553,11 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
       <div
         role="status"
         aria-label="Loading the desk"
-        className="pointer-events-none absolute inset-0 grid place-items-center transition-[opacity,visibility] duration-500"
+        className="pointer-events-none absolute inset-0 grid place-items-center transition-[opacity,visibility]"
         style={{
-          opacity: shown ? 0 : 1,
-          visibility: shown ? "hidden" : "visible",
+          opacity: entered ? 0 : 1,
+          visibility: entered ? "hidden" : "visible",
+          transitionDuration: `${LOADER_FADE_MS}ms`,
           // The same ink or cream as the name, so it reads on any background.
           "--circular-text-color": background.text,
           // The body face in Bold (Medium read too light at this size).

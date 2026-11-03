@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CaseStudyMediaSteps } from "@/data/caseStudies";
 
@@ -25,7 +25,6 @@ type SteppedImageProps = {
 // moving on, the image slides and the clip follows. Chips in the corner name
 // the bands, fill a line as a timer, and jump to a band when pressed.
 export function SteppedImage({ src, alt, steps, playing, playbackRow, locked = false }: SteppedImageProps) {
-  const ref = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const [restartedAt, setRestartedAt] = useState(0);
   const [wasPlaying, setWasPlaying] = useState(playing);
@@ -45,11 +44,6 @@ export function SteppedImage({ src, alt, steps, playing, playbackRow, locked = f
     return () => window.clearTimeout(timer);
   }, [playing, index, restartedAt, bands.length]);
 
-  // The tile's hover ring takes the current band's colour (globals.css).
-  useEffect(() => {
-    ref.current?.closest<HTMLElement>(".case-study-tile")?.style.setProperty("--tile-ring", bands[index].color);
-  }, [index, bands]);
-
   const band = bands[index];
   // In container units, the frame being 16:9 at the image's width.
   const offset = -band.top / width * 100 + (56.25 - band.height / width * 100) / 2;
@@ -60,7 +54,6 @@ export function SteppedImage({ src, alt, steps, playing, playbackRow, locked = f
 
   return (
     <div
-      ref={ref}
       className="case-study-steps"
       data-locked={locked || undefined}
       data-playback-row={playbackRow}

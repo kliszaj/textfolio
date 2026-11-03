@@ -16,9 +16,10 @@ test("reads like a case study: a big opening line, then emailing and the CV besi
   const actions = within(screen.getByTestId("case-study-actions"));
   expect(actions.getByText("Email me")).toBeInTheDocument();
   expect(actions.getByRole("link", { name: "hello@adrianklisz.com" })).toHaveAttribute("href", "mailto:hello@adrianklisz.com");
-  const cv = actions.getByRole("link", { name: "Download My CV" });
+  const cv = actions.getByRole("link", { name: "Open My CV in a new tab" });
   expect(cv).toHaveAttribute("href", "/adrian-klisz-cv.pdf");
-  expect(cv).toHaveAttribute("download");
+  expect(cv).toHaveAttribute("target", "_blank");
+  expect(cv).not.toHaveAttribute("download");
 });
 
 test("shows the portrait, Spotify's player for the playlist and the books as one row of tiles", () => {
