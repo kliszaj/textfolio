@@ -8,7 +8,8 @@ type LazyVideoProps = Omit<ComponentPropsWithoutRef<"video">, "preload" | "src">
   rootMargin?: string;
   playing?: boolean;
   // A thin line along the foot of the parent (which must be positioned),
-  // showing how far through the video is, while it plays.
+  // showing how far through the video is, while it plays. With a mouse, a click
+  // along the foot jumps to that point (globals.css, .video-progress-hit).
   showProgress?: boolean;
 };
 
@@ -35,6 +36,7 @@ export function LazyVideo({
 }: LazyVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLSpanElement>(null);
+  const progressHitRef = useRef<HTMLSpanElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
   const embedded = useSyncExternalStore(noSubscription, isEmbedded, isEmbeddedOnServer);
 
@@ -98,20 +100,28 @@ export function LazyVideo({
   useEffect(() => {
     const video = videoRef.current;
     const line = progressRef.current;
-    if (!video || !line) return;
+    const hit = progressHitRef.current;
+    if (!video || !line || !hit) return;
     if (!playing || !shouldLoad || embedded) {
-      line.dataset.playing = "false";
+      line.dataset.playing = hit.dataset.playing = "false";
       return;
     }
     let frame = 0;
     const update = () => {
-      line.dataset.playing = String(!video.paused);
+      line.dataset.playing = hit.dataset.playing = String(!video.paused);
       if (video.duration > 0) line.style.transform = `scaleX(${video.currentTime / video.duration})`;
       frame = window.requestAnimationFrame(update);
     };
     frame = window.requestAnimationFrame(update);
     return () => window.cancelAnimationFrame(frame);
   }, [embedded, shouldLoad, playing]);
+
+  const seek = (event: React.MouseEvent<HTMLSpanElement>) => {
+    const video = videoRef.current;
+    if (!video || !Number.isFinite(video.duration)) return;
+    const { left, width } = event.currentTarget.getBoundingClientRect();
+    video.currentTime = Math.min(1, Math.max(0, (event.clientX - left) / width)) * video.duration;
+  };
 
   return (
     <>
@@ -125,7 +135,9 @@ export function LazyVideo({
         autoPlay={playing === undefined && !embedded ? autoPlay : undefined}
       />
       {showProgress && (
-        <span ref={progressRef} aria-hidden="true" data-testid="video-progress" data-playing="false" className="video-progress" />
+        <span ref={progressHitRef} aria-hidden="true" data-testid="video-progress-hit" data-playing="false" className="video-progress-hit" onClick={seek}>
+          <span ref={progressRef} aria-hidden="true" data-testid="video-progress" data-playing="false" className="video-progress" />
+        </span>
       )}
     </>
   );

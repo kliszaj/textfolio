@@ -70,7 +70,7 @@ intro somewhere else themselves.
   monitor's HTML is hidden when the camera is behind the screen plane. It sits
   behind the canvas, seen through a transparent hole the display mesh cuts
   (`DeskModel`), so things in front of the glass draw over it; the canvas takes
-  no pointer events (`DeskStage`'s `onCreated`).
+  no pointer events and no text selection (`.desk-canvas` in `globals.css`).
 
 ### Files
 
@@ -604,6 +604,10 @@ D1 database (`migrations/0001_leaderboard.sql`). No new npm packages.
   play in turn as they come into focus. No hover bands any more: a playing
   clip shows a thin white progress line along its foot (`showProgress` on
   `LazyVideo`), but not the film, which has controls, or under wraps clips.
+  With a mouse, a click within 28px of the foot jumps there. Static assets
+  ignore Range requests, which seeking needs, so `.mp4`s go through the Worker
+  (`run_worker_first` in `wrangler.jsonc`, `worker/videoRange.ts`). Those
+  requests count against the Workers plan's quota.
   `tint` paints the frame the video's colour, so no hairline shows.
 - **Selection.** Text selected on a case study highlights in the next
   study's colour (`--selection-color`); inside the Up next card, in ink.

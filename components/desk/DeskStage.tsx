@@ -429,6 +429,7 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         style={{ backgroundColor: colors.night, opacity: background.night ? 1 : 0, transition: shown ? `opacity ${DAY_NIGHT_FADE_MS}ms ease` : "none" }}
       />
       <Canvas
+        className="desk-canvas"
         shadows
         dpr={[1, 2]}
         // On demand: a desk at rest draws nothing. What moves asks for
@@ -442,13 +443,6 @@ export function DeskStage({ variant, active = true }: { variant: DeskVariant; ac
         onCreated={({ gl }) => {
           gl.shadowMap.autoUpdate = false;
           gl.shadowMap.needsUpdate = true;
-          // Over the monitor's HTML (ScreenSurface), which shows through the
-          // hole the display cuts, so what's in front of the glass stays in
-          // front. Pointers pass through to that HTML, or to the Canvas's own
-          // element, which is where R3F and the orbit listen.
-          gl.domElement.style.position = "relative";
-          gl.domElement.style.zIndex = "30";
-          gl.domElement.style.pointerEvents = "none";
         }}
         camera={{ fov: FOV, near: 0.05, far: 50, position: [2.2, 1.9, 3.6] }}
         // The on-screen HTML lives inside the canvas container, so its clicks

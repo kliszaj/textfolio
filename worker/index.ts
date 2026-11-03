@@ -1,6 +1,7 @@
 // The Worker in front of the static site: /api/* is the typing leaderboard
 // (api.ts), everything else is the Next.js export in out/.
 import { handleApi, type D1Database } from "./api";
+import { respondToVideoRange } from "./videoRange";
 
 type Env = {
   DB: D1Database;
@@ -20,6 +21,11 @@ const worker = {
           headers: { "content-type": "application/json" },
         });
       }
+    }
+    if (pathname.endsWith(".mp4")) {
+      // The whole file, with no Range or conditions for the assets to act on.
+      const whole = await env.ASSETS.fetch(new Request(request.url, { method: request.method }));
+      return respondToVideoRange(request, whole);
     }
     return env.ASSETS.fetch(request);
   },

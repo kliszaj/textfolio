@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { LazyVideo } from "./LazyVideo";
 
 const intersectionObservers: Array<{
@@ -154,6 +154,43 @@ describe("progress line", () => {
 
     rerender(<LazyVideo data-testid="video" src="/a.mp4" playing={false} showProgress muted />);
     expect(line).toHaveAttribute("data-playing", "false");
+  });
+
+  test("a click along the foot jumps to that point in the video", () => {
+    render(<LazyVideo data-testid="video" src="/a.mp4" playing showProgress muted />);
+    load();
+    const video = screen.getByTestId("video") as HTMLVideoElement;
+    Object.defineProperty(video, "duration", { configurable: true, value: 20 });
+    Object.defineProperty(video, "currentTime", { configurable: true, writable: true, value: 0 });
+    const hit = screen.getByTestId("video-progress-hit");
+    jest.spyOn(hit, "getBoundingClientRect").mockReturnValue({ left: 100, width: 200 } as DOMRect);
+    fireEvent.click(hit, { clientX: 250 });
+    expect(video.currentTime).toBe(15);
+  });
+
+  test("a click does nothing until the video knows its length", () => {
+    render(<LazyVideo data-testid="video" src="/a.mp4" playing showProgress muted />);
+    load();
+    const video = screen.getByTestId("video") as HTMLVideoElement;
+    Object.defineProperty(video, "duration", { configurable: true, value: NaN });
+    Object.defineProperty(video, "currentTime", { configurable: true, writable: true, value: 3 });
+    const hit = screen.getByTestId("video-progress-hit");
+    jest.spyOn(hit, "getBoundingClientRect").mockReturnValue({ left: 100, width: 200 } as DOMRect);
+    fireEvent.click(hit, { clientX: 250 });
+    expect(video.currentTime).toBe(3);
+  });
+
+  test("the click area only answers while the video plays", () => {
+    const { rerender } = render(<LazyVideo data-testid="video" src="/a.mp4" playing showProgress muted />);
+    load();
+    const video = screen.getByTestId("video") as HTMLVideoElement;
+    Object.defineProperty(video, "duration", { configurable: true, value: 20 });
+    Object.defineProperty(video, "paused", { configurable: true, value: false });
+    nextFrame();
+    const hit = screen.getByTestId("video-progress-hit");
+    expect(hit).toHaveAttribute("data-playing", "true");
+    rerender(<LazyVideo data-testid="video" src="/a.mp4" playing={false} showProgress muted />);
+    expect(hit).toHaveAttribute("data-playing", "false");
   });
 
   test("stays out of sight if the browser refuses to play", () => {

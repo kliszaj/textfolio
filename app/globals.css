@@ -681,10 +681,27 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
 }
 
 /* How far through a playing clip is, along the card's foot. The frame's rounded
-   corners clip its ends. */
-.video-progress {
+   corners clip its ends. Around it, an invisible and taller place to click, as
+   the line alone is a fiddly target: with a mouse only, since on touch a drag
+   here is the page scrolling. */
+.video-progress-hit {
   position: absolute;
   z-index: 1;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1.75rem;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .video-progress-hit[data-playing="true"] {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+}
+
+.video-progress {
+  position: absolute;
   inset-inline: 0;
   bottom: 0;
   height: 0.5rem;
@@ -1053,6 +1070,28 @@ video {
 /* The UI around the desk resolving out of a blur once the loader is gone.
    blur(0) rather than none at rest, so the layer stays the same containing
    block and nothing inside it shifts when the transition ends. */
+/* The 3D canvas lies over the monitor's HTML (ScreenSurface), which shows
+   through the hole the display cuts, so what's in front of the glass stays in
+   front. Pointers pass through to that HTML, or to the element around the
+   canvas, which is where R3F and the orbit listen. */
+.desk-canvas canvas {
+  position: relative;
+  z-index: 30;
+  pointer-events: none;
+}
+
+/* With the canvas letting pointers through, a drag to orbit starts on the HTML
+   around it, and would select all of the monitor's text on the way past. */
+.desk-canvas {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.desk-canvas :is(input, textarea) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .desk-reveal {
   opacity: 0;
   filter: blur(14px);

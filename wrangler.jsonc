@@ -16,6 +16,9 @@
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",
+    // Videos come through the Worker, which answers the Range requests that
+    // seeking needs and static assets ignore (worker/videoRange.ts).
+    "run_worker_first": ["/assets/*.mp4"],
     // A bad URL gets the export's 404.html, not an empty response.
     "not_found_handling": "404-page"
   },
