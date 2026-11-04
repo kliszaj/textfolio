@@ -20,14 +20,6 @@ function open() {
   return screen.getByRole("dialog", { name: "A photo", hidden: true });
 }
 
-function giveImage(naturalWidth: number, shownWidth: number) {
-  const image = screen.getByAltText("A photo") as HTMLImageElement;
-  Object.defineProperty(image, "naturalWidth", { value: naturalWidth });
-  image.getBoundingClientRect = () => ({ left: 0, top: 0, width: shownWidth, height: shownWidth }) as DOMRect;
-  fireEvent.load(image);
-  return image;
-}
-
 test("stays closed until the photo is clicked", () => {
   render(
     <PhotoZoom src="/photo.jpg" alt="A photo">
@@ -60,26 +52,14 @@ test("Escape closes it and is marked handled, so the page doesn't also go home",
   expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument();
 });
 
-test("clicking beside the photo closes it", () => {
+test("clicking the photo closes it", () => {
   open();
-  fireEvent.click(screen.getByTestId("photo-modal-scroller"));
+  fireEvent.click(screen.getByAltText("A photo"));
   expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument();
 });
 
-test("clicking a photo with pixels to spare zooms in, and again zooms out", () => {
-  open();
-  const image = giveImage(2000, 800);
-  const scroller = screen.getByTestId("photo-modal-scroller");
-  fireEvent.click(image);
-  expect(scroller).toHaveAttribute("data-zoomed");
-  fireEvent.click(image);
-  expect(scroller).not.toHaveAttribute("data-zoomed");
-});
-
-test("a photo already at full size doesn't zoom or close when clicked", () => {
-  open();
-  const image = giveImage(800, 800);
-  fireEvent.click(image);
-  expect(screen.getByTestId("photo-modal-scroller")).not.toHaveAttribute("data-zoomed");
-  expect(screen.getByRole("dialog", { hidden: true })).toBeInTheDocument();
+test("clicking beside the photo closes it", () => {
+  const dialog = open();
+  fireEvent.click(dialog);
+  expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument();
 });

@@ -3853,8 +3853,7 @@ the media, so changing it means a re-export or re-encode, then re-sampling the
 tile's `tint`. Jam's host, join, desktop and TV clips are new exports (30fps,
 crf 22); `jam-main-flow.mp4` is still the older, slightly darker pink.
 
-**Photo modal.** `PhotoZoom` wraps a static photo: click opens it fitted on cream
-in a native dialog, and where the file has spare pixels a click or tap goes to
-full size (a mouse pans by moving, a finger by dragging). Esc, the close button
-or a click beside the photo closes it. It's on case study photos, Projects and
-the About portrait. Not on videos or anything locked (`unreleased`).
+**Photo modal.** `PhotoZoom` wraps a static photo: click opens it fitted over the
+frosted page in a native dialog, and another click anywhere closes it, as do the close button
+and Esc. It's on case study photos, Projects and the About portrait. Not on
+videos or anything locked (`unreleased`).

@@ -1374,7 +1374,14 @@ html:has(.photo-modal[open]) {
   overflow: hidden;
 }
 
+/* Stands in for the scrollbar, so the page behind doesn't jump sideways. */
+html:has(.photo-modal[open]) body {
+  padding-right: var(--photo-modal-scrollbar, 0px);
+}
+
 .photo-modal {
+  --photo-modal-block: 4.5rem;
+  --photo-modal-inline: 1rem;
   position: fixed;
   inset: 0;
   width: 100%;
@@ -1386,56 +1393,28 @@ html:has(.photo-modal[open]) {
   border: 0;
   overflow: hidden;
   overscroll-behavior: contain;
-  background-color: var(--color-cream);
+  /* The page stays there behind the photo, frosted over in its own cream. */
+  background-color: rgb(245 237 230 / 0.72);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   color: var(--color-ink);
+  cursor: zoom-out;
   animation: photo-modal-in 180ms ease-out;
 }
 
-.photo-modal-scroller {
-  --photo-modal-block: 4.5rem;
-  --photo-modal-inline: 1rem;
-  display: flex;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  overscroll-behavior: contain;
-  touch-action: pan-x pan-y pinch-zoom;
-  cursor: zoom-out;
+.photo-modal[open] {
+  display: grid;
+  place-items: center;
 }
 
 .photo-modal-image {
   display: block;
-  /* Margins, not centring on the box: they keep every side of a zoomed picture
-     reachable by scrolling. */
-  margin: auto;
-  max-width: calc(100% - 2 * var(--photo-modal-inline));
-  max-height: calc(100% - 2 * var(--photo-modal-block));
+  max-width: calc(100vw - 2 * var(--photo-modal-inline));
+  max-height: calc(100dvh - 2 * var(--photo-modal-block));
   border-radius: 0.75rem;
-  cursor: default;
   user-select: none;
   -webkit-user-select: none;
   animation: photo-modal-image-in 220ms ease-out;
-}
-
-.photo-modal-image[data-can-zoom] {
-  cursor: zoom-in;
-}
-
-/* Panned by the pointer or a finger, so scrollbars would only cover the picture. */
-.photo-modal-scroller[data-zoomed] {
-  scrollbar-width: none;
-}
-
-.photo-modal-scroller[data-zoomed]::-webkit-scrollbar {
-  display: none;
-}
-
-.photo-modal-scroller[data-zoomed] .photo-modal-image {
-  max-width: none;
-  max-height: none;
-  border-radius: 0;
-  cursor: zoom-out;
-  animation: none;
 }
 
 .photo-modal-close {
@@ -1449,8 +1428,6 @@ html:has(.photo-modal[open]) {
   border-radius: 9999px;
   background-color: var(--color-ink);
   color: var(--color-cream);
-  /* Still a button over a dark picture. */
-  box-shadow: 0 0 0 1.5px var(--color-cream);
   cursor: pointer;
 }
 
@@ -1465,7 +1442,7 @@ html:has(.photo-modal[open]) {
 }
 
 @media (min-width: 48rem) {
-  .photo-modal-scroller {
+  .photo-modal {
     --photo-modal-block: 2.5rem;
     --photo-modal-inline: 5rem;
   }
@@ -1483,5 +1460,13 @@ html:has(.photo-modal[open]) {
   .photo-modal,
   .photo-modal-image {
     animation: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .photo-modal {
+    background-color: var(--color-cream);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
