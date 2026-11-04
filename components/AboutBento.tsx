@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { PhotoZoom } from "@/components/PhotoZoom";
 import type { AboutBentoData } from "@/data/about";
 
 // Under About's bio, in the media grid's columns: the portrait, Spotify's own
@@ -15,8 +16,10 @@ export function AboutBento({ bento }: { bento: AboutBentoData }) {
     <section aria-label="What I'm into" className="about-bento bg-cream pb-20 md:pb-28">
       <div className="mx-auto grid w-full max-w-[100rem] grid-cols-6 gap-4 md:gap-6">
         <div className="relative col-span-6 aspect-[4/5] overflow-hidden rounded-2xl bg-ink/10 md:col-span-3 min-[75rem]:col-span-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={portrait.src} alt={portrait.alt} className="absolute inset-0 size-full object-cover object-[50%_30%]" />
+          <PhotoZoom src={portrait.src} alt={portrait.alt} className="absolute inset-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={portrait.src} alt={portrait.alt} className="absolute inset-0 size-full object-cover object-[50%_30%]" />
+          </PhotoZoom>
         </div>
 
         <div data-testid="about-bento-playlist" className="col-span-6 h-[22rem] overflow-hidden rounded-2xl bg-[#121212] md:col-span-3 md:aspect-[4/5] md:h-auto md:min-h-[22rem] min-[75rem]:col-span-2">

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { HomeIconAnimation } from "@/components/HomeIconAnimation";
 import { InlineLinkPreview } from "@/components/InlineLinkPreview";
 import { LazyVideo } from "@/components/LazyVideo";
+import { PhotoZoom } from "@/components/PhotoZoom";
 import { SteppedImage } from "@/components/SteppedImage";
 import { caseStudies, caseStudyRoute } from "@/data/caseStudies";
 import { ABOUT_PAGE, CONTACT } from "@/data/about";
@@ -268,6 +269,12 @@ function renderFactValue(fact: CaseStudyFact) {
 
 // A sequence tile's media sits in its own rounded frame so a caption can
 // follow it; a mosaic tile is the frame itself.
+// A locked photo stays small: enlarging it would undo the point of its blur.
+function MaybePhotoZoom({ src, alt, locked, children }: { src: string; alt: string; locked: boolean; children: React.ReactNode }) {
+  if (locked) return <>{children}</>;
+  return <PhotoZoom src={src} alt={alt} className="block size-full">{children}</PhotoZoom>;
+}
+
 function MaybeFrame({ className, aspect, children }: { className?: string; aspect?: CaseStudyMedia["aspect"]; children: ReactNode }) {
   if (!className) return <>{children}</>;
   return <div className={className} data-aspect={aspect}>{children}</div>;
@@ -1126,14 +1133,16 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                               playsInline
                             />
                           ) : (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={item.src}
-                              alt={item.alt}
-                              className="size-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
+                            <MaybePhotoZoom src={item.src} alt={item.alt} locked={Boolean(item.unreleased)}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={item.src}
+                                alt={item.alt}
+                                className="size-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            </MaybePhotoZoom>
                           )
                         ) : (
                           // No asset yet: hold the cell rather than render a

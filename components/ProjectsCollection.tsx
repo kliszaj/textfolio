@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { LazyVideo } from "@/components/LazyVideo";
+import { PhotoZoom } from "@/components/PhotoZoom";
 import type { ProjectAsset, ProjectExperiment } from "@/data/projectsExperiments";
 
 type ProjectsCollectionProps = {
@@ -60,14 +61,16 @@ function BrowserFrame({ asset }: { asset: ProjectAsset }) {
           </span>
           <ToolbarIcon path="M12 5h.01M12 12h.01M12 19h.01" />
         </div>
-        <Image
-          src={asset.src!}
-          alt={asset.alt}
-          width={asset.width}
-          height={asset.height}
-          sizes="(min-width: 1600px) 60rem, 80vw"
-          className="block h-auto w-full"
-        />
+        <PhotoZoom src={asset.src!} alt={asset.alt} className="block w-full">
+          <Image
+            src={asset.src!}
+            alt={asset.alt}
+            width={asset.width}
+            height={asset.height}
+            sizes="(min-width: 1600px) 60rem, 80vw"
+            className="block h-auto w-full"
+          />
+        </PhotoZoom>
       </div>
     </figure>
   );
@@ -86,7 +89,7 @@ function ProjectMedia({
       data-testid="project-asset"
       data-wide={panoramic || undefined}
       className={`relative overflow-hidden rounded-xl bg-ink/[0.08] md:rounded-2xl ${
-        asset.square ? "aspect-square md:w-[calc(50%-0.75rem)]" : panoramic ? "aspect-[21/9]" : "aspect-[16/10]"
+        panoramic ? "aspect-[21/9]" : "aspect-[16/10]"
       }`}
     >
       {asset.src ? (
@@ -101,15 +104,17 @@ function ProjectMedia({
             playsInline
           />
         ) : (
-          <Image
-            src={asset.src}
-            alt={asset.alt}
-            fill
-            sizes={panoramic
-              ? "(min-width: 1600px) 100rem, calc(100vw - 5rem)"
-              : "(min-width: 768px) 50vw, 50vw"}
-            className="object-cover"
-          />
+          <PhotoZoom src={asset.src} alt={asset.alt} className="absolute inset-0">
+            <Image
+              src={asset.src}
+              alt={asset.alt}
+              fill
+              sizes={panoramic
+                ? "(min-width: 1600px) 100rem, calc(100vw - 5rem)"
+                : "(min-width: 768px) 50vw, 50vw"}
+              className="object-cover"
+            />
+          </PhotoZoom>
         )
       ) : (
         <figcaption className="absolute inset-0 grid place-items-center p-6 text-center font-body text-sm font-medium uppercase tracking-[0.08em] text-ink/45">

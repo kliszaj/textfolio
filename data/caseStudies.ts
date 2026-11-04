@@ -43,7 +43,9 @@ export type CaseStudyMedia = {
   // The clip's name, shown on it while it's hovered (always, without hover).
   caption?: string;
   // The clip's background colour, sampled from the video. A clip that plays
-  // on hover grows a band of it around its frame while it plays.
+  // on hover grows a band of it around its frame while it plays. Colour cards
+  // are always the case study's secondary colour: the next page's
+  // thumbnailColor, as on its next arrow (the colour is baked into the media).
   tint?: string;
   // A tall image shown one band at a time in a landscape frame, moving on to
   // the next while hovered (without hover, while its row is in view).
@@ -185,7 +187,7 @@ export const caseStudies: CaseStudy[] = [
         kind: "video",
         span: "third",
         aspect: "portrait",
-        tint: "#efa648",
+        tint: "#ea4cb7",
       },
       {
         src: "/assets/jam-main-flow.mp4",
@@ -201,7 +203,7 @@ export const caseStudies: CaseStudy[] = [
         kind: "video",
         span: "third",
         aspect: "portrait",
-        tint: "#1f9af7",
+        tint: "#f550c1",
       },
       {
         src: "/assets/jam-desktop.mp4",
@@ -209,7 +211,7 @@ export const caseStudies: CaseStudy[] = [
         kind: "video",
         span: "full",
         aspect: "landscape",
-        tint: "#edc91c",
+        tint: "#f550c1",
       },
       {
         src: "/assets/jam-tv.mp4",
@@ -217,7 +219,7 @@ export const caseStudies: CaseStudy[] = [
         kind: "video",
         span: "full",
         aspect: "landscape",
-        tint: "#13fb73",
+        tint: "#f550c1",
       },
     ],
   },
@@ -258,21 +260,21 @@ export const caseStudies: CaseStudy[] = [
         kind: "video",
         span: "full",
         aspect: "landscape",
-        tint: "#f0a842",
+        tint: "#ffaf36",
       },
       {
         src: "/assets/seamless-device-sheet-phone.jpg",
         alt: "The redesigned Connect device sheet, listening on this iPhone",
         span: "third",
         aspect: "portrait",
-        tint: "#f5d745",
+        tint: "#ffaf36",
       },
       {
         src: "/assets/seamless-device-sheet-speaker.jpg",
         alt: "The redesigned Connect device sheet, playing on a Bose speaker",
         span: "third",
         aspect: "portrait",
-        tint: "#559ef6",
+        tint: "#ffaf36",
       },
       {
         // Not shipped yet: the whole frame is blurred in the video itself.
@@ -281,7 +283,7 @@ export const caseStudies: CaseStudy[] = [
         kind: "video",
         span: "third",
         aspect: "portrait",
-        tint: "#68f976",
+        tint: "#ffaf36",
         unreleased: { title: "Under wraps", detail: "Launching soon" },
       },
       {
@@ -369,7 +371,7 @@ export const caseStudies: CaseStudy[] = [
         span: "tall",
         aspect: "upright",
         // Framed in an iPhone on a colour card, like the other phones.
-        tint: "#f64fbe",
+        tint: "#219ffb",
       },
       {
         src: "/assets/focals-loop-sizing.mp4",
@@ -378,7 +380,7 @@ export const caseStudies: CaseStudy[] = [
         span: "tall",
         aspect: "upright",
         // Framed in an iPhone on a colour card, like the other phones.
-        tint: "#12fe75",
+        tint: "#219ffb",
       },
       {
         src: "/assets/focals-frame-styles.jpeg",

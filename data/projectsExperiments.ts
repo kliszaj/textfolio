@@ -8,9 +8,6 @@ export type ProjectAsset = {
   // and matching the app's `theme`, on `background` (one of the portfolio's
   // page colours, data/caseStudies.ts).
   browserFrame?: { background: string; url: string; theme: "light" | "dark" };
-  // A square tile, as wide as one of the two columns, for a project alone
-  // with one piece of media.
-  square?: boolean;
 };
 
 export type ProjectExperiment = {
@@ -27,7 +24,7 @@ export type ProjectExperiment = {
 export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
   {
     id: "word-snap",
-    title: "wordsnap.",
+    title: "wordsnap",
     description:
       "A device for language learners that you use to quickly capture words, phrases and idioms out in the wild. The wordsnaps are automatically translated and uploaded to Anki so you can practice them.",
     assets: [
@@ -54,13 +51,13 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
   },
   {
     id: "spellbook-and-tome",
-    title: "Spellbook & Tome",
+    title: "spellbook",
     description:
       "A webserver and a python app to manage your Magic: The Gathering decks and help you get tips to build a better deck. Helping me get better at a nerdy hobby I picked up last winter.",
     assets: [
       {
         src: "/assets/spellbook-app.webp",
-        alt: "The Spellbook web app: a list of Magic: The Gathering decks, one deck's cards in a grid with its build progress above, and a card's details beside it",
+        alt: "The spellbook web app: a list of Magic: The Gathering decks, one deck's cards in a grid with its build progress above, and a card's details beside it",
         width: 1874,
         height: 1123,
         browserFrame: { background: "#219EFA", url: "spellbook.local/decks", theme: "light" },
@@ -69,11 +66,16 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
   },
   {
     id: "e-ink-displays",
-    title: "e-ink displays",
+    title: "e-ink display",
     description:
       "A battery-powered e-ink frame that shows how warm it feels outside and what the weather is doing, paired with a line from classic literature that matches it. There are over 1,400 quotes, each checked word for word against its source.",
     assets: [
-      { alt: "e-ink displays coming soon", square: true },
+      {
+        src: "/assets/eink-weather-quotes.webp",
+        alt: "A white picture frame holding an e-ink display: 6°C and cloudy, with a line about a gray sky from Joseph Conrad's Typhoon",
+        width: 1587,
+        height: 991,
+      },
     ],
   },
 ];

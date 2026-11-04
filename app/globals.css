@@ -1356,3 +1356,132 @@ html[data-desk-unavailable] .home-fallback {
   clip-path: none;
   white-space: normal;
 }
+
+/* A photo that opens bigger (components/PhotoZoom.tsx). */
+.photo-zoom-trigger {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.photo-zoom-trigger:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: -4px;
+}
+
+html:has(.photo-modal[open]) {
+  overflow: hidden;
+}
+
+.photo-modal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  animation: photo-modal-in 180ms ease-out;
+}
+
+.photo-modal-scroller {
+  --photo-modal-block: 4.5rem;
+  --photo-modal-inline: 1rem;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y pinch-zoom;
+  cursor: zoom-out;
+}
+
+.photo-modal-image {
+  display: block;
+  /* Margins, not centring on the box: they keep every side of a zoomed picture
+     reachable by scrolling. */
+  margin: auto;
+  max-width: calc(100% - 2 * var(--photo-modal-inline));
+  max-height: calc(100% - 2 * var(--photo-modal-block));
+  border-radius: 0.75rem;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: photo-modal-image-in 220ms ease-out;
+}
+
+.photo-modal-image[data-can-zoom] {
+  cursor: zoom-in;
+}
+
+/* Panned by the pointer or a finger, so scrollbars would only cover the picture. */
+.photo-modal-scroller[data-zoomed] {
+  scrollbar-width: none;
+}
+
+.photo-modal-scroller[data-zoomed]::-webkit-scrollbar {
+  display: none;
+}
+
+.photo-modal-scroller[data-zoomed] .photo-modal-image {
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  cursor: zoom-out;
+  animation: none;
+}
+
+.photo-modal-close {
+  position: fixed;
+  top: max(0.875rem, env(safe-area-inset-top));
+  right: max(0.875rem, env(safe-area-inset-right));
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  background-color: var(--color-ink);
+  color: var(--color-cream);
+  /* Still a button over a dark picture. */
+  box-shadow: 0 0 0 1.5px var(--color-cream);
+  cursor: pointer;
+}
+
+.photo-modal-close svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.photo-modal-close:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+@media (min-width: 48rem) {
+  .photo-modal-scroller {
+    --photo-modal-block: 2.5rem;
+    --photo-modal-inline: 5rem;
+  }
+}
+
+@keyframes photo-modal-in {
+  from { opacity: 0; }
+}
+
+@keyframes photo-modal-image-in {
+  from { transform: scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-modal,
+  .photo-modal-image {
+    animation: none;
+  }
+}

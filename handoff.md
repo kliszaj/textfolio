@@ -3821,7 +3821,7 @@ picked book is edge-on to the old hit-test). The `profile` layout and
 `AboutShelf` are deleted. The CV PDF is the 2026 version.
 
 **Elsewhere.** Focals' two phone clips are re-encoded into the iPhone frame on
-4:5 pink/yellow cards (half width); role "Senior UX Designer", 2016-2020, a
+4:5 cards (half width); role "Senior UX Designer", 2016-2020, a
 one-liner, and a softer Meta line. Tiles only grow a ring where hover does
 something (videos, the roadmap). Small icons boil gently (`boil-icon`, 1.5px):
 the next arrows (bigger, bolder), the lock, the envelope and download arrows,
@@ -3837,11 +3837,24 @@ glasses." and Impact "Helped pave the way for computing in glasses, acquired
 by Google to carry on the work". Unreleased Connect work says "launching
 soon", never a year. Fixes: North was acquired in 2020; the Focals long read
 no longer repeats the title; e-ink displays has its own description (the
-eink-weather-quotes frame). The Focals Loop clip is on green. Projects no
+eink-weather-quotes frame). Projects no
 longer ends with "more coming soon...". The full-width film placeholder on
-Seamless opens on its film (seamless-film.mp4, on orange, so the first phone card is yellow). CV stays "CV".
+Seamless opens on its film (seamless-film.mp4). CV stays "CV".
 
 The CV row shows its first page (public/assets/adrian-klisz-cv-preview.jpg)
 in place of the download button; regenerate it with
 `sips -s format jpeg -s formatOptions 85 -Z 640` on the PDF whenever the CV changes (it fills the tall CV row beside the bio). "Currently
 reading" rests as a small grey label; a picked book's title is 20px.
+
+**Colour cards use the secondary colour.** Media on a colour card always sits on
+the case study's secondary colour: the next page's thumbnailColor, as on its
+next arrow. Jam is pink, Focals blue, Seamless orange (`#FFAF36`, a little lighter than the `#FFA52E` page colour). The colour is baked into
+the media, so changing it means a re-export or re-encode, then re-sampling the
+tile's `tint`. Jam's host, join, desktop and TV clips are new exports (30fps,
+crf 22); `jam-main-flow.mp4` is still the older, slightly darker pink.
+
+**Photo modal.** `PhotoZoom` wraps a static photo: click opens it fitted on cream
+in a native dialog, and where the file has spare pixels a click or tap goes to
+full size (a mouse pans by moving, a finger by dragging). Esc, the close button
+or a click beside the photo closes it. It's on case study photos, Projects and
+the About portrait. Not on videos or anything locked (`unreleased`).
