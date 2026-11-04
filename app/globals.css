@@ -1081,8 +1081,11 @@ video {
 }
 
 /* With the canvas letting pointers through, a drag to orbit starts on the HTML
-   around it, and would select all of the monitor's text on the way past. */
+   around it, and would select all of the monitor's text on the way past.
+   Isolated so the canvas only lies over the monitor's HTML, not over the name,
+   the rail and the loader, which come after it on the stage. */
 .desk-canvas {
+  isolation: isolate;
   -webkit-user-select: none;
   user-select: none;
 }
