@@ -1138,8 +1138,19 @@ test("with hover, a clip in a shared row plays only under the pointer", () => {
     expect(tiles[0]).not.toHaveAttribute("data-playing");
     fireEvent.pointerOut(tiles[1], { pointerType: "mouse" });
     expect(tiles[1]).not.toHaveAttribute("data-playing");
-    // A clip in a row that isn't the active one doesn't start.
+  });
+});
+
+test("with hover, a clip plays under the pointer even in a row out of focus", () => {
+  withHover(() => {
+    const spy = makeRowActive("media-0");
+    render(<CaseStudyView caseStudy={threeClipsAndAWideOne} next={nextStudy} />);
+    spy.mockRestore();
+    const tiles = screen.getAllByTestId("case-study-tile");
+    expect(tiles[3]).not.toHaveAttribute("data-playing");
     fireEvent.pointerOver(tiles[3], { pointerType: "mouse" });
+    expect(tiles[3]).toHaveAttribute("data-playing", "true");
+    fireEvent.pointerOut(tiles[3], { pointerType: "mouse" });
     expect(tiles[3]).not.toHaveAttribute("data-playing");
   });
 });

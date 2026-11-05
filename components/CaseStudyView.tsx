@@ -1092,7 +1092,9 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     const ownTurn = !canHover && paired && sequence && span === "third";
                     const pairedPlays = canHover ? hoveredTile === index : ownTurn || firstInRow;
                     const playbackRow = ownTurn ? `media-${row}-${index}` : `media-${row}`;
-                    const videoPlays = item.kind === "video" && activePlaybackRow === playbackRow && (!paired || pairedPlays || Boolean(item.unreleased));
+                    // Hovering a video always plays it, wherever the scroll has got to.
+                    const hovered = canHover && hoveredTile === index;
+                    const videoPlays = item.kind === "video" && (hovered || (activePlaybackRow === playbackRow && (!paired || pairedPlays || Boolean(item.unreleased))));
                     const tileTint = item.transparent ? next?.thumbnailColor : item.tint;
                     return (
                       <figure
