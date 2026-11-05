@@ -6,6 +6,7 @@ const projects: ProjectExperiment[] = [
   {
     id: "word-snap",
     title: "wordsnap",
+    github: "https://github.com/example/repo",
     description: "A short description.",
     assets: [
       { src: "/assets/wordsnap.jpg", alt: "wordsnap concept", width: 1462, height: 883 },
@@ -21,6 +22,7 @@ const projects: ProjectExperiment[] = [
   {
     id: "single-asset",
     title: "Single asset",
+    github: "https://github.com/example/repo",
     description: "One image should stay full width.",
     assets: [{ alt: "Only asset coming soon" }],
   },
@@ -77,6 +79,7 @@ test("shows a web app's screenshot whole, in a browser window on its colour", ()
         {
           id: "app",
           title: "app",
+          github: "https://github.com/example/repo",
           description: "An app.",
           assets: [
             {
@@ -97,4 +100,12 @@ test("shows a web app's screenshot whole, in a browser window on its colour", ()
   expect(within(frame).getByText("app.local")).toBeInTheDocument();
   expect(frame).toHaveClass("bg-white");
   expect(frame.parentElement).toHaveStyle({ backgroundColor: "#EF5350" });
+});
+
+test("links each project to its GitHub repo below the title", () => {
+  render(<ProjectsCollection projects={projects} />);
+  const [first] = projects;
+  const link = screen.getByRole("link", { name: `${first.title} on GitHub` });
+  expect(link).toHaveAttribute("href", first.github);
+  expect(link).toHaveAttribute("target", "_blank");
 });

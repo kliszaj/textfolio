@@ -11,6 +11,9 @@ type LazyVideoProps = Omit<ComponentPropsWithoutRef<"video">, "preload" | "src">
   // showing how far through the video is, while it plays. With a mouse, a click
   // along the foot jumps to that point (globals.css, .video-progress-hit).
   showProgress?: boolean;
+  // A see-through version, in the one format each browser can keep the
+  // transparency in. `src` is not played when this is given.
+  transparent?: { hevc: string; webm: string };
 };
 
 const noSubscription = () => () => {};
@@ -31,6 +34,7 @@ export function LazyVideo({
   rootMargin = "600px 0px",
   playing,
   showProgress = false,
+  transparent,
   autoPlay,
   ...props
 }: LazyVideoProps) {
@@ -68,6 +72,11 @@ export function LazyVideo({
     observer.observe(video);
     return () => observer.disconnect();
   }, [embedded, rootMargin]);
+
+  // A video only looks at its <source>s when told to.
+  useEffect(() => {
+    if (transparent && shouldLoad) videoRef.current?.load();
+  }, [transparent, shouldLoad]);
 
   useEffect(() => {
     if (playing === undefined) return;
@@ -130,10 +139,17 @@ export function LazyVideo({
         {...props}
         // Safari paints no frame for a video it hasn't played unless asked for
         // a moment of it: the still, just past the start.
-        src={!shouldLoad ? undefined : embedded ? `${src}#t=0.1` : src}
+        src={transparent || !shouldLoad ? undefined : embedded ? `${src}#t=0.1` : src}
         preload={!shouldLoad ? "none" : embedded ? "metadata" : "auto"}
         autoPlay={playing === undefined && !embedded ? autoPlay : undefined}
-      />
+      >
+        {transparent && shouldLoad && (
+          <>
+            <source src={embedded ? `${transparent.hevc}#t=0.1` : transparent.hevc} type={'video/mp4; codecs="hvc1"'} />
+            <source src={embedded ? `${transparent.webm}#t=0.1` : transparent.webm} type="video/webm" />
+          </>
+        )}
+      </video>
       {showProgress && (
         <span ref={progressHitRef} aria-hidden="true" data-testid="video-progress-hit" data-playing="false" className="video-progress-hit" onClick={seek}>
           <span ref={progressRef} aria-hidden="true" data-testid="video-progress" data-playing="false" className="video-progress" />

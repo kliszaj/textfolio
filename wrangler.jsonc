@@ -20,7 +20,7 @@
     // static files, so the leaderboard's API has to be named. Videos come through
     // it to answer the Range requests that seeking needs and static assets
     // ignore (worker/videoRange.ts).
-    "run_worker_first": ["/api/*", "/assets/*.mp4"],
+    "run_worker_first": ["/api/*", "/assets/*.mp4", "/assets/*.webm"],
     // A bad URL gets the export's 404.html, not an empty response.
     "not_found_handling": "404-page"
   },

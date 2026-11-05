@@ -1093,6 +1093,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                     const pairedPlays = canHover ? hoveredTile === index : ownTurn || firstInRow;
                     const playbackRow = ownTurn ? `media-${row}-${index}` : `media-${row}`;
                     const videoPlays = item.kind === "video" && activePlaybackRow === playbackRow && (!paired || pairedPlays || Boolean(item.unreleased));
+                    const tileTint = item.transparent ? next?.thumbnailColor : item.tint;
                     return (
                       <figure
                         key={item.src ?? `${item.alt}-${index}`}
@@ -1101,7 +1102,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                         data-aspect={item.aspect}
                         className={`case-study-tile ${tileLayout}`}
                         data-playing={videoPlays || undefined}
-                        style={item.tint ? ({ "--tile-tint": item.tint } as React.CSSProperties) : undefined}
+                        style={tileTint ? ({ "--tile-tint": tileTint } as React.CSSProperties) : undefined}
                         onPointerEnter={(event) => event.pointerType !== "touch" && setHoveredTile(index)}
                         onPointerLeave={() => setHoveredTile((current) => (current === index ? null : current))}
                       >
@@ -1122,6 +1123,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                             <LazyVideo
                               className="size-full object-cover"
                               src={item.src}
+                              transparent={item.transparent}
                               aria-label={item.alt}
                               data-playback-row={playbackRow}
                               // Blurred, a locked clip has nothing to reveal on

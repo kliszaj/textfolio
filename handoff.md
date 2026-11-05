@@ -3850,8 +3850,9 @@ reading" rests as a small grey label; a picked book's title is 20px.
 the case study's secondary colour: the next page's thumbnailColor, as on its
 next arrow. Jam is pink, Focals blue, Seamless orange (`#FFAF36`, a little lighter than the `#FFA52E` page colour). The colour is baked into
 the media, so changing it means a re-export or re-encode, then re-sampling the
-tile's `tint`. Jam's host, join, desktop and TV clips are new exports (30fps,
-crf 22); `jam-main-flow.mp4` is still the older, slightly darker pink.
+tile's `tint`. Projects is on About's yellow. Jam's five clips are the exception:
+they're transparent (HEVC `.mp4` for Safari, VP9 `.webm` for the
+rest, 30fps), and the tile draws the background from the next page's colour.
 
 **Photo modal.** `PhotoZoom` wraps a static photo: click opens it fitted over the
 frosted page in a native dialog, and another click anywhere closes it, as do the close button

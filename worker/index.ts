@@ -22,7 +22,7 @@ const worker = {
         });
       }
     }
-    if (pathname.endsWith(".mp4")) {
+    if (pathname.endsWith(".mp4") || pathname.endsWith(".webm")) {
       // The whole file, with no Range or conditions for the assets to act on.
       const whole = await env.ASSETS.fetch(new Request(request.url, { method: request.method }));
       return respondToVideoRange(request, whole);

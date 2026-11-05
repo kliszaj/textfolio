@@ -5,14 +5,15 @@ export type ProjectAsset = {
   width?: number;
   height?: number;
   // A screenshot of a web app: shown whole, in a browser window at `url`
-  // and matching the app's `theme`, on `background` (one of the portfolio's
-  // page colours, data/caseStudies.ts).
+  // and matching the app's `theme`, on `background`: the page's secondary
+  // colour, About's yellow (data/about.ts).
   browserFrame?: { background: string; url: string; theme: "light" | "dark" };
 };
 
 export type ProjectExperiment = {
   id: string;
   title: string;
+  github: string;
   description: string;
   assets: ProjectAsset[];
 };
@@ -25,8 +26,9 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
   {
     id: "word-snap",
     title: "wordsnap",
+    github: "https://github.com/kliszaj/wordsnap",
     description:
-      "A device for language learners that you use to quickly capture words, phrases and idioms out in the wild. The wordsnaps are automatically translated and uploaded to Anki so you can practice them.",
+      "A handheld device for capturing Swedish words, phrases and idioms out in the wild. Each short recording is transcribed and turned into a flashcard, with a web app for correcting it before it's saved to Anki.",
     assets: [
       {
         src: "/assets/wordsnap.jpg",
@@ -45,33 +47,35 @@ export const PROJECTS_EXPERIMENTS: ProjectExperiment[] = [
         alt: "The wordsnap web app: a list of captured Swedish words, with one word's audio, transcript and Anki card open for editing",
         width: 1655,
         height: 1049,
-        browserFrame: { background: "#FFA52E", url: "wordsnap.local", theme: "dark" },
+        browserFrame: { background: "#FDD721", url: "wordsnap.local", theme: "dark" },
       },
     ],
   },
   {
     id: "spellbook-and-tome",
     title: "spellbook",
+    github: "https://github.com/kliszaj/spellbook",
     description:
-      "A webserver and a python app to manage your Magic: The Gathering decks and help you get tips to build a better deck. Helping me get better at a nerdy hobby I picked up last winter.",
+      "A card search and deck workshop for Magic: The Gathering Commander. Describe a card in plain English to find it, save your picks into decks, and see what each deck is missing. Helping me get better at a nerdy hobby I picked up last winter.",
     assets: [
       {
         src: "/assets/spellbook-app.webp",
         alt: "The spellbook web app: a list of Magic: The Gathering decks, one deck's cards in a grid with its build progress above, and a card's details beside it",
         width: 1874,
         height: 1123,
-        browserFrame: { background: "#219EFA", url: "spellbook.local/decks", theme: "light" },
+        browserFrame: { background: "#FDD721", url: "spellbook.local/decks", theme: "light" },
       },
     ],
   },
   {
     id: "e-ink-displays",
     title: "e-ink display",
+    github: "https://github.com/kliszaj/eink-weather-frame",
     description:
       "A battery-powered e-ink frame that shows how warm it feels outside and what the weather is doing, paired with a line from classic literature that matches it. There are over 1,400 quotes, each checked word for word against its source.",
     assets: [
       {
-        src: "/assets/eink-weather-quotes.webp",
+        src: "/assets/eink-display.webp",
         alt: "A white picture frame holding an e-ink display: 6°C and cloudy, with a line about a gray sky from Joseph Conrad's Typhoon",
         width: 1587,
         height: 991,

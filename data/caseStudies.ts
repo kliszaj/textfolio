@@ -45,8 +45,12 @@ export type CaseStudyMedia = {
   // The clip's background colour, sampled from the video. A clip that plays
   // on hover grows a band of it around its frame while it plays. Colour cards
   // are always the case study's secondary colour: the next page's
-  // thumbnailColor, as on its next arrow (the colour is baked into the media).
+  // thumbnailColor, as on its next arrow. Without `transparent`, the colour is
+  // built into the media.
   tint?: string;
+  // A see-through clip: its background is the page's secondary colour, drawn
+  // by the tile rather than built into the video.
+  transparent?: { hevc: string; webm: string };
   // A tall image shown one band at a time in a landscape frame, moving on to
   // the next while hovered (without hover, while its row is in view).
   steps?: CaseStudyMediaSteps;
@@ -182,44 +186,44 @@ export const caseStudies: CaseStudy[] = [
     mediaPadded: true,
     media: [
       {
-        src: "/assets/jam-host.mp4",
+        src: "/assets/jam-host-alpha.mp4",
         alt: "Hosting a Spotify Jam",
         kind: "video",
         span: "third",
         aspect: "portrait",
-        tint: "#ea4cb7",
+        transparent: { hevc: "/assets/jam-host-alpha.mp4", webm: "/assets/jam-host-alpha.webm" },
       },
       {
-        src: "/assets/jam-main-flow.mp4",
+        src: "/assets/jam-main-flow-alpha.mp4",
         alt: "Spotify Jam main flow",
         kind: "video",
         span: "third",
         aspect: "portrait",
-        tint: "#e25aba",
+        transparent: { hevc: "/assets/jam-main-flow-alpha.mp4", webm: "/assets/jam-main-flow-alpha.webm" },
       },
       {
-        src: "/assets/jam-two-choice.mp4",
+        src: "/assets/jam-two-choice-alpha.mp4",
         alt: "Choosing how to join a Spotify Jam",
         kind: "video",
         span: "third",
         aspect: "portrait",
-        tint: "#f550c1",
+        transparent: { hevc: "/assets/jam-two-choice-alpha.mp4", webm: "/assets/jam-two-choice-alpha.webm" },
       },
       {
-        src: "/assets/jam-desktop.mp4",
+        src: "/assets/jam-desktop-clear.mp4",
         alt: "Spotify Jam desktop experience",
         kind: "video",
         span: "full",
         aspect: "landscape",
-        tint: "#f550c1",
+        transparent: { hevc: "/assets/jam-desktop-clear.mp4", webm: "/assets/jam-desktop-clear.webm" },
       },
       {
-        src: "/assets/jam-tv.mp4",
+        src: "/assets/jam-tv-clear.mp4",
         alt: "Spotify Jam TV experience",
         kind: "video",
         span: "full",
         aspect: "landscape",
-        tint: "#f550c1",
+        transparent: { hevc: "/assets/jam-tv-clear.mp4", webm: "/assets/jam-tv-clear.webm" },
       },
     ],
   },
@@ -263,14 +267,14 @@ export const caseStudies: CaseStudy[] = [
         tint: "#ffaf36",
       },
       {
-        src: "/assets/seamless-device-sheet-phone.jpg",
+        src: "/assets/seamless-connect-phone.jpg",
         alt: "The redesigned Connect device sheet, listening on this iPhone",
         span: "third",
         aspect: "portrait",
         tint: "#ffaf36",
       },
       {
-        src: "/assets/seamless-device-sheet-speaker.jpg",
+        src: "/assets/seamless-connect-speaker.jpg",
         alt: "The redesigned Connect device sheet, playing on a Bose speaker",
         span: "third",
         aspect: "portrait",
