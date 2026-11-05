@@ -15,9 +15,10 @@ const INTENSITY_PX = 4;
 // noise is finer and centred (fractalNoise, where turbulence leans one way),
 // so each frame bends the line rather than mostly shifting it: Safari moves
 // it in whole pixels, and a near-uniform shift of under a pixel came out the
-// same every frame, so there the icons sat still.
+// same every frame, so there the icons sat still. Chromium on a 1x screen also
+// moves whole pixels: at 2 the frames came out identical, so 3 is the floor.
 const ICON_BASE_FREQUENCY = 0.08;
-const ICON_INTENSITY_PX = 2;
+const ICON_INTENSITY_PX = 3;
 const FILTERS = [
   { id: "line-boil", type: "turbulence", frequency: BASE_FREQUENCY, scale: INTENSITY_PX },
   { id: "line-boil-icon", type: "fractalNoise", frequency: ICON_BASE_FREQUENCY, scale: ICON_INTENSITY_PX },
