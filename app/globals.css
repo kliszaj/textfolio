@@ -505,8 +505,16 @@ body {
   outline-offset: 4px;
 }
 
+.case-study-footer-next-row {
+  container-type: inline-size;
+}
+
+/* Also capped by the card's own width, which the links beside it can squeeze:
+   the longest word (Seamless, 4.83em) has to fit beside the 3rem button and its
+   1rem gap, or the button gets pushed out of the card. */
 .case-study-footer-title {
-  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  min-width: 0;
+  font-size: min(clamp(2.5rem, 5vw, 4.5rem), calc((100cqw - 4rem) / 5));
   line-height: 0.95;
 }
 

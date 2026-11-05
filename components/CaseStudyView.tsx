@@ -1178,7 +1178,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                   <Link
                     data-testid="case-study-footer-next"
                     href={caseStudyRoute(next)}
-                    className="case-study-footer-next group relative grid min-h-56 content-between gap-12 overflow-hidden rounded-3xl p-7 md:min-h-72 md:p-8"
+                    className="case-study-footer-next group relative grid min-h-56 grid-cols-[minmax(0,1fr)] content-between gap-12 overflow-hidden rounded-3xl p-7 md:min-h-72 md:p-8"
                     style={{ backgroundColor: next.thumbnailColor, "--card-color": next.thumbnailColor } as React.CSSProperties}
                   >
                     <CardDotField colors={nextCardDotColors} />
@@ -1186,7 +1186,7 @@ export function CaseStudyView({ caseStudy, next, children }: CaseStudyViewProps)
                       <span className="sr-only">Next project: </span>
                       <span aria-hidden="true">Up next</span>
                     </span>
-                    <span className="relative flex items-end justify-between gap-4">
+                    <span className="case-study-footer-next-row relative flex items-end justify-between gap-4">
                       <span className="case-study-footer-title font-display">{next.title}</span>
                       {/* The header's next button, in ink. Under the pointer the
                           card's dots pour into it (CardDotField) and it fills
