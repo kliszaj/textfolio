@@ -181,10 +181,7 @@ function ReadingTile({ reading }: { reading: AboutBentoData["reading"] }) {
             <span className="block font-body text-xl font-bold leading-tight">{book.title}</span>
             <span className="mt-0.5 block font-medium text-ink/60">{book.author}</span>
             <span className="mt-2 block font-medium leading-snug">
-              {book.note}{" "}
-              <a href={book.href} target="_blank" rel="noopener" className="whitespace-nowrap underline underline-offset-2 hover:opacity-70">
-                More<span aria-hidden="true"> ↗</span>
-              </a>
+              {book.note}
             </span>
           </>
         ) : (

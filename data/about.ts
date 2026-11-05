@@ -48,7 +48,7 @@ export type AboutBentoData = {
     title: string;
     // Each book's note is a line about it, shown under the fan once it's picked.
     // The spine's colours are the cover's own, more or less.
-    books: Array<{ title: string; author: string; href: string; coverSrc: string; note: string; spine: string; spineText: string }>;
+    books: Array<{ title: string; author: string; coverSrc: string; note: string; spine: string; spineText: string }>;
   };
 };
 
@@ -66,7 +66,6 @@ export const ABOUT_BENTO: AboutBentoData = {
       {
         title: "Loonshots",
         author: "Safi Bahcall",
-        href: "https://www.bahcall.com/book/",
         coverSrc: "https://m.media-amazon.com/images/I/71aYLQxV4tL._SL1500_.jpg",
         note: "Why great teams and companies kill their craziest ideas, and how to nurture the ones that end up changing everything.",
         spine: "#efe7d6",
@@ -75,28 +74,25 @@ export const ABOUT_BENTO: AboutBentoData = {
       {
         title: "Mina vänner",
         author: "Fredrik Backman",
-        href: "https://www.norstedts.se/bok/9789113143835/mina-vanner-v618798",
         coverSrc:
           "https://www.studentapan.se/images/format:webp/size:640:0/quality:100/asset/book-cover/mina-vanner-9789113143804",
-        note: "Fredrik Backman's novel about friendship, art and growing up, read slowly, in Swedish.",
+        note: "A novel about friendship, art and growing up, read slowly, in Swedish.",
         spine: "#2f5d8a",
         spineText: "#ffffff",
       },
       {
         title: "Mistborn",
         author: "Brandon Sanderson",
-        href: "https://www.goodreads.com/book/show/68428.Mistborn",
         coverSrc: "/assets/book-mistborn.jpg",
-        note: "Brandon Sanderson's fantasy about a crew of thieves planning to overthrow an immortal emperor.",
+        note: "A fantasy about a crew of thieves planning to overthrow an immortal emperor.",
         spine: "#5b4a86",
         spineText: "#f4a582",
       },
       {
         title: "Rules to Live By",
         author: "Jimmy Chin",
-        href: "https://www.goodreads.com/book/show/244963836-rules-to-live-by",
         coverSrc: "/assets/book-rules-to-live-by.jpg",
-        note: "Jimmy Chin on the rules that people living extraordinary lives actually live by.",
+        note: "The rules that people living extraordinary lives actually live by.",
         spine: "#2b3138",
         spineText: "#ffffff",
       },

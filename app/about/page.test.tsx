@@ -51,7 +51,7 @@ test("picking a book lifts it and says what it is, and picking it again puts it 
   fireEvent.click(book);
   expect(book).toHaveAttribute("aria-pressed", "true");
   expect(reading.getByText(first.note, { exact: false })).toBeInTheDocument();
-  expect(reading.getByRole("link", { name: /More/ })).toHaveAttribute("href", first.href);
+  expect(reading.queryByRole("link")).not.toBeInTheDocument();
   expect(reading.queryByText("Currently reading")).not.toBeInTheDocument();
   fireEvent.click(book);
   expect(book).toHaveAttribute("aria-pressed", "false");
