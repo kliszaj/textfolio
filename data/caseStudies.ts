@@ -259,7 +259,7 @@ export const caseStudies: CaseStudy[] = [
     mediaLayout: "sequence",
     media: [
       {
-        src: "/assets/seamless-film.mp4",
+        src: "/assets/seamless-film-orange.mp4",
         alt: "Spotify on an iPhone: from Home to the Connect device sheet",
         kind: "video",
         span: "full",
@@ -282,7 +282,7 @@ export const caseStudies: CaseStudy[] = [
       },
       {
         // Not shipped yet: the whole frame is blurred in the video itself.
-        src: "/assets/seamless-connect.mp4",
+        src: "/assets/seamless-connect-orange.mp4",
         alt: "Upcoming Connect features, obscured until launch",
         kind: "video",
         span: "third",

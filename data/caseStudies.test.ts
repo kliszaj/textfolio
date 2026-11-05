@@ -50,10 +50,10 @@ test("the Seamless Strategy holds a full-width film, shows the device sheet and 
   const seamless = getCaseStudyBySlug("seamless-strategy");
   expect(seamless?.mediaLayout).toBe("sequence");
   expect(seamless?.media).toEqual([
-    expect.objectContaining({ src: "/assets/seamless-film.mp4", kind: "video", span: "full", aspect: "landscape" }),
+    expect.objectContaining({ src: "/assets/seamless-film-orange.mp4", kind: "video", span: "full", aspect: "landscape" }),
     expect.objectContaining({ src: "/assets/seamless-connect-phone.jpg", span: "third", aspect: "portrait" }),
     expect.objectContaining({ src: "/assets/seamless-connect-speaker.jpg", span: "third", aspect: "portrait" }),
-    expect.objectContaining({ src: "/assets/seamless-connect.mp4", kind: "video", span: "third", aspect: "portrait", unreleased: expect.any(Object) }),
+    expect.objectContaining({ src: "/assets/seamless-connect-orange.mp4", kind: "video", span: "third", aspect: "portrait", unreleased: expect.any(Object) }),
     expect.objectContaining({
       src: "/assets/seamless-roadmap.jpg",
       span: "full",
