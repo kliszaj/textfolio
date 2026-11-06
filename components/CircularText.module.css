@@ -4,7 +4,7 @@
   height: 200px;
   margin: 0 auto;
   border-radius: 50%;
-  color: var(--circular-text-color, #fff);
+  color: var(--circular-text-color, var(--color-cream));
   font-family: var(--circular-text-font-family, var(--font-pp-frama)), sans-serif;
   font-weight: var(--circular-text-font-weight, 900);
   text-align: center;

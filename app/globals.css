@@ -713,7 +713,7 @@ body:has(.case-study-header[data-shrunk="true"]) .case-study-rail {
   inset-inline: 0;
   bottom: 0;
   height: 0.5rem;
-  background-color: rgb(255 255 255 / 0.4);
+  background-color: rgb(245 237 230 / 0.4);
   transform: scaleX(0);
   transform-origin: left;
   opacity: 0;
